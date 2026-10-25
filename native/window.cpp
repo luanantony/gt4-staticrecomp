@@ -13,6 +13,7 @@
 #include "pacing.hpp"
 #include "window_mode.hpp"
 #include "cursor_autohide.hpp"
+#include "fps_probe.hpp"
 #ifdef GT4_GS_STREAM_CLIENT
 #include "gs_stream/gs_stream_client.hpp"
 #endif
@@ -323,6 +324,9 @@ void on_vblank() {
   gt4::perf::Probe::shared().frame_boundary(
       {ps2::now(), ps2::primitives_drawn(), ps2::vu1_interpreted_calls()});
 #endif
+  if (gt4::fps_probe::Probe::shared().enabled()) {
+    gt4::fps_probe::Probe::shared().on_frame_boundary();
+  }
   release_frame();
   GT4_PERF_SCOPE(gt4::perf::Category::host_vblank);
   if (!pump_messages())
@@ -484,6 +488,9 @@ int run_window(const std::function<int()> &emulate) {
     gt4::perf::Probe::shared().set_report_section({});
     gt4::perf::Probe::shared().finish();
 #endif
+    if (gt4::fps_probe::Probe::shared().enabled()) {
+      gt4::fps_probe::Probe::shared().finish();
+    }
     audio_output = nullptr;
     frame_pacer.reset();
     frame_clock.reset();
@@ -575,6 +582,9 @@ int run_window(const std::function<int()> &emulate) {
                      static_cast<unsigned long long>(force_480p_state.writes));
       counters_at_last_report = session;
       pacing_diagnostics.reset();
+      if (gt4::fps_probe::Probe::shared().enabled()) {
+        gt4::fps_probe::Probe::shared().format_report(output);
+      }
 #ifdef GT4_MTVU_MEASURE
       // TASK-011 step 0: interval counters since the last F7 or report, then a new interval.
       gt4::mtvu::report(output, "interval");

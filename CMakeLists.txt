@@ -76,6 +76,8 @@ add_test(NAME native_cursor_autohide COMMAND $<TARGET_FILE:cursor_autohide_fixtu
 add_test(NAME native_shape_observer COMMAND $<TARGET_FILE:shape_observer_fixture>)
 add_test(NAME native_performance_accounting COMMAND $<TARGET_FILE:perf_accounting_fixture>)
 add_test(NAME native_performance_probe COMMAND $<TARGET_FILE:perf_probe_fixture>)
+# TASK-082 P0: frame loop observation and dependency proof probe
+add_test(NAME native_fps_probe COMMAND $<TARGET_FILE:fps_probe_fixture>)
 # TASK-011 step 0: GIF scanner, worker overlap model, interval counters, report lines, GT4_MTVU_MEASURE switch.
 add_test(NAME native_mtvu_measure COMMAND $<TARGET_FILE:mtvu_measure_fixture>)
 # TASK-011 step 1: SPSC ring and ordered journal (docs/MTVU-PLAN.md section 5).
@@ -96,7 +98,7 @@ add_test(NAME native_shape_capture_export COMMAND $<TARGET_FILE:shape_capture_ex
 add_test(NAME native_shape_capture_control COMMAND $<TARGET_FILE:shape_capture_control_fixture>)
 add_test(NAME python_native_contracts
     COMMAND "${GT4_PYTHON}" -m unittest discover -s "${CMAKE_SOURCE_DIR}/tests/python")
-set_tests_properties(native_mtvu_measure native_mtvu_ring native_mtvu_journal native_mtvu_perf native_mtvu_vif_batch native_quickfix native_race_display native_race_widescreen native_vulkan_pixels native_audio_input native_shape_observer native_performance_accounting native_performance_probe native_shape_capture_export native_shape_capture_control python_native_contracts
+set_tests_properties(native_mtvu_measure native_mtvu_ring native_mtvu_journal native_mtvu_perf native_mtvu_vif_batch native_quickfix native_race_display native_race_widescreen native_vulkan_pixels native_audio_input native_shape_observer native_performance_accounting native_performance_probe native_fps_probe native_shape_capture_export native_shape_capture_control python_native_contracts
     PROPERTIES RUN_SERIAL TRUE TIMEOUT 120
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}" ENVIRONMENT "GT4_NATIVE_BUILD=${CMAKE_BINARY_DIR}")
 if(TARGET shape_runtime_fixture)

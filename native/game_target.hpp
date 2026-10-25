@@ -82,6 +82,14 @@ struct HookAddresses {
   std::uint32_t shape_call_pc = 0;
   std::uint32_t shape_target_pc = 0;
   std::uint32_t shape_return_pc = 0;
+
+  // TASK-082 frame loop observation and render skip (native/fps_probe.*)
+  std::uint32_t main_update_functor = 0;
+  std::uint32_t main_render_functor = 0;
+  std::uint32_t main_idle_functor = 0;
+  std::uint32_t main_flip_wait = 0;
+  std::uint32_t flip_wait_return = 0;
+  std::uint32_t functor_return = 0;
 };
 
 struct Profile {
@@ -132,6 +140,12 @@ inline constexpr HookAddresses kV200Hooks = {
     /* shape_call_pc */ 0x455A5Cu,
     /* shape_target_pc */ 0x49D308u,
     /* shape_return_pc */ 0x455A64u,
+    /* main_update_functor */ 0x00100EE0u,
+    /* main_render_functor */ 0x00100F50u,
+    /* main_idle_functor */ 0x00100FC0u,
+    /* main_flip_wait */ 0x00107878u,
+    /* flip_wait_return */ 0x00101818u,
+    /* functor_return */ 0x001095C0u,
 };
 
 // Spec II (SCUS-97436, GT4 Online Public Beta lineage), filled by S8 (2026-10-23). The image is a different build of
@@ -206,6 +220,12 @@ inline constexpr HookAddresses kSpec2Hooks = {
     /* shape_call_pc */ 0u,
     /* shape_target_pc */ 0u,
     /* shape_return_pc */ 0u,
+    /* main_update_functor */ 0u,
+    /* main_render_functor */ 0u,
+    /* main_idle_functor */ 0u,
+    /* main_flip_wait */ 0u,
+    /* flip_wait_return */ 0u,
+    /* functor_return */ 0u,
 };
 
 inline constexpr Profile kV200{Id::v200, "v2.00", 32u << 20, kV200Hooks};

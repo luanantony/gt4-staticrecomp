@@ -72,6 +72,13 @@ void check_v200_values() {
   check(h.shape_call_pc == 0x455A5Cu, "shape call pc");
   check(h.shape_target_pc == 0x49D308u, "shape target pc");
   check(h.shape_return_pc == 0x455A64u, "shape return pc");
+  // TASK-082 frame loop observation and render skip
+  check(h.main_update_functor == 0x00100EE0u, "main update functor");
+  check(h.main_render_functor == 0x00100F50u, "main render functor");
+  check(h.main_idle_functor == 0x00100FC0u, "main idle functor");
+  check(h.main_flip_wait == 0x00107878u, "main flip wait");
+  check(h.flip_wait_return == 0x00101818u, "flip wait return label");
+  check(h.functor_return == 0x001095C0u, "functor return label");
   // Both v2.00 tables (the release one and the one the modules compile against) agree.
   check(kV200Hooks.widescreen_owner_pointer == h.widescreen_owner_pointer, "kV200Hooks is the active table");
 }

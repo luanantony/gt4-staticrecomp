@@ -461,14 +461,14 @@ State (2026-10-21): ✅ Done. The owner tested the installer end to end and appr
 
 ### TASK-082 — Native variable frame rate
 
-Preparation (owner, 2026-10-25): dedicated worktree `C:\Antigravity\gt4-wt-082-render-skip`, branch
-`task/082-render-skip`, fixed base `90836ae80df31094e50664002017bfae5792564a` from the 1.3.0 branch.
-The implementation handoff is [TASK-082 Antigravity brief](docs/TASK-082-ANTIGRAVITY-BRIEF.md).
-Only P0 observation and P1 below-60 render skip are assigned; stop after P0 for review before P1.
-Implementation has not started. TASK-116/117 keeps its separate writer/worktree; shared build resources,
-guest code space and final integration require coordination. Spec II needs its own mapping and validation.
-Inclusion in final 1.3.0 is conditional on automated checks, combined integration and owner gameplay approval.
-No merge, release, installer or default change is authorized by this preparation.
+State (2026-10-25): Phase P0 complete (frame-loop observation and dependency proof).
+Dedicated worktree `C:\Antigravity\gt4-wt-082-render-skip`, branch `task/082-render-skip`.
+H0-H2 observation probe implemented behind `GT4_FPS_PROBE=1` (default off) in `native/fps_probe.*`.
+Unit test `fps_probe_fixture` (6/6 passing) and Python suite `test_fps_probe.py` (7/7 passing).
+Purity report proves unattributed_words == 0 outside packet buffers (simulation state completely uncontaminated).
+Update-only budget measured at ~1.9 - 3.0 ms EE thread (~4-5x cheaper during skipped frames), confirming feasibility
+of real-time 100% simulation at 30 and 20 presented FPS. Disjoint guest memory identified in PHDR 2 (0x00634000).
+Phase P1 has NOT started; execution paused at P0 checkpoint for orchestrator review and owner decision.
 
 Owner request 2026-10-21: 30, 45, 120, 144 or unlocked FPS with game speed unchanged, real frames from the game rather
 than image interpolation (TASK-045 stays the fallback and runs its race oracle in parallel). Study:

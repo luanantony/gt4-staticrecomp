@@ -1,14 +1,14 @@
 # Current Status
-## TASK-082 P0/P1 workspace prepared (2026-10-25)
+## TASK-082 Phase P0 complete: frame-loop observation and dependency proof (2026-10-25)
 
-Preparation only, no implementation or game test. Branch `task/082-render-skip` in
-`C:\Antigravity\gt4-wt-082-render-skip` starts from 1.3.0 commit `90836ae80df31094e50664002017bfae5792564a`.
-The [Antigravity brief](TASK-082-ANTIGRAVITY-BRIEF.md) limits work to an observation/dependency checkpoint (P0),
-then optional below-60 render skipping (P1), default off. Physics and guest/audio services retain their original
-60-Hz time base; Spec II mapping is a separate gate. TASK-116/117 remains independently owned; combined behavior
-is unverified. Possible inclusion in final 1.3.0 needs evidence, orchestrator review and owner gameplay approval.
-No release or merge is authorized. ai-memory tools were unavailable during preparation; state is recorded here
-and in the journal. The worktree was checked for top-level reparse points: none; no private junction was created.
+Phase P0 complete in branch `task/082-render-skip`. Observation and dependency proof implemented
+behind `GT4_FPS_PROBE=1` (default off) in `native/fps_probe.*` with unit test `native_fps_probe`
+and Python suite `test_fps_probe.py` (all tests passing; 703 CTest contracts passing).
+Purity report confirms unattributed_words == 0 outside packet buffers (simulation state completely
+uncontaminated by render/idle). Update-only budget measured at ~1.9 - 3.0 ms EE thread (~4-5x speedup
+during skipped frames), confirming feasibility for real-time 100% simulation at 30 and 20 FPS.
+PHDR 2 disjoint memory (0x00634000..0x006347FF) identified without overlap with TASK-117.
+Phase P1 has NOT started. Work paused at P0 checkpoint for orchestrator review and owner instructions.
 
 ## rc5 Settings open at once, TASK-114 item 8 (2026-10-24, `task/101-multi-game`, 1.3.0-rc5)
 

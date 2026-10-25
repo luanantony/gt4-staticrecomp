@@ -1019,6 +1019,16 @@ Owner test: George V Paris night F7/F8 with Performance mode on (target: mtvu do
 60 FPS without the dips), flare look on and off.
 
 
+
+#### Scope change (owner, 2026-10-25 evening): cut every flare, the sun included
+Performance Mode no longer reduces the flares: it removes them. No track lamps, no car lamps and no sun flare (weak PCs
+lose FPS on the Nordschleife only when driving into the sun). With no light queued the game skips the 2 KiB sample, so
+the per-frame readback, the VU1 drain, the round trip and the one-frame lag all disappear. Perceived on the owner's rc6
+test build. Implementation: redirect the two lamp-queue fills (0x3B7BE4, 0x3B85C0) and the sun sample/draw (inside
+0x3B8400 and `jal 0x4985F8` at 0x3B89E0) to helpers that return "not visible" with the switch on; the flare draw sites
+need nothing because no entry is ever queued. The switch-off path must stay byte-identical to rc5: the derived ELF built
+for the earlier "fewer flares" variant still diverges with the switch off, so the bisect below comes first. Full spec:
+ai-memory `decisions/rc6-performance-mode-cuts-flares`.
 #### rc6 delivery (2026-10-25): built, not shipped
 Derived v2.00 ELF `SCUS_973.28.flare.elf` (sha256 `6c156b5f…`, 6,123,004 bytes) built by
 `scripts/flare_limits_elf_patch.py produce` and pinned by that script (`check`, `verify`, `record-library`): the four

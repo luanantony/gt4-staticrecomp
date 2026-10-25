@@ -1058,6 +1058,16 @@ What changes:
 
 Rules: gameplay never changes (an icon, loading picture or flare may be lost; physics, timing, AI, saves and replays
 may not). Every preset key needs a headless A/B on the F8 harness before it ships, and the owner tests in game.
+6. **No "Automatic" choice for API or card** (owner, 2026-10-25): the launcher resolves both on the first start and
+   stores the result, so the UI shows "Vulkan" and the player's card name directly; the player can change either one,
+   and a card that disappears falls back to the rule's pick for that run and updates the stored value (never silently
+   back to "Automatic"). Needs a settings migration that materialises a stored "auto".
+7. **Render scale becomes one slider**: 100% by default, 50%..200%, no "6x" text and no resolution text beside it. It
+   snaps to the integer GSdx multipliers 1x..12x and stores the multiplier (the ini keeps integers); the percentage is
+   relative to the automatic plan, which stays the 100% baseline and must keep working from the monitor resolution.
+   **Hard cap at 8K**: 12x is 7680x6144, so an 8K output tops out at 100% (12x).
+8. **AA1 stays disabled by default** (owner, 2026-10-25): it does not join the anti-aliasing row and does not enter the
+   Performance Mode preset unless a headless A/B plus the owner's eyes show a real GT4 gain.
 Acceptance: the Advanced page holds only rows a player can reason about; Performance Mode on/off is the single
 switch; no lost option changes gameplay; tests for the preset layer, the fixed rows and the RC-only gate.
 

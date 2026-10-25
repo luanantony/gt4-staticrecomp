@@ -138,6 +138,7 @@ See [GS renderer options](docs/GS-RENDERER-OPTIONS.md) and [GSDX-PLAN](docs/GSDX
 | TASK‑115 | Game recognition and Discord: Windows Game Mode/Game Bar, AMD and NVIDIA capture (Instant Replay, ShadowPlay) and Discord Rich Presence | 📋 Planned (owner, 2026-10-24) · future (1.3.1 or later) |
 | TASK‑116 | George V Paris below 60 FPS: one GS readback per frame makes the game wait for VU1 and GSdx; 1.3.1 = no VU1 drain when the readback returns nothing, plus unsynchronized readbacks in gt4-gs 1.2.2 | 🔧 rc6 step 1 implemented and tested headless (2026-10-25); owner test pending; step 2 stays 1.3.1 |
 | TASK‑117 | Performance mode, part 2: fewer light flares at night (no halo, distance cull, light caps), our own clean implementation in GT4 v2.00, off when Performance mode is off | ⚠ rc6 ELF, library and host block built and tested (2026-10-25), NOT shipped: the switch-off identity gate failed (journal 2026-10-25) |
+| TASK‑118 | Graphics settings simplification: Performance Mode becomes a real preset (blending Basic, trilinear/dithering off, preloading partial), the Advanced page loses the cosmetic rows, RC-only settings move to an RC Settings area, GS async and deinterlace become fixed | 🔧 Planned (2026-10-25, owner), 1.3.0-rc6 |
 | TASK‑093 | Custom textures straight in the Textures folder: gt4-gs 1.2.1 reads the folder itself; the launcher stops creating `replacements` and moves an old `replacements` folder's contents up once gt4-gs 1.2.1 is in use | ✅ Done (2026-10-22) · release 1.2.3 (owner tested) |
 | TASK‑096 | Remove CoreGS 1.1 from the launcher (owner, 2026-10-22): GSdx only, CoreGS 2.0 shown as "Coming soon" (disabled), a stored CoreGS 1.1 choice migrates to GSdx, a GSdx failure shows a clear error instead of falling back; CoreGS 1.1 stays in the game executable, unused by the launcher. For launcher release 1.2.3 | ✅ Done (2026-10-22) · release 1.2.3 (owner tested) |
 | TASK‑092 | MTVU test switches after TASK-084: `GT4_MTVU=0` and `GT4_MTVU_VERIFY=1` in pcsx2 mode, portable doorbell ordering | ✅ Done (2026-10-22) · release 1.2.3 (owner tested) |
@@ -1035,6 +1036,30 @@ at every guest VBlank when `GT4_FLARE_LIMITS=1`, a zero block otherwise; CTest `
 the direct start reads `HWDownloadMode = 2` from the config `gt4-gs.ini`; `launch_contract` and the standalone
 fixture cover both. Tests: `tests/python/test_flare_limits_elf_patch.py` pins every helper word, the redirects, the
 block offsets against `native/flare_limits.hpp`, the old words against the pinned ELF and the produced derivative.
+
+
+### TASK‑118 — Graphics settings simplification (owner, 2026-10-25, 1.3.0-rc6)
+Owner decision, recorded directly by the implementation session (no orchestrator round trip). The Advanced page of
+Settings > Graphics is too technical and Performance Mode is only a readback switch today.
+
+What changes:
+1. **Performance Mode becomes a preset.** On: `HWDownloadMode` 2 (as today), `accurate_blending_unit` Basic,
+   `TriFilter` off, `dithering_ps2` off, `TexturePreloadingLevel` Partial. Off: exactly today's values (blending
+   High, trilinear automatic, dithering unscaled, preloading full). Blending accuracy leaves the Advanced page.
+2. **Fixed values, rows removed:** deinterlace automatic, present filter smooth, integer scaling off, interlace offset
+   off, anti-blur on, offsets/overscan off, TV shader none, anisotropic off, accurate alpha test off, AA1 off, ROV off,
+   shade boost and its four sliders off, disable shader cache off, texture filtering PS2, mipmapping on.
+3. **GS async leaves the launcher** and is always on (it was a debugging A/B switch and is the default).
+4. **RC Settings area** (only in release-candidate builds, `gt4l_core::build_kind`): Release performance report
+   (`performance_report`) and Verificar código VU compilado (`check_vu_code`). Final builds do not ship them.
+5. **Kept for everyone, default off:** the PCSX2 performance overlay (OSD) and the "compiling shaders" notice.
+6. **Removing a row never stops writing the key**: each removed row keeps a fixed value in `gt4-gs.ini`, otherwise an
+   existing install keeps a stale value.
+
+Rules: gameplay never changes (an icon, loading picture or flare may be lost; physics, timing, AI, saves and replays
+may not). Every preset key needs a headless A/B on the F8 harness before it ships, and the owner tests in game.
+Acceptance: the Advanced page holds only rows a player can reason about; Performance Mode on/off is the single
+switch; no lost option changes gameplay; tests for the preset layer, the fixed rows and the RC-only gate.
 
 ### TASK-116 — George V Paris performance
 Recorded (owner, 2026-10-24) on 1.3.0-rc5, Spec II (Arcade unlocks every track), night race on George V Paris,

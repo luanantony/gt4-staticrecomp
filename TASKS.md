@@ -919,7 +919,8 @@ Acceptance: the owner sees each feature work on his machines; unit tests for the
 
 ### TASK-117 — Performance mode, part 2: no light flares at all in Performance Mode (sun included)
 **Done in rc6 as a host change (owner test pending, 2026-10-25).** Two forms were tried: the derived-ELF guest patch (built, parked below: a runtime-switched guest patch cannot pass its identity gate) and the host-side zero table, which ships. Owner decision (2026-10-25 evening): Performance Mode removes every flare, the sun included, because weaker PCs lose frames on the Nordschleife only when driving into the sun.
-new GT4 v2.00 game build (one rebuild, one set of pins).
+History (2026-10-24): planned for 1.3.0-rc6 together with TASK-116 step 1, because both need a new GT4 v2.00 game
+build (one rebuild, one set of pins).
 Idea source: the owner found https://github.com/nobz226/gt-pcsx2-patches (PCSX2 pnach files for GT4 USA, CRC
 77E61C8A, and GT3 JP). That repository has **no license**, so it is a reference only: we never copy its stub code or
 words; we write our own guest code from our own disassembly and credit the idea in the release notes. Its README

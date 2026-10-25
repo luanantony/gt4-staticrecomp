@@ -288,7 +288,7 @@ target_compile_options(gt4_quickfix PRIVATE /W4)
 # (Spec II in a Spec II build). A Spec II build therefore compiles a second copy of the three hook modules pinned to
 # v2.00 for the fixtures only; the game keeps the target table.
 if(GT4_TARGET STREQUAL "spec2")
-    add_library(gt4_quickfix_v200_fixture STATIC race_display.cpp race_widescreen.cpp display_aspect.cpp)
+    add_library(gt4_quickfix_v200_fixture STATIC race_display.cpp race_widescreen.cpp display_aspect.cpp flare_limits.cpp)
     target_compile_definitions(gt4_quickfix_v200_fixture PUBLIC GT4_TARGET_FIXTURE_V200)
     target_compile_options(gt4_quickfix_v200_fixture PRIVATE /W4)
     set(GT4_HOOK_FIXTURE_LIB gt4_quickfix_v200_fixture)

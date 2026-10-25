@@ -313,7 +313,9 @@ GS_STREAM_NAMES = ('GT4_RENDERER', 'GT4_GS_PROCESS', 'GT4_GS_CAPTURE', 'GT4_GS_C
                    # TASK-041 (slice198): game-side test and A/B switches (wake batching, stream hash).
                    'GT4_GS_WAKE_BYTES', 'GT4_GS_STREAM_HASH',
                    # TASK-116 (rc6): the local flare readback (Performance mode) and its probe.
-                   'GT4_GS_READBACK_LOCAL', 'GT4_GS_READBACK_LOG')
+                   'GT4_GS_READBACK_LOCAL', 'GT4_GS_READBACK_LOG',
+                   # TASK-117 (rc6): answer the flare table as zeros (no flares, no sun glare) and its A/B switch.
+                   'GT4_GS_HIDE_FLARES')
 # TASK-039: user GS settings as JSON (play_performance.py --gs-setting ID=VALUE and the shortcuts). The table:
 # docs/launcher/gs-settings.toml; the gt4-gs.ini writer is gs_config_text below (scripts/gs_settings.py).
 GS_SETTINGS_ENV = 'GT4_GS_SETTINGS'

@@ -488,7 +488,7 @@
   "setting.fxaa.label": "Antisserrilhamento (FXAA)",
   "setting.fxaa.help": "Suaviza as bordas serrilhadas com um filtro rápido. Deixa os detalhes finos um pouco mais suaves. Desligado por padrão.",
   "setting.performance_mode.label": "Modo de Desempenho",
-  "setting.performance_mode.help": "Mais rápido em PCs mais fracos. O jogo deixa de esperar a placa de vídeo devolver as imagens: os ícones dos carros ao lado do tempo de diferença podem sair em branco e a imagem da tela de carregamento pode faltar. Os brilhos das luzes à noite continuam aparecendo, mas podem ficar um quadro atrasados. Vale na próxima vez que você jogar.",
+  "setting.performance_mode.help": "Mais rápido em PCs mais fracos. O jogo deixa de esperar a placa de vídeo devolver as imagens: os ícones dos carros ao lado do tempo de diferença podem sair em branco e a imagem da tela de carregamento pode faltar. Os brilhos das luzes à noite e o clarão do sol são desligados. Vale na próxima vez que você jogar.",
   "setting.cas_mode.label": "Nitidez (CAS)",
   "setting.cas_mode.help": "Nitidez adaptativa de contraste do FidelityFX. Desligado deixa a imagem como o jogo a desenhou.",
   "choice.cas_mode.off": "Desligado",

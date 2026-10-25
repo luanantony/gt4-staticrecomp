@@ -488,7 +488,7 @@
   "setting.fxaa.label": "Anti-aliasing (FXAA)",
   "setting.fxaa.help": "Smooths jagged edges with a fast filter. It softens fine detail a little. Off by default.",
   "setting.performance_mode.label": "Performance Mode",
-  "setting.performance_mode.help": "Faster on weaker PCs. The game stops waiting for the graphics card to send images back: the car icons next to the gap time can come out blank and the loading screen picture may be missing. Night light flares still show, but they can be a frame behind. Applies the next time you play.",
+  "setting.performance_mode.help": "Faster on weaker PCs. The game stops waiting for the graphics card to send images back: the car icons next to the gap time can come out blank and the loading screen picture may be missing. The night lights and the sun glare are turned off. Applies the next time you play.",
   "setting.cas_mode.label": "Sharpening (CAS)",
   "setting.cas_mode.help": "FidelityFX Contrast Adaptive Sharpening. Off leaves the picture as the game drew it.",
   "choice.cas_mode.off": "Off",

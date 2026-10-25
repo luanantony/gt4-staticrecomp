@@ -917,8 +917,8 @@ Work:
    sent anywhere else. In-game details (mode, track, car) need guest-memory reads: a later step.
 Acceptance: the owner sees each feature work on his machines; unit tests for the presence payload and the switch.
 
-### TASK-117 — Performance mode, part 2: fewer light flares at night
-Planned (owner, 2026-10-24); not started. Proposed for 1.3.0-rc6 together with TASK-116 step 1, because both need a
+### TASK-117 — Performance mode, part 2: no light flares at all in Performance Mode (sun included)
+**Done in rc6 as a host change (owner test pending, 2026-10-25).** Two forms were tried: the derived-ELF guest patch (built, parked below: a runtime-switched guest patch cannot pass its identity gate) and the host-side zero table, which ships. Owner decision (2026-10-25 evening): Performance Mode removes every flare, the sun included, because weaker PCs lose frames on the Nordschleife only when driving into the sun.
 new GT4 v2.00 game build (one rebuild, one set of pins).
 Idea source: the owner found https://github.com/nobz226/gt-pcsx2-patches (PCSX2 pnach files for GT4 USA, CRC
 77E61C8A, and GT3 JP). That repository has **no license**, so it is a reference only: we never copy its stub code or
@@ -1048,6 +1048,32 @@ fixture cover both. Tests: `tests/python/test_flare_limits_elf_patch.py` pins ev
 block offsets against `native/flare_limits.hpp`, the old words against the pinned ELF and the produced derivative.
 
 
+
+#### Final implementation (2026-10-25, in rc6): the host answers the flare table as zeros
+In Performance Mode the gs_stream client already answers the 128-qword (64x8) flare readback from the VU1 journal.
+It now answers **zeros**: the VU1 scales every lamp, every headlight and the sun by its own pixel of that table
+(`docs/GS-READBACK-STUDY.md` 1.1), so an all-zero table draws no flare, halo or sun glare. The READ_FIFO is still
+queued, so the journal keeps deferring `sync("download")` exactly as in TASK-116 step 1; only the bytes the guest
+receives change. Switch: `GT4_GS_HIDE_FLARES` (unset = on with the local answer, `0` = the previous reply). No guest
+code and no launcher wiring, so Performance Mode off stays byte-identical to rc5 by construction; the sun needs no
+separate path. The one-frame occlusion lag also disappears, because no flare is drawn at all.
+
+Measured headless (night, 12,000 frames, 1x, `HWDownloadMode=2`, `GT4_GS_READBACK_LOG=1`): with hiding, 3,763 of 3,763
+tables answered as zeros (probe `nz=0..0`), no readback wait, `mtvu download` 0.000 ms and the EE critical path
+unchanged (5.87-6.52 ms against 6.00-6.44 ms with the previous reply); every dump before the race is byte-identical,
+and the race dumps differ only on the lights and their glows. CTest: new `pcsx2-hidden` scenario; `pcsx2-local` now
+pins `GT4_GS_HIDE_FLARES=0`.
+
+Why the guest patch was dropped: the emulated EE clock is counted in instructions (`system.cpp` `now()` =
+`g_base + (g_given - budget)`; VBlank and alarms are scheduled at guest cycles), so any runtime switch that adds
+instructions moves where the VBlank lands in the guest frame. The derived ELF therefore diverged from rc5 on the
+first frame that drew flares even with every helper taking the original path, and no placement or entry-id fix can
+remove that. The derived ELF (`scripts/flare_limits_elf_patch.py`, the `flare` profile, `native/flare_limits.*`)
+stays on the branch as a documented dead end; only a guest patch removes the GS-side 2 KiB download, which belongs to
+TASK-116 step 2 (async download in gt4-gs, 1.3.1).
+
+Owner test pending: Nordschleife Time Trial into the sun (no glare, stable frame time), a night race (no lamp or
+headlight glow, no glow over walls) and Performance Mode off (flares exactly as rc5).
 ### TASK‑118 — Graphics settings simplification (owner, 2026-10-25, 1.3.0-rc6)
 Owner decision, recorded directly by the implementation session (no orchestrator round trip). The Advanced page of
 Settings > Graphics is too technical and Performance Mode is only a readback switch today.

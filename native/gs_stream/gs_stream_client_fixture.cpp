@@ -223,6 +223,29 @@ void run_local_off_script() {
   client::finish(stdout);
 }
 
+// TASK-117: with GT4_GS_HIDE_FLARES=1 (the Performance mode default) the flare table is served as zeros from the first
+// readback, while the READ_FIFO is still queued once per readback and the journal keeps the download order.
+void run_hidden_script() {
+  namespace client = gt4::gs_stream;
+  client::set_readback_journal({&fake_queue_readback, &fake_drain_download});
+  client::set_halt_handler(count_halt);
+  client::on_gs_reset();
+  g_queued = g_drained = g_queue_depth = 0;
+  std::vector<std::uint8_t> flare(kFlareQwords * 16, 0xEE);
+  for (std::uint64_t n = 1; n <= 2; ++n) {
+    std::fill(flare.begin(), flare.end(), 0xEE);
+    require(client::read_fifo(flare.data(), kFlareQwords), "the hidden flare readback is served");
+    for (std::uint8_t byte : flare) require(byte == 0, "the hidden flare table is zeros");
+    require(g_queued == n && g_queued_qwords == kFlareQwords, "every hidden readback queues one READ_FIFO");
+    require(g_drained == 0, "the hidden readback never drains");
+  }
+  std::vector<std::uint8_t> icon(512 * 16, 0xEE);
+  require(client::read_fifo(icon.data(), 512), "the icon readback is served");
+  require(g_drained == 1, "the icon readback drains the queued requests");
+  for (std::uint64_t i = 0; i < icon.size(); ++i) require(icon[i] == pattern_byte(3, i), "icon reply is request 3");
+  client::finish(stdout);
+}
+
 int scenario_main(const std::string &scenario, std::uint32_t frames) {
   if (scenario == "pcsx2-local") {
     run_local_script();
@@ -230,6 +253,10 @@ int scenario_main(const std::string &scenario, std::uint32_t frames) {
   }
   if (scenario == "pcsx2-local-off") {
     run_local_off_script();
+    return 0;
+  }
+  if (scenario == "pcsx2-hidden") {
+    run_hidden_script();
     return 0;
   }
   if (scenario == "donor") {
@@ -307,7 +334,7 @@ std::uint32_t run_scenario(const std::string &scenario, const std::vector<Env> &
                            "GT4_GS_CAPTURE_FRAMES", "GT4_GS_FRAMES_IN_FLIGHT", "GT4_FIXTURE_CHILD",
                            "GT4_GS_PROCESS_SHA256", "GT4_GS_CONFIG", "GT4_GS_HANDSHAKE_TIMEOUT_MS",
                            "GT4_GS_LOST_GRACE_FRAMES", "GT4_FIXTURE_PID_FILE", "GT4_GS_READBACK_LOCAL",
-                           "GT4_GS_READBACK_LOG"})
+                           "GT4_GS_HIDE_FLARES", "GT4_GS_READBACK_LOG"})
     _putenv_s(name, "");
   for (const Env &item : env) _putenv_s(item.name, item.value.c_str());
   std::printf("[fixture] scenario %s\n", scenario.c_str());
@@ -723,7 +750,8 @@ int main(int argc, char **argv) {
     DeleteFileA((local_result + ".pattern").c_str());
     require(run_scenario("pcsx2-local", {{"GT4_RENDERER", "pcsx2"}, {"GT4_GS_PROCESS", argv[0]},
                                          {"GT4_FIXTURE_CHILD", "pattern"}, {"GT4_FIXTURE_PID_FILE", local_result},
-                                         {"GT4_GS_CONFIG", local_config}, {"GT4_GS_READBACK_LOCAL", "1"}}) == 0,
+                                         {"GT4_GS_CONFIG", local_config}, {"GT4_GS_READBACK_LOCAL", "1"},
+                                         {"GT4_GS_HIDE_FLARES", "0"}}) == 0,
             "pcsx2-local scenario");
     {
       std::ifstream in(local_result + ".pattern");
@@ -746,6 +774,23 @@ int main(int argc, char **argv) {
       require(served == 2, "the kill switch posts one READ_FIFO per readback and waits for each");
     }
     std::puts("[fixture] GT4_GS_READBACK_LOCAL=0 keeps every readback accurate");
+
+    // TASK-117: GT4_GS_HIDE_FLARES=1 (the Performance mode default) answers the flare table as zeros from the first
+    // readback, still queues one READ_FIFO per readback and keeps the icons accurate after the drain.
+    const std::string hidden_result = scratch + "\\hidden.pid";
+    DeleteFileA((hidden_result + ".pattern").c_str());
+    require(run_scenario("pcsx2-hidden", {{"GT4_RENDERER", "pcsx2"}, {"GT4_GS_PROCESS", argv[0]},
+                                          {"GT4_FIXTURE_CHILD", "pattern"}, {"GT4_FIXTURE_PID_FILE", hidden_result},
+                                          {"GT4_GS_CONFIG", local_config}, {"GT4_GS_READBACK_LOCAL", "1"},
+                                          {"GT4_GS_HIDE_FLARES", "1"}}) == 0,
+            "pcsx2-hidden scenario");
+    {
+      std::ifstream in(hidden_result + ".pattern");
+      std::uint64_t served = 0, last_id = 0;
+      in >> served >> last_id;
+      require(served == 3 && last_id == 3, "hidden flares: one READ_FIFO per readback, in stream order");
+    }
+    std::puts("[fixture] GT4_GS_HIDE_FLARES=1 answers the flare table as zeros and keeps the icons");
 
     // TASK-060/062 (protocol 1.2): CONTROL cursor after attach_window, OSD_STATS about every 0.5 s to a consumer that
     // asked for them, and never in the .gscap capture.

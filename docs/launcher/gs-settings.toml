@@ -220,7 +220,7 @@ notes = "true for fifo and immediate, false for mailbox (TASK-036). Loader pcsx2
 [[setting]]
 id = "performance_mode"
 label = "Performance Mode"
-help = "Faster on weaker PCs. The game stops waiting for the graphics card to send images back: the car icons next to the gap time can come out blank and the loading screen picture may be missing. Night light flares still show, but they can be a frame behind. Applies the next time you play."
+help = "Faster on weaker PCs. The game stops waiting for the graphics card to send images back: the car icons next to the gap time can come out blank and the loading screen picture may be missing. The night lights and the sun glare are turned off. Applies the next time you play."
 page = "basic"
 order = 6
 control = "toggle"

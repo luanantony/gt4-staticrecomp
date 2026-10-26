@@ -6,6 +6,11 @@
 const STOP_PREFIX: &str = "[ee] stopped after ";
 const CYCLES_MARKER: &str = " cycles: ";
 
+/// Windows NTSTATUS 0xC0000135 (STATUS_DLL_NOT_FOUND) as signed 32-bit int.
+/// Occurs when Windows dynamic loader fails to find a required runtime DLL (e.g. vcruntime140_1.dll, SDL3.dll)
+/// before the executable's main() can run.
+pub const STATUS_DLL_NOT_FOUND: i32 = -1073741515;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Outcome {
     /// The player closed the window (exit code 0, `window closed`).
@@ -41,6 +46,9 @@ pub fn user_message(outcome: &Outcome) -> String {
         Outcome::NormalClose => String::new(),
         Outcome::Crashed { reason: Some(reason), .. } => {
             format!("Gran Turismo 4 stopped unexpectedly ({reason}). The session folder has the details.")
+        }
+        Outcome::Crashed { reason: None, exit_code: Some(STATUS_DLL_NOT_FOUND) } => {
+            "Gran Turismo 4 could not start because a required system library (DLL) was not found. Please install the Microsoft Visual C++ 2015–2022 Redistributable (x64) and ensure all game files are present.".to_string()
         }
         Outcome::Crashed { reason: None, exit_code: Some(code) } => {
             format!("Gran Turismo 4 stopped unexpectedly (exit code {code}). The session folder has the details.")
@@ -86,5 +94,13 @@ mod tests {
     fn user_message_names_the_reason_in_one_sentence() {
         let outcome = Outcome::Crashed { reason: Some("no translated code".into()), exit_code: Some(1) };
         assert!(user_message(&outcome).starts_with("Gran Turismo 4 stopped unexpectedly (no translated code)"));
+    }
+
+    #[test]
+    fn missing_dll_startup_failure_gives_helpful_guidance() {
+        let outcome = Outcome::Crashed { reason: None, exit_code: Some(STATUS_DLL_NOT_FOUND) };
+        let message = user_message(&outcome);
+        assert!(message.contains("required system library (DLL) was not found"));
+        assert!(message.contains("Microsoft Visual C++ 2015–2022 Redistributable (x64)"));
     }
 }

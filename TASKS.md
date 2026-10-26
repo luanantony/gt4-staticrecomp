@@ -1681,11 +1681,15 @@ No existing task is renumbered, copied as a new task or silently dropped here.
 
 ### TASK-124 — Game cannot start (issue #107)
 
-State: recorded, not planned (2026-10-26).
+State: done (2026-10-26).
 Issue: https://github.com/moesuito/gt4-staticrecomp/issues/107
-Report: cannot start on both 1.2.4 and 1.3.0; screenshot and log bundle supplied. Cause unknown.
-Priority: high, candidate for an upcoming 1.3.0 rc before final.
-Related: TASK-105 and TASK-129 only if evidence establishes a shared cause; no duplicate confirmed.
+Report: cannot start on both 1.2.4 and 1.3.0-rc5; screenshot and log bundle supplied.
+Root cause: Process failed during Windows dynamic loading before entering main() with NTSTATUS 0xC0000135 (STATUS_DLL_NOT_FOUND, exit code -1073741515). The MSVC/clang-cl x64 build requires vcruntime140_1.dll (for __CxxFrameHandler4 exception handling), but scripts/make_distribution.py only bundled vcruntime140.dll, msvcp140.dll, and msvcp140_atomic_wait.dll. On systems where the Visual C++ 2015–2022 x64 Redistributable was not already present in System32, dynamic linking failed. Furthermore, the launcher displayed an unhelpful generic exit code pointing to an empty 0-byte game.log.
+Fix:
+1. Updated scripts/make_distribution.py to include vcruntime140_1.dll in CRT_DLLS so release distributions ship the required library.
+2. Updated launcher/crates/gt4l-core/src/exit.rs to recognize STATUS_DLL_NOT_FOUND (exit code -1073741515) and display an actionable user message directing to install the Microsoft Visual C++ 2015–2022 Redistributable (x64) and verify game files.
+3. Added unit tests in gt4l-core/src/exit.rs for exit code -1073741515 diagnostics.
+Updated: docs/DISTRIBUTION.md, native/THIRD_PARTY.md.
 
 ### TASK-125 — GT Auto service audio keeps looping (issue #104)
 

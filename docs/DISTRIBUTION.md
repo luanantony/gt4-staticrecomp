@@ -12,7 +12,7 @@ Built by `scripts/make_distribution.py` (slice200: `private/slice200-dist`, 16 f
 |---|---|---|
 | `gt4vulkan.exe` | the game executable | the candidate build, checked against the runtime manifest pin (size and SHA-256) |
 | `shaders/*.spv` | the nine compute shaders (`upload`, `copy_read`, `copy_write`, `load_clut`, `display`, `raster`, `resolve`, `snapshot`, `decode`) | the pinned `slice153-pacing-shaders`, each checked against the manifest |
-| `vcruntime140.dll`, `msvcp140.dll`, `msvcp140_atomic_wait.dll` | the Visual C++ runtime the executable imports (`dumpbin /dependents`) | copied from the local Visual Studio CRT redistributable folder (`--crt-dir`, found by `vswhere`) |
+| `vcruntime140.dll`, `vcruntime140_1.dll`, `msvcp140.dll`, `msvcp140_atomic_wait.dll` | the Visual C++ runtime the executable imports (`dumpbin /dependents`) | copied from the local Visual Studio CRT redistributable folder (`--crt-dir`, found by `vswhere`) |
 | `licenses/LICENSE-GT4Recomp.txt` | the repository MIT license | `LICENSE` |
 | `licenses/LICENSE-ps2-web-recomp.txt` | the donor MIT license (ps2-web-recomp, pinned revision) | `private/references/ps2-web-recomp/LICENSE` |
 | `licenses/THIRD_PARTY.md` | third-party notes of the native runtime | `native/THIRD_PARTY.md` |

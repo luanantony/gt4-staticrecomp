@@ -30,7 +30,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SHADER_NAMES = ('upload', 'copy_read', 'copy_write', 'load_clut', 'display', 'raster', 'resolve', 'snapshot', 'decode')
 # Visual C++ runtime DLLs of the clang-cl /MD build (checked against the executable's imports by --crt-dir).
-CRT_DLLS = ('vcruntime140.dll', 'msvcp140.dll', 'msvcp140_atomic_wait.dll')  # dumpbin /dependents of gt4vulkan.exe (slice200)
+CRT_DLLS = ('vcruntime140.dll', 'vcruntime140_1.dll', 'msvcp140.dll', 'msvcp140_atomic_wait.dll')  # dumpbin /dependents of gt4vulkan.exe (slice200)
 EXCLUDED = (
     'gt4-gs package (GPL-3.0; downloaded by the launcher into <folder>\\gs, decision 0070)',
     'game data: disc image, CORE.GT4, reconstructed ELF, memory cards, caches and captures',

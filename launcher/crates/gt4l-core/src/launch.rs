@@ -132,7 +132,6 @@ pub fn gsdx_unavailable_message_in(reason: &str, log_folder: &Path, language: La
 /// The variables of a PCSX2 GS session: `GT4_RENDERER=pcsx2`, the process and its pin, the session INI, the
 /// folders, and the fixed 480p and 16:9 holds (see `add_common`). Readback is accurate unless the table row
 /// `performance_mode` (Performance Mode, TASK-091) is On; it is written into the INI, so no variable is needed.
-/// TASK-117 adds `GT4_FLARE_LIMITS` for GT4 v2.00 in `plan_pcsx2_launch`, which knows the game from its ELF.
 pub fn pcsx2_environment(settings: &Settings, paths: &Pcsx2Paths) -> Vec<(String, String)> {
     let mut variables: BTreeMap<&'static str, String> = BTreeMap::new();
     variables.insert("GT4_RENDERER", "pcsx2".to_string());
@@ -142,14 +141,6 @@ pub fn pcsx2_environment(settings: &Settings, paths: &Pcsx2Paths) -> Vec<(String
     variables.insert("PS2_GS", "gpu".to_string());
     add_common(&mut variables, settings);
     variables.into_iter().map(|(name, value)| (name.to_string(), value)).collect()
-}
-
-/// TASK-117 (rc6): the flare limits are guest code of the GT4 v2.00 derived ELF alone (Spec II is out of rc6's scope
-/// and its ELF has no such code). The prepared ELF's file name is the per-game key the launcher already relies on
-/// (`games::Game::elf_name`, the argv0 rule).
-fn flare_limits_game(inputs: &LaunchInputs<'_>) -> bool {
-    let name = inputs.elf.file_name().and_then(|value| value.to_str());
-    crate::games::GAMES.iter().any(|game| game.id == "gt4" && Some(game.elf_name) == name)
 }
 
 /// The variables of a GSdx session: the fixed 480p and 16:9 holds, display mode, present mode, async GS and
@@ -335,11 +326,6 @@ pub fn plan_pcsx2_launch(
     inherited_names: &[String],
 ) -> LaunchPlan {
     let mut environment = pcsx2_environment(settings, paths);
-    // TASK-117 (rc6): the flare limits of Performance Mode, for GT4 v2.00 only (the derived ELF's guest code). Without
-    // the switch the game writes a zero parameter block and every helper runs the original instruction.
-    if flare_limits_game(inputs) && settings.gs_value("performance_mode") == "no-readbacks" {
-        environment.push(("GT4_FLARE_LIMITS".to_string(), "1".to_string()));
-    }
     plan_with(inputs, with_display(environment, display), inherited_names)
 }
 

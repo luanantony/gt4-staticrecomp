@@ -1679,6 +1679,28 @@ The CPU-parity TASK-119 is recorded in commit 9226927 on task/116-117-flare-perf
 from main's RetroAchievements TASK-119 and task/101's player-one-controller TASK-119.
 No existing task is renumbered, copied as a new task or silently dropped here.
 
+### TASK-104 - Save import boundary fix for PCSX2 cards (issue #86)
+
+State: resolved on 2026-10-26 (PR pending owner approval).
+Branch: task/104-pcsx2-card-import
+Issue: https://github.com/moesuito/gt4-staticrecomp/issues/86
+Report: Importing PCSX2 memory card `Mcd001.ps2` fails with `"The memory card is damaged (chain entry 7937 outside the allocation area)"`, while PCSX2 reads the same card without issue.
+
+Root cause:
+In `gt4saves::card::Layout`, usable allocation area clusters were computed as `alloc_end - alloc_offset`.
+In the Sony PS2 MCFS SuperBlock, `alloc_offset` (typically 41) is the physical start of allocatable space,
+and `alloc_end` (typically 8135 on an 8 MB card) is already the count of allocatable clusters (41 + 8135 + 16 backup = 8192).
+Subtracting `alloc_offset` again (8135 - 41 = 8094) artificially discarded valid clusters at the end of the card.
+Furthermore, on cards formatted with varying allocation boundaries (e.g., `alloc_end = 7978`), computing `7978 - 41 = 7937`
+caused the strict `< usable` check to reject valid relative cluster 7937 (physical cluster 41 + 7937 = 7978 < 8192).
+In real PS2 drivers and emulators, any cluster within the card's physical flash memory (`clusters - alloc_offset`) is accessible and readable.
+
+Fix:
+1. Define `Layout::usable()` as `self.clusters.saturating_sub(self.alloc_offset)`.
+2. All clusters physically fitting on the card (up to 8150 on an 8 MB card) are safely accessible for chain reading.
+3. Chains still strictly reject out-of-bounds clusters (`current >= usable`), detect loops via `HashSet`, and prevent over-allocation.
+4. Added synthetic test `chain_entry_at_high_cluster_7937_is_accepted_and_read` in `tests/hostile_cards.rs` verifying cluster 7937 reads without error while out-of-bounds clusters (>= 8151) remain rejected.
+
 ### TASK-124 — Game cannot start (issue #107)
 
 State: recorded, not planned (2026-10-26).

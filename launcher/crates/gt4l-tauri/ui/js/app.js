@@ -144,7 +144,25 @@
       ]
     });
   });
+  // TASK-118 (owner, 2026-10-26): the six background layers animate for 72 s, forever, and kept compositing while the
+  // game ran: up to ~20% of a 2-core laptop (the game's own EE CPU went from 6-12 ms to ~19.6 ms). Pause every infinite
+  // animation while the page is hidden, the window is unfocused or a game is running, and resume when the player is back.
+  var gameIsRunning = false;
+  var animationsIdle = null;
+  function refreshAnimations() {
+    var idle = document.hidden || !document.hasFocus() || gameIsRunning;
+    if (idle === animationsIdle) return;
+    animationsIdle = idle;
+    document.body.classList.toggle("is-idle", idle);
+  }
+  document.addEventListener("visibilitychange", refreshAnimations);
+  root.addEventListener("focus", refreshAnimations);
+  root.addEventListener("blur", refreshAnimations);
+  refreshAnimations();
+
   GT4.backend.listen("game-state", function (payload) {
+    gameIsRunning = !!(payload && payload.running);
+    refreshAnimations();
     if (payload && payload.message) {
       // TASK-108: a notice (a run on Direct3D 11 without Vulkan 1.2) is not an error.
       GT4.ui.toast(payload.message, !payload.notice);

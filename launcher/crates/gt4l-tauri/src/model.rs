@@ -800,11 +800,12 @@ mod table_tests {
 
     #[test]
     fn an_integrated_gpu_reads_the_default_render_scale_at_1x() {
-        // Issue #89: the readout shows the plan the game gets; a changed scale keeps its multiplier (150% of k 3 is 5x).
+        // Issue #89: the readout shows the plan the game gets; the slider is additive (TASK-118), so 150% from the
+        // integrated 1x baseline is 3x, not 5x.
         let table = settings_table_with_monitors(&Settings::default(), &Controls::default(), &[], &[], true);
         let scale = row(&table, "render_scale");
         assert_eq!(scale["values"]["labels"]["100"], "100% \u{00B7} 1x \u{00B7} 640x448");
-        assert_eq!(scale["values"]["labels"]["150"], "150% \u{00B7} 5x \u{00B7} 3200x2240");
+        assert_eq!(scale["values"]["labels"]["150"], "150% \u{00B7} 3x \u{00B7} 1920x1344");
     }
 
     #[test]

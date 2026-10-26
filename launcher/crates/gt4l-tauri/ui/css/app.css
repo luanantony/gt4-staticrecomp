@@ -201,6 +201,11 @@ body.is-home.input-keys #hints { display: none; }
   .bg-slide { animation: none; }
   .bg-slide-1 { opacity: 1; }
 }
+/* TASK-118 (owner, 2026-10-26): stop the infinite animations whenever the page is hidden, the window is unfocused or the
+   game is running. They kept compositing behind the game and cost up to ~20% of a 2-core laptop. */
+body.is-idle .bg-slide,
+body.is-idle .play-sheen,
+body.is-idle .migration-bar.indeterminate .migration-fill { animation-play-state: paused; }
 /* Its right edge lines up with the What's new card (owner, 2026-10-23). */
 .home-version {
   position: absolute; right: 72px; bottom: 28px; z-index: 2;

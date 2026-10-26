@@ -176,11 +176,12 @@ std::uint32_t environment_number(const char *name, std::uint32_t fallback, std::
   return static_cast<std::uint32_t>(parsed);
 }
 
-// TASK-116 step 1: GT4_GS_READBACK_LOCAL, the A/B switch of the local flare answer. Unset or 1 = local in Performance
-// mode, 0 = every readback drained and waited for as before.
-bool readback_local_switch() {
+// TASK-116 step 1: GT4_GS_READBACK_LOCAL, the A/B switch of the local flare answer. Unset keeps the rc6 marker (on with
+// gt4-gs HWDownloadMode 2, the launcher's old Performance mode); 1 or 0 force it on or off with any download mode, so the
+// other readbacks (car icons, loading picture, thumbnail) can stay Accurate while the flare table is answered locally.
+bool readback_local_switch(int download_mode) {
   const char *value = std::getenv(kReadbackLocalSwitch);
-  if (!value || !*value) return true;
+  if (!value || !*value) return download_mode == kNoReadbacksMode;
   if (std::strcmp(value, "1") == 0) return true;
   if (std::strcmp(value, "0") == 0) return false;
   refuse(std::string(kReadbackLocalSwitch) + "=\"" + value + "\" is not 0 or 1");
@@ -692,15 +693,17 @@ class Client {
         refuse(std::string("GT4_GS_CONFIG=") + config + " does not exist");
       config_argument = L" --config \"" + ipc::widen(config) + L"\"";
     }
-    // TASK-116 step 1: Performance mode is the launcher's HWDownloadMode 2 in the very ini the GS process gets
-    // (GT4_GS_CONFIG, one source of truth). An unreadable file or a missing key keeps the flare readback accurate.
+    // TASK-116 step 1: Performance mode was the launcher's HWDownloadMode 2 in the very ini the GS process gets
+    // (GT4_GS_CONFIG, one source of truth). TASK-117 decoupled the local answer from that marker: an explicit
+    // GT4_GS_READBACK_LOCAL=1 keeps the icons, loading picture and thumbnail Accurate while the flare table is answered
+    // locally (zero in Performance mode). An unreadable file or a missing key keeps the flare readback accurate.
     if (const char *config = std::getenv("GT4_GS_CONFIG"); config && *config) download_mode_ = download_mode_from_ini(config);
-    readback_local_enabled_ = readback_local_switch() && download_mode_ == kNoReadbacksMode;
+    readback_local_enabled_ = readback_local_switch(download_mode_);
     hide_flares_ = readback_local_enabled_ && hide_flares_switch(true);
     if (readback_local_enabled_)
       std::fprintf(stderr,
-                   "[gs-ipc] Performance mode (gt4-gs.ini HWDownloadMode=%d): the 128-qword flare readback is answered "
-                   "locally whenever the VU1 journal can carry it, %s; GT4_GS_READBACK_LOCAL=0 turns it off\n",
+                   "[gs-ipc] flare readback answered locally (gt4-gs.ini HWDownloadMode=%d) whenever the VU1 journal can "
+                   "carry it, %s; GT4_GS_READBACK_LOCAL=0 turns it off\n",
                    download_mode_,
                    hide_flares_ ? "as zeros, so no light flare and no sun glare is drawn (GT4_GS_HIDE_FLARES=0 keeps "
                                   "the previous reply)"

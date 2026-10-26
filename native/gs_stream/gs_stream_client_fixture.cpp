@@ -792,6 +792,27 @@ int main(int argc, char **argv) {
     }
     std::puts("[fixture] GT4_GS_HIDE_FLARES=1 answers the flare table as zeros and keeps the icons");
 
+    // TASK-117: GT4_GS_READBACK_LOCAL=1 also works with gt4-gs HWDownloadMode 0 (Accurate), so the flare table can be
+    // answered locally while the car icons, loading picture and thumbnail stay Accurate (the mode-0 experiment).
+    const std::string accurate_config = scratch + "\\gt4-gs-accurate.ini";
+    {
+      std::ofstream ini(accurate_config, std::ios::binary);
+      ini << "[EmuCore/GS]\nHWDownloadMode = 0\n";
+    }
+    const std::string accurate_result = scratch + "\\accurate-local.pid";
+    DeleteFileA((accurate_result + ".pattern").c_str());
+    require(run_scenario("pcsx2-hidden", {{"GT4_RENDERER", "pcsx2"}, {"GT4_GS_PROCESS", argv[0]},
+                                          {"GT4_FIXTURE_CHILD", "pattern"}, {"GT4_FIXTURE_PID_FILE", accurate_result},
+                                          {"GT4_GS_CONFIG", accurate_config}, {"GT4_GS_READBACK_LOCAL", "1"}}) == 0,
+            "pcsx2-hidden under Accurate");
+    {
+      std::ifstream in(accurate_result + ".pattern");
+      std::uint64_t served = 0, last_id = 0;
+      in >> served >> last_id;
+      require(served == 3 && last_id == 3, "accurate mode: one READ_FIFO per readback, in stream order");
+    }
+    std::puts("[fixture] GT4_GS_READBACK_LOCAL=1 works with Accurate readbacks (mode 0)");
+
     // TASK-060/062 (protocol 1.2): CONTROL cursor after attach_window, OSD_STATS about every 0.5 s to a consumer that
     // asked for them, and never in the .gscap capture.
     const std::string osd_result = scratch + "\\osd.pid";

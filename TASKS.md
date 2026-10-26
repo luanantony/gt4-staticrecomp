@@ -2264,3 +2264,18 @@ Maintainer launcher acceptance remains pending.
 Owner test: select CoreGS 1.1, restart the launcher with no gt4-gs package, launch a game and confirm
 there is no renderer download; switch back to PCSX2 and confirm its existing setup/update path.
 This changes package management, not rendering fidelity, performance or CoreGS 2.0 readiness.
+
+### TASK‑119 — CPU: reach PCSX2 usage at 1x, then go below it (owner, 2026-10-26)
+Owner decision (pinned in ai-memory `decisions/next-objective-cpu-parity-with-pcsx2`). On the weak laptop (i5-7200U,
+HD 620, 1x, Direct3D 11, blending Minimum, MTVU on, no speed hacks) the same scene (Time Trial Nordschleife, Pitwork Z)
+runs at **~50% CPU on PCSX2 with 60 FPS and the flares on**, against **70-80% and dips** on this port. GPU is the same
+20-30%. A static recompiler must not use more CPU than the JIT: the gap is our overhead.
+
+Order: **first match PCSX2** (about 50% on that laptop, 60 FPS, no dips, correctness unchanged), then go beyond it.
+Where to look, in order: (1) per-instruction `c.budget -= N` / `preempt(c)` / `ld32`-`set32` in the generated code;
+(2) the GS IPC, ~1,670 records per frame to a separate process plus journal ordering and frames-in-flight waits;
+(3) FPU/MMI semantic wrappers per operation; (4) kernel/syscall and idle handling.
+Acceptance: F8 on the laptop with the launcher idle, same scene and settings, EE CPU and EE critical path at or below
+PCSX2's, 60 FPS without dips, identity gates still green. Baseline and measurement plan: ai-memory
+`notes/pcsx2-baseline-weak-laptop`. Another agent is already working on the EE CPU side; coordinate before touching
+the same files.

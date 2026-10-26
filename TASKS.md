@@ -948,6 +948,11 @@ overwrites one. Export, delete to Recycle Bin, backups. Optional slot summary
 (day, credits) from Nenkai's PDTools save format. Atomic card writes in the
 runtime. Design: `docs/launcher/LAUNCHER-PLAN.md` on branch `task/019-launcher`.
 
+Issue #98 fix (2026-10-26, branch `task/025-deleted-save-returns`):
+- Allow deleting the active save to the Recycle Bin from the launcher Saves page.
+- Remove leftover `runtime\card.ps2` when the active save is deleted.
+- Guard `prepare_card` against harvesting stale `runtime\card.ps2` when no active save exists in the library, preventing deleted saves from resurrecting.
+
 ### TASK-028 — CoreGS 1.1
 Our current Vulkan compute GS renderer (CoreGS 1.x, donor lineage, MIT) gains:
 internal resolution scale 1x-4x (`--mode upscale --scale N`, PS2_SCALE; 3x is

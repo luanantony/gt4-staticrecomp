@@ -174,7 +174,10 @@ pub fn prepare_card(library: &Library, runtime_card: &Path) -> Result<(), String
     if runtime_card.is_file() {
         if let Ok(bytes) = fs::read(runtime_card) {
             // An unreadable card is not an error here: its bytes are backed up when it is replaced.
-            let _ = library.harvest(&bytes);
+            // Only harvest if an active save already exists, to avoid resurrecting an active save that was intentionally deleted.
+            if library.active_save().map_err(|error| error.to_string())?.is_some() {
+                let _ = library.harvest(&bytes);
+            }
         }
     }
     let replay_names: Vec<String> = library.replays().map_err(|error| error.to_string())?;
@@ -217,12 +220,16 @@ pub fn import_summary(report: &Report) -> String {
     parts.join(" ")
 }
 
-/// Sends a library item to the Recycle Bin. Only inactive slots and replays can be deleted here.
+/// Sends a library item to the Recycle Bin. Active save, inactive slots and replays can be deleted.
 pub fn delete(library: &Library, item: &Item) -> Result<(), String> {
-    if item.active {
-        return Err("The active save cannot be deleted. Activate another save first.".to_string());
-    }
-    let path = if item.name.starts_with(SLOT_PREFIX) {
+    let path = if item.active {
+        let game_dir = library.active_dir().join(&item.name);
+        if game_dir.is_dir() {
+            game_dir
+        } else {
+            library.active_dir()
+        }
+    } else if item.name.starts_with(SLOT_PREFIX) {
         library.slot_dir(&item.name)
     } else {
         library.replays_dir().join(&item.name)
@@ -355,15 +362,33 @@ mod tests {
     }
 
     #[test]
-    fn the_active_save_cannot_be_deleted() {
-        let data = scratch("delete");
+    fn deleting_the_active_save_clears_the_active_save() {
+        let data = scratch("delete-active");
         let (_, library) = open_scratch(&data);
         let card = data.join("card.ps2");
         fs::write(&card, card_with(&[game_save(5), replay()])).unwrap();
         harvest_card(&library, &card).unwrap();
         let active = Item { name: GAME_SAVE_NAME.into(), label: "Active save".into(), active: true, modified: String::new() };
-        assert!(delete(&library, &active).is_err());
-        assert!(library.active_dir().join(GAME_SAVE_NAME).is_dir(), "refused delete leaves the save");
+        assert!(delete(&library, &active).is_ok());
+        assert!(!library.active_dir().join(GAME_SAVE_NAME).is_dir(), "deleted active save is gone");
+        assert!(library.active_save().unwrap().is_none());
+        let _ = fs::remove_dir_all(&data);
+    }
+
+    #[test]
+    fn prepare_card_does_not_resurrect_deleted_active_save() {
+        let data = scratch("no-resurrect");
+        let (_, library) = open_scratch(&data);
+        let runtime_card = data.join("runtime").join("card.ps2");
+        fs::create_dir_all(runtime_card.parent().unwrap()).unwrap();
+        fs::write(&runtime_card, card_with(&[game_save(6), replay()])).unwrap();
+
+        // With no active save in the library, prepare_card should NOT harvest the save from runtime_card.
+        prepare_card(&library, &runtime_card).unwrap();
+        assert!(library.active_save().unwrap().is_none(), "deleted active save was not resurrected");
+        let built = Card::from_image(&fs::read(&runtime_card).unwrap()).unwrap().root().unwrap();
+        let built_names: Vec<String> = built.iter().map(|node| node.name()).collect();
+        assert_eq!(built_names, vec![REPLAY.to_string()], "runtime card was overwritten without the game save");
         let _ = fs::remove_dir_all(&data);
     }
 }

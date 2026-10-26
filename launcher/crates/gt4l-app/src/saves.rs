@@ -82,7 +82,10 @@ pub fn prepare_card(library: &Library, runtime_card: &Path) -> Result<(), String
     if runtime_card.is_file() {
         if let Ok(bytes) = fs::read(runtime_card) {
             // An unreadable card is not an error here: its bytes are backed up when it is replaced.
-            let _ = library.harvest(&bytes);
+            // Only harvest if an active save already exists, to avoid resurrecting an active save that was intentionally deleted.
+            if library.active_save().map_err(|error| error.to_string())?.is_some() {
+                let _ = library.harvest(&bytes);
+            }
         }
     }
     let replay_names: Vec<String> = library.replays().map_err(|error| error.to_string())?;
@@ -107,11 +110,8 @@ pub fn harvest_card(library: &Library, runtime_card: &Path) -> Result<Report, St
     library.harvest(&bytes).map_err(|error| error.to_string())
 }
 
-/// Sends a library item to the Recycle Bin. Only inactive slots and replays can be deleted here.
+/// Sends a library item to the Recycle Bin. Active save, inactive slots and replays can be deleted.
 pub fn delete(root: &Path, item: &Item) -> Result<(), String> {
-    if item.active {
-        return Err("The active save cannot be deleted. Activate another save first.".to_string());
-    }
     let path = if item.name.starts_with("Save ") {
         root.join("saves").join(&item.name)
     } else {
@@ -233,15 +233,15 @@ mod tests {
     }
 
     #[test]
-    fn the_active_save_cannot_be_deleted() {
+    fn deleting_the_active_save_clears_the_active_save() {
         let data = scratch("delete");
         let (root, library) = open(&data).unwrap();
         let card = data.join("card.ps2");
         fs::write(&card, card_with(&[game_save(5), replay()])).unwrap();
         harvest_card(&library, &card).unwrap();
         let active = Item { name: GAME_SAVE_NAME.into(), label: "Active save".into(), active: true };
-        assert!(delete(&root, &active).is_err());
-        assert!(root.join("memcard").join(GAME_SAVE_NAME).is_dir(), "refused delete leaves the save");
+        assert!(delete(&root, &active).is_ok());
+        assert!(!root.join("memcard").join(GAME_SAVE_NAME).is_dir(), "deleted save is gone");
         let _ = fs::remove_dir_all(&data);
     }
 }

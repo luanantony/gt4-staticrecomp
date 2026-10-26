@@ -955,7 +955,14 @@ fn delete_item(name: &str, shared: &Shared, kind: Kind) -> Result<LibraryView, S
         .into_iter()
         .find(|item| item.name == name)
         .ok_or_else(|| "That item is not in the library any more.".to_string())?;
+    let is_active = item.active;
     let result = saves::delete(&state.library, &item);
+    if result.is_ok() && is_active {
+        let runtime_card = state.dirs.runtime_card();
+        if runtime_card.is_file() {
+            let _ = fs::remove_file(&runtime_card);
+        }
+    }
     let status = match result {
         Ok(()) => format!("{} moved to the Recycle Bin.", item.label),
         Err(message) => message,

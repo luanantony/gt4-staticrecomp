@@ -601,6 +601,10 @@ int run_window(const std::function<int()> &emulate) {
     gt4::achievements::initialize(game_window, ps2::g_ram, ps2::kRamSize, ps2::g_spr, ps2::kScratchpadSize);
     AudioOutput audio(pump_messages, pacing_mode);
     audio_output = &audio;
+    if (!audio.has_device() && pacing_mode == gt4::pacing::Mode::audio) {
+      std::fprintf(stderr, "[audio] no audio device; falling back to paced frame clock\n");
+      pacing_mode = gt4::pacing::Mode::paced;
+    }
 #ifdef GT4_PERF_PROBE
     gt4::perf::Probe::shared().set_report_section([](std::FILE *output) {
       // F8 report: counter differences since the last F7 or report, then totals.

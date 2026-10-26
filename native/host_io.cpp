@@ -306,7 +306,8 @@ constexpr std::size_t paced_frames_per_buffer = 256;
 constexpr std::size_t paced_buffer_count = 16;
 } // namespace
 
-AudioOutput::AudioOutput(std::function<bool()> pump_messages, gt4::pacing::Mode mode)
+AudioOutput::AudioOutput(std::function<bool()> pump_messages, gt4::pacing::Mode mode,
+                         bool allow_device)
     : mode_(mode), pump_messages_(std::move(pump_messages)) {
   const bool paced = mode_ == gt4::pacing::Mode::paced;
   frames_per_buffer_ = paced ? paced_frames_per_buffer : blocking_frames_per_buffer;
@@ -315,6 +316,17 @@ AudioOutput::AudioOutput(std::function<bool()> pump_messages, gt4::pacing::Mode 
   if (!event_)
     throw std::runtime_error("Cannot create audio completion event");
   try {
+    const char *audio_env = std::getenv("GT4_AUDIO");
+    if (!allow_device || (audio_env && (std::strcmp(audio_env, "none") == 0 ||
+                                        std::strcmp(audio_env, "silent") == 0 ||
+                                        std::strcmp(audio_env, "off") == 0))) {
+      std::fprintf(stderr, "[audio] running silently without audio output device\n");
+      return;
+    }
+    if (waveOutGetNumDevs() == 0) {
+      std::fprintf(stderr, "[audio] no audio output devices detected; running silently\n");
+      return;
+    }
     WAVEFORMATEX format{};
     format.wFormatTag = WAVE_FORMAT_PCM;
     format.nChannels = 2;
@@ -322,10 +334,18 @@ AudioOutput::AudioOutput(std::function<bool()> pump_messages, gt4::pacing::Mode 
     format.wBitsPerSample = 16;
     format.nBlockAlign = 4;
     format.nAvgBytesPerSec = 192000;
-    check_audio(waveOutOpen(&device_, WAVE_MAPPER, &format,
-                            reinterpret_cast<DWORD_PTR>(event_), 0,
-                            CALLBACK_EVENT),
-                "waveOutOpen stereo16/48000");
+    const MMRESULT open_result = waveOutOpen(&device_, WAVE_MAPPER, &format,
+                                            reinterpret_cast<DWORD_PTR>(event_), 0,
+                                            CALLBACK_EVENT);
+    if (open_result == MMSYSERR_BADDEVICEID || open_result == MMSYSERR_NODRIVER) {
+      device_ = nullptr;
+      std::fprintf(stderr,
+                   "[audio] no audio output device available (%u); running silently\n",
+                   open_result);
+      return;
+    }
+    check_audio(open_result, "waveOutOpen stereo16/48000");
+    has_device_ = true;
     for (std::size_t index = 0; index < buffer_count_; ++index) {
       auto &buffer = buffers_[index];
       buffer.header.lpData = reinterpret_cast<LPSTR>(buffer.samples.data());
@@ -462,12 +482,14 @@ bool AudioOutput::push_paced(const std::int16_t *samples, std::size_t frames) {
 
 bool AudioOutput::push(const std::int16_t *samples, std::size_t frames) {
   GT4_PERF_SCOPE(gt4::perf::Category::audio_push);
-  if (!device_ || (frames && !samples))
+  if (closed_ || (frames && !samples))
     throw std::runtime_error("Invalid audio sink input/lifetime");
   received_ += frames;
 #if defined(GT4_PERF_PROBE) && !defined(GT4_PERF_FRAME_ONLY)
   gt4::perf::Probe::shared().audio(frames, 0);
 #endif
+  if (!has_device_)
+    return true;
   if (mode_ == gt4::pacing::Mode::paced)
     return push_paced(samples, frames);
   while (frames) {
@@ -483,7 +505,7 @@ bool AudioOutput::push(const std::int16_t *samples, std::size_t frames) {
 }
 
 void AudioOutput::pump() {
-  if (mode_ != gt4::pacing::Mode::paced || !device_)
+  if (mode_ != gt4::pacing::Mode::paced || !has_device_)
     return;
   reap();
   if (!started_ && ring_.size() >= gt4::pacing::target_latency_frames)
@@ -505,12 +527,15 @@ void AudioOutput::pump() {
 }
 
 std::uint64_t AudioOutput::queued_frames() {
+  if (!has_device_)
+    return 0;
   reap();
   const std::uint64_t device = queued_device_buffers() * frames_per_buffer_;
   return device + (mode_ == gt4::pacing::Mode::paced ? ring_.size() : pending_frames_);
 }
 
 void AudioOutput::close(bool drain) {
+  closed_ = true;
   if (device_) {
     if (drain && submit())
       wait_for(nullptr);
@@ -548,7 +573,13 @@ void AudioOutput::close(bool drain) {
                    static_cast<unsigned long long>(underruns_),
                    static_cast<unsigned long long>(overflow_frames_),
                    ring_.size(), resampler_.ratio());
+  } else if (received_) {
+    std::fprintf(
+        stderr,
+        "[audio] silent: received=%llu frames (no audio output device)\n",
+        static_cast<unsigned long long>(received_));
   }
+  has_device_ = false;
   if (event_) {
     CloseHandle(event_);
     event_ = nullptr;

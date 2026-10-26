@@ -1721,11 +1721,12 @@ Related: the texture-directory portion of the same issue belongs to existing TAS
 
 ### TASK-129 — Keep running without an audio output device (issue #93)
 
-State: recorded, not planned (2026-10-26).
+State: completed (2026-10-26).
+Branch: `task/129-silent-audio-fallback`
 Issue: https://github.com/moesuito/gt4-staticrecomp/issues/93
-Existing diagnosis: no Windows audio output causes the game to close. Desired behavior: run silently.
-Priority: high, candidate for an upcoming 1.3.0 rc before final. Claude recorded the fix without an ID.
-Deduplication: closed issue #94 is already a duplicate of #93. Issue #107 joins only if confirmed.
+Report: game crashes / exits at launch if no audio output device is present or enabled in Windows (waveOutOpen returns MMSYSERR_BADDEVICEID: specified device ID is out of range).
+Root cause: `AudioOutput` unconditionally required a valid WinMM audio output device during construction. When Windows reports no active audio device (unplugged headphones, HDMI/DisplayPort monitor without audio speakers, or disabled sound endpoint), `waveOutOpen` fails and `check_audio` throws a fatal `std::runtime_error`, aborting the game before emulation starts.
+Resolution: modified `AudioOutput` in `native/host_io.*` to gracefully detect missing audio devices (`waveOutGetNumDevs() == 0` or `waveOutOpen` returning `MMSYSERR_BADDEVICEID` / `MMSYSERR_NODRIVER`) or explicit `GT4_AUDIO=none/silent/off`. The audio sink falls back to running silently, accepting sample buffers and maintaining accounting without throwing or crashing. In `native/window.cpp`, if `GT4_PACING=audio` was selected without a device, it seamlessly falls back to `gt4::pacing::Mode::paced` to maintain 60 FPS pacing via the high-resolution frame clock. Added unit tests for silent fallback in `native/host_io_fixture.cpp`.
 
 ### TASK-130 — Split-screen display quality follow-up (issue #92)
 

@@ -214,8 +214,12 @@ int main() {
     for (int block = 0; block < 81; ++block)
       require(audio.push(samples.data(), 32), "audio fragmented submission");
     audio.close(true);
-    require(audio.received_frames() == 2592 && audio.completed_frames() == 2592,
-            "audio wrap and partial drain");
+    if (audio.has_device()) {
+      require(audio.received_frames() == 2592 && audio.completed_frames() == 2592,
+              "audio wrap and partial drain");
+    } else {
+      require(audio.received_frames() == 2592, "silent audio received accounting");
+    }
     AudioOutput canceled;
     require(canceled.push(samples.data(), 32), "audio partial cancellation");
     canceled.close(false);
@@ -226,10 +230,15 @@ int main() {
       require(queued_cancel.push(samples.data(), 32),
               "queued PCM before cancel");
     queued_cancel.close(false);
-    require(queued_cancel.completed_frames() +
-                    queued_cancel.canceled_frames() ==
-                2048,
-            "queued cancellation ownership accounting");
+    if (queued_cancel.has_device()) {
+      require(queued_cancel.completed_frames() +
+                      queued_cancel.canceled_frames() ==
+                  2048,
+              "queued cancellation ownership accounting");
+    } else {
+      require(queued_cancel.received_frames() == 2048,
+              "silent queued cancellation accounting");
+    }
     queued_cancel.close(false);
     bool rejected = false;
     try {
@@ -243,7 +252,7 @@ int main() {
     // Paced mode on the real device: three seconds at 60 Hz, one 800-frame
     // block per guest frame. Pushes never wait; the queue stays bounded; the
     // device consumes at wall-clock rate; the resample ratio stays in bounds.
-    {
+    if (audio.has_device()) {
       FrameClock clock;
       gt4::pacing::FramePacer pacer(clock.frequency(), gt4::pacing::guest_vblank_rate);
       AudioOutput paced(nullptr, gt4::pacing::Mode::paced);
@@ -278,6 +287,38 @@ int main() {
                    static_cast<unsigned long long>(worst_queue),
                    static_cast<unsigned long long>(paced.completed_frames()),
                    static_cast<unsigned long long>(paced.underruns()), paced.resampler_ratio());
+    }
+    // TASK-129 (Issue #93): silent audio fallback without audio output hardware.
+    {
+      AudioOutput silent(nullptr, gt4::pacing::Mode::audio, /*allow_device=*/false);
+      require(!silent.has_device(), "silent sink has no device");
+      for (int block = 0; block < 81; ++block)
+        require(silent.push(samples.data(), 32), "silent push accepted");
+      require(silent.received_frames() == 2592, "silent received accounting");
+      require(silent.queued_frames() == 0, "silent queue stays zero");
+      silent.pump();
+      silent.close(true);
+      bool rejected_silent = false;
+      try {
+        silent.push(samples.data(), 32);
+      } catch (const std::runtime_error &) {
+        rejected_silent = true;
+      }
+      require(rejected_silent, "closed silent sink refuses new samples");
+      std::fprintf(stderr, "PASS: silent audio fallback without audio device\n");
+    }
+    {
+      AudioOutput silent_paced(nullptr, gt4::pacing::Mode::paced, /*allow_device=*/false);
+      require(!silent_paced.has_device(), "silent paced sink has no device");
+      std::array<std::int16_t, 800 * 2> frame_audio{};
+      for (int i = 0; i < 60; ++i) {
+        require(silent_paced.push(frame_audio.data(), 800), "silent paced push accepted");
+        silent_paced.pump();
+        require(silent_paced.queued_frames() == 0, "silent paced queue is zero");
+      }
+      require(silent_paced.received_frames() == 48000, "silent paced received frames");
+      silent_paced.close(false);
+      std::fprintf(stderr, "PASS: silent paced audio fallback\n");
     }
     return 0;
   } catch (const std::exception &error) {

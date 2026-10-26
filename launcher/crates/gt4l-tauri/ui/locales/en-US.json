@@ -131,6 +131,7 @@
   "settings.section_display": "Display",
   "settings.section_graphics": "Graphics",
   "settings.section_advanced": "Advanced",
+  "settings.section_rc": "RC settings",
   "settings.mods_title": "Texture packs and mods — coming soon",
   "settings.mods_planned": "Planned in TASK-048.",
   "settings.language_auto": "Automatic",

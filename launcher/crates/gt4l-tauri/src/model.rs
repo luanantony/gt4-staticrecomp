@@ -163,6 +163,10 @@ pub fn settings_table_with_monitors(
             continue;
         }
         let mut row = launcher_row(definition, settings);
+        // TASK-118: the release-candidate rows get their own section (RC Settings), drawn only by RC builds.
+        if RC_ONLY_ROWS.contains(&definition.id) {
+            row["group"] = json!("rc");
+        }
         match definition.id {
             "monitor" => fill_monitor_row(&mut row, settings, monitors),
             "resolution" => fill_resolution_row(&mut row, settings, monitors),

@@ -832,8 +832,12 @@
           }, GT4.t("settings.open_textures"));
           graphics.appendChild(h("div", { class: "advanced-foot" }, [textures]));
         }
+        // TASK-118: the release-candidate settings in their own section; a final build does not ship the rows at all.
+        section(ctx, "rc", GT4.t("settings.section_rc"), ctx.table.rows.filter(function (row) {
+          return row.group === "rc";
+        }));
         var advanced = section(ctx, "advanced", GT4.t("settings.section_advanced"), ctx.table.rows.filter(function (row) {
-          return row.page === "advanced";
+          return row.page === "advanced" && row.group !== "rc";
         }), true);
         var button = h("button", {
           class: "btn danger",

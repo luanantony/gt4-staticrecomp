@@ -264,6 +264,21 @@ impl AppState {
             replays_status: String::new(),
             controls_locked,
         };
+        // TASK-118: the RC settings must not survive into a final build: an RC install can leave the release report or
+        // the VU check on, and the final build does not ship their rows. Force the factory values and save.
+        if !gt4l_core::LAUNCHER_VERSION.contains("-rc") {
+            let mut changed = false;
+            for (id, factory) in [("performance_report", "off"), ("check_vu_code", "off")] {
+                if state.config.settings.get(id) != factory {
+                    let _ = state.config.settings.set(id, factory);
+                    changed = true;
+                }
+            }
+            if changed {
+                state.save_config();
+                log(&state.dirs, "final build: the release-candidate settings went back to their factory values");
+            }
+        }
         let installed = state.installed_games();
         state.selected = games::initial_selection(state.config.selected_game.as_deref(), &installed);
         Ok(state)

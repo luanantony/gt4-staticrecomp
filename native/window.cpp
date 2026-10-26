@@ -279,6 +279,17 @@ LRESULT CALLBACK window_procedure(HWND window, UINT message, WPARAM first,
     ps2::gs::resize_window(LOWORD(second), HIWORD(second));
     return 0;
   }
+#ifdef GT4_GS_STREAM_CLIENT
+  // TASK-126: with GT4_RENDERER=pcsx2 the renderer runs in a separate process (gt4-gs.exe) whose picture is a child
+  // window. The parent window keeps keyboard focus so controller and driving input remain responsive. Forward unhandled
+  // keyboard messages (WM_KEYFIRST..WM_KEYLAST) to the GS child window so overlays such as ReShade can intercept their
+  // hotkeys (e.g. VK_HOME / Pos1) and receive text input.
+  if (message >= WM_KEYFIRST && message <= WM_KEYLAST && gt4::gs_stream::stream_renderer()) {
+    for (HWND child = GetWindow(window, GW_CHILD); child != nullptr; child = GetWindow(child, GW_HWNDNEXT)) {
+      PostMessageW(child, message, first, second);
+    }
+  }
+#endif
   return DefWindowProcW(window, message, first, second);
 }
 

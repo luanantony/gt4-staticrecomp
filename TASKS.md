@@ -1697,11 +1697,12 @@ Related: distinct from missing-output-device startup behavior in TASK-129; no sh
 
 ### TASK-126 — Home key unavailable to ReShade (issue #102)
 
-State: recorded, not planned (2026-10-26).
+State: done (2026-10-26).
 Issue: https://github.com/moesuito/gt4-staticrecomp/issues/102
 Report: Home/Pos1 does not open the ReShade options while the game is active.
+Fix: In `native/window.cpp`, forward unhandled keyboard messages (`WM_KEYFIRST`..`WM_KEYLAST`) to the PCSX2 GS child window via `PostMessageW`. When using `GT4_RENDERER=pcsx2`, `game_window` retains keyboard focus so driving and controller input remain uninterrupted, but third-party overlays (like ReShade hooked into `gt4-gs.exe`) now receive overlay toggle hotkeys (such as `VK_HOME` / Pos1) and keyboard text input.
 Priority: normal backlog, release unassigned.
-Related: existing window/input tasks TASK-038 and TASK-076. No compatibility fix is claimed yet.
+Related: existing window/input tasks TASK-038 and TASK-076.
 
 ### TASK-127 — Flashing window followed by crashes (issue #99)
 

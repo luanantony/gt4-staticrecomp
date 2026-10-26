@@ -540,9 +540,15 @@ mod tests {
         for id in ["osd_messages_pos", "osd_performance_pos", "osd_scale"] {
             assert_eq!(row(id).unwrap().page, "hidden", "{id}");
         }
-        // Our own overlay rows stay on the Advanced section, mapped to the gt4-gs [GT4GS] PerfOverlay* keys (TASK-062).
+        // TASK-118: one Performance overlay switch stays on the Advanced section; its six detail rows are hidden and keep
+        // their defaults (the overlay shows everything when it is on).
+        assert_eq!(
+            (row("perf_overlay").unwrap().section.as_str(), row("perf_overlay").unwrap().key.as_str(),
+             row("perf_overlay").unwrap().page.as_str()),
+            ("GT4GS", "PerfOverlay", "advanced")
+        );
+        assert!(offered().iter().any(|offered| offered.id == "perf_overlay"), "perf_overlay is offered");
         for (id, key) in [
-            ("perf_overlay", "PerfOverlay"),
             ("perf_overlay_fps", "PerfOverlayFPS"),
             ("perf_overlay_frame_time", "PerfOverlayFrameTime"),
             ("perf_overlay_cpu", "PerfOverlayCPU"),
@@ -551,8 +557,8 @@ mod tests {
             ("perf_overlay_breakdown", "PerfOverlayBreakdown"),
         ] {
             let overlay = row(id).unwrap();
-            assert_eq!((overlay.section.as_str(), overlay.key.as_str(), overlay.page.as_str()), ("GT4GS", key, "advanced"));
-            assert!(offered().iter().any(|offered| offered.id == id), "{id} is offered");
+            assert_eq!((overlay.section.as_str(), overlay.key.as_str(), overlay.page.as_str()), ("GT4GS", key, "hidden"));
+            assert!(!offered().iter().any(|offered| offered.id == id), "{id} is hidden");
         }
     }
 

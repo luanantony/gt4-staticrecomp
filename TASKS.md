@@ -1689,11 +1689,12 @@ Related: TASK-105 and TASK-129 only if evidence establishes a shared cause; no d
 
 ### TASK-125 — GT Auto service audio keeps looping (issue #104)
 
-State: recorded, not planned (2026-10-26).
+State: completed (2026-10-26).
+Branch: `task/125-gt-auto-audio-loop`
 Issue: https://github.com/moesuito/gt4-staticrecomp/issues/104
 Report: oil-change/car-wash bubble audio persists after the service has finished.
-Priority: normal backlog, release unassigned.
-Related: distinct from missing-output-device startup behavior in TASK-129; no shared cause established.
+Root cause: in IOP SPU2 `Envelope::step`, exponential decrease calculates `delta = delta * level / 0x8000`. Integer division rounds towards zero, causing `delta` to truncate to `0` once `level` drops low (e.g. < 32-4096 depending on release rate). As a result, `level` ceases decrementing and never reaches 0, so the voice's release phase never transitions to `kOff` (`if (e.level <= 0) v.phase = kOff`). Looping ADPCM samples (such as the GT Auto service animations which loop back to `lsax` via `flags & 2u`) persist indefinitely at residual volume.
+Resolution: derived `runtime/src/iop/spu2.cpp` with an underflow guard enforcing that `delta` decrements by at least 1 (`if (delta == 0 && level > 0) delta = -1`), allowing the envelope to reliably reach 0 and silence the voice. Pinned via `scripts/prepare_spu2_envelope.py` and CMake option `GT4_SPU2_RUNTIME_SOURCE`. Added CTest fixture `native/spu2_envelope_fixture.cpp` (`native_spu2_envelope`) and test `tests/python/test_spu2_envelope.py`.
 
 ### TASK-126 — Home key unavailable to ReShade (issue #102)
 

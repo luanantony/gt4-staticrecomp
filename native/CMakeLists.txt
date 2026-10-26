@@ -171,6 +171,26 @@ if(GT4_MEMCARD_RUNTIME_SOURCE)
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${memcard_capsule}/sio2.cpp")
     set(GT4_MEMCARD_FLUSH_ENABLED ON)
 endif()
+# TASK-125: SPU2 envelope fix. An SPU2 capsule (scripts/prepare_spu2_envelope.py) replaces the donor
+# iop/spu2.cpp with the derived source in which exponential release/decay steps decrement down to 0
+# rather than stalling when delta truncates to 0, preventing looping service/engine audio from playing indefinitely.
+set(GT4_SPU2_RUNTIME_SOURCE "" CACHE PATH "Verified SPU2 envelope capsule: derived spu2.cpp and runtime.json")
+if(GT4_SPU2_RUNTIME_SOURCE)
+    get_filename_component(spu2_capsule "${GT4_SPU2_RUNTIME_SOURCE}" ABSOLUTE)
+    if(NOT EXISTS "${spu2_capsule}/spu2.cpp" OR NOT EXISTS "${spu2_capsule}/runtime.json")
+        message(FATAL_ERROR "The SPU2 capsule needs spu2.cpp and runtime.json")
+    endif()
+    file(READ "${spu2_capsule}/runtime.json" spu2_manifest)
+    string(JSON spu2_expected GET "${spu2_manifest}" spu2_sha256)
+    file(SHA256 "${spu2_capsule}/spu2.cpp" spu2_actual)
+    if(NOT spu2_actual STREQUAL spu2_expected)
+        message(FATAL_ERROR "SPU2 spu2.cpp differs from its runtime.json pin")
+    endif()
+    list(FILTER RUNTIME_FILES EXCLUDE REGEX "/iop/spu2\\.cpp$")
+    list(APPEND RUNTIME_FILES "${spu2_capsule}/spu2.cpp")
+    set_source_files_properties("${spu2_capsule}/spu2.cpp" PROPERTIES INCLUDE_DIRECTORIES "${DONOR}/runtime/src/iop")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${spu2_capsule}/spu2.cpp")
+endif()
 # TASK-017 (slice205 v1, slice206 v2): license demo guard capsule (scripts/prepare_license_guard.py). Replaces the donor
 # dispatch.cpp (guard at both license loaders' demo-input calls, native/license_guard.*), kernel.cpp (halt
 # dump, off unless GT4_HALT_DUMP=1) and iop/cdvdfsv.cpp (FSV read trace, off unless GT4_FSV_TRACE=1). Every derived
@@ -271,6 +291,10 @@ target_link_libraries(license_guard_fixture PRIVATE gt4_license_guard)
 target_compile_options(license_guard_fixture PRIVATE /W4)
 # Sane data kept, insane count with CRC fail guarded, CRC pass kept.
 add_test(NAME native_license_guard COMMAND $<TARGET_FILE:license_guard_fixture>)
+# TASK-125: SPU2 envelope decay/release underflow fixture (Issue #104).
+add_executable(spu2_envelope_fixture spu2_envelope_fixture.cpp)
+target_compile_options(spu2_envelope_fixture PRIVATE /W4)
+add_test(NAME native_spu2_envelope COMMAND $<TARGET_FILE:spu2_envelope_fixture>)
 add_library(gt4_perf_probe STATIC perf_probe.cpp)
 # TASK-011 step 0 counters (linked into the runtime only with the slice169 capsule).
 add_library(gt4_mtvu_measure STATIC mtvu_measure.cpp)

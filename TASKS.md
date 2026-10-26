@@ -918,7 +918,7 @@ Work:
 Acceptance: the owner sees each feature work on his machines; unit tests for the presence payload and the switch.
 
 ### TASK-117 — Performance mode, part 2: no light flares at all in Performance Mode (sun included)
-**Done in rc6 as a host change (owner test pending, 2026-10-25).** Two forms were tried: the derived-ELF guest patch (built, parked below: a runtime-switched guest patch cannot pass its identity gate) and the host-side zero table, which ships. Owner decision (2026-10-25 evening): Performance Mode removes every flare, the sun included, because weaker PCs lose frames on the Nordschleife only when driving into the sun.
+**Done in rc6 as a host change; owner visual test passed, F8 pending (2026-10-25).** Two forms were tried: the derived-ELF guest patch (built, parked below: a runtime-switched guest patch cannot pass its identity gate) and the host-side zero table, which ships. The owner tested v2.00 and Spec II, night and day: flares gone, no other visual difference, and the glows no longer draw over the virtual rear-view mirror (a known GT4/GSdx artefact). Partial success until his F8 on a free machine confirms the frame times. Owner decision (2026-10-25 evening): Performance Mode removes every flare, the sun included, because weaker PCs lose frames on the Nordschleife only when driving into the sun.
 History (2026-10-24): planned for 1.3.0-rc6 together with TASK-116 step 1, because both need a new GT4 v2.00 game
 build (one rebuild, one set of pins).
 Idea source: the owner found https://github.com/nobz226/gt-pcsx2-patches (PCSX2 pnach files for GT4 USA, CRC
@@ -1073,8 +1073,11 @@ remove that. The derived ELF (`scripts/flare_limits_elf_patch.py`, the `flare` p
 stays on the branch as a documented dead end; only a guest patch removes the GS-side 2 KiB download, which belongs to
 TASK-116 step 2 (async download in gt4-gs, 1.3.1).
 
-Owner test pending: Nordschleife Time Trial into the sun (no glare, stable frame time), a night race (no lamp or
-headlight glow, no glow over walls) and Performance Mode off (flares exactly as rc5).
+Owner test (2026-10-25, night): **visual acceptance passed** in v2.00 and Spec II, night and day: flares gone, no
+other visual difference, and the glows stopped drawing over the virtual rear-view mirror (a known artefact in GT4
+and in PCSX2 GSdx). Performance felt clearly better even with the machine busy compiling; **F8 metrics pending** on
+a free machine. The build he tested stays as delivered until that run, so TASK-118 presets do not mix with its
+numbers. Split screen keeps the headlight glow (constant path, see the study); the sun is hidden there too.
 ### TASK‑118 — Graphics settings simplification (owner, 2026-10-25, 1.3.0-rc6)
 Owner decision, recorded directly by the implementation session (no orchestrator round trip). The Advanced page of
 Settings > Graphics is too technical and Performance Mode is only a readback switch today.

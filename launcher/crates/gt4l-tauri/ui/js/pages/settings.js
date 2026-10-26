@@ -746,11 +746,15 @@
   GT4.tabPages.general = function (content, host) {
     return settingsTab(content, host, {
       title: GT4.t("settings.general_title"),
+      // TASK-118 (owner, 2026-10-26): the launcher GPU acceleration sits at the very bottom, under Version.
       filter: function (row) {
-        return row.group === "general";
+        return row.group === "general" && row.id !== "launcher_gpu";
       },
       extra: function (ctx) {
         content.appendChild(versionRow(ctx));
+        renderRows(ctx, ctx.table.rows.filter(function (row) {
+          return row.id === "launcher_gpu";
+        }), content);
       }
     });
   };
@@ -832,20 +836,21 @@
           }, GT4.t("settings.open_textures"));
           graphics.appendChild(h("div", { class: "advanced-foot" }, [textures]));
         }
-        // TASK-118: the release-candidate settings in their own section; a final build does not ship the rows at all.
+        section(ctx, "advanced", GT4.t("settings.section_advanced"), ctx.table.rows.filter(function (row) {
+          return row.page === "advanced" && row.group !== "rc";
+        }), true);
+        // TASK-118: the release-candidate settings always come last (owner, 2026-10-26); a final build does not ship them.
         section(ctx, "rc", GT4.t("settings.section_rc"), ctx.table.rows.filter(function (row) {
           return row.group === "rc";
         }));
-        var advanced = section(ctx, "advanced", GT4.t("settings.section_advanced"), ctx.table.rows.filter(function (row) {
-          return row.page === "advanced" && row.group !== "rc";
-        }), true);
         var button = h("button", {
           class: "btn danger",
           type: "button",
           data: { action: "reset-defaults" },
           on: { click: function () { resetDefaults(ctx); } }
         }, GT4.t("settings.reset_defaults"));
-        advanced.appendChild(h("div", { class: "advanced-foot" }, [button]));
+        // The reset stays at the very bottom, after the RC section.
+        content.appendChild(h("div", { class: "advanced-foot" }, [button]));
       },
       hooks: function (ctx, tabHost) {
         tabHost.setHooks({ y: function () { resetDefaults(ctx); } });

@@ -455,9 +455,9 @@ mod tests {
         let inis: Vec<&str> = api.choices.iter().map(|choice| choice.ini.as_str()).collect();
         assert_eq!(inis, ["14", "14", "15", "3"]);
         assert_eq!(api.choices[0].label, "Automatic");
-        assert_eq!(api.choices[1].label, "Vulkan (recommended)");
-        assert_eq!(api.choices[2].label, "Direct3D 12 (recommended)");
-        assert_eq!(api.choices[3].label, "Direct3D 11 (older PCs)");
+        assert_eq!(api.choices[1].label, "Vulkan");
+        assert_eq!(api.choices[2].label, "Direct3D 12");
+        assert_eq!(api.choices[3].label, "Direct3D 11");
         // The engine setting of the launcher is also called "renderer": the table row must not use that id.
         assert!(row("renderer").is_none(), "the table row is graphics_api");
         assert!(!offered().is_empty());

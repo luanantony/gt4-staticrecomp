@@ -915,9 +915,9 @@ mod table_tests {
         assert_eq!(
             shown,
             vec![
-                ("vulkan", "Vulkan (recommended)"),
-                ("d3d12", "Direct3D 12 (recommended)"),
-                ("d3d11", "Direct3D 11 (older PCs)"),
+                ("vulkan", "Vulkan"),
+                ("d3d12", "Direct3D 12"),
+                ("d3d11", "Direct3D 11"),
             ]
         );
         assert!(values.iter().all(|value| value["disabled"] == false));

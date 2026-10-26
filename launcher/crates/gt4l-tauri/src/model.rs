@@ -20,6 +20,11 @@ pub const MAX_UPSCALE_DEFAULT: u32 = 12;
 const DERIVED_TABLE_IDS: &[&str] = &["vsync", "mailbox", "upscale"];
 
 /// The rows of the PCSX2 GS table the UI may show: offered, not mods (release 1.1.0), not derived.
+/// Launcher rows TASK-118 removed from the page: GS async is always on (it was a debugging A/B switch).
+const HIDDEN_LAUNCHER_ROWS: &[&str] = &["async_gs"];
+/// Launcher rows only release-candidate builds ship (the F7/F8 release report and the VU code check).
+const RC_ONLY_ROWS: &[&str] = &["performance_report", "check_vu_code"];
+
 pub fn pcsx2_table_rows() -> Vec<&'static gs_table::Row> {
     gs_table::offered().into_iter().filter(|row| !DERIVED_TABLE_IDS.contains(&row.id.as_str())).collect()
 }
@@ -57,27 +62,35 @@ fn fill_monitor_row(row: &mut Value, settings: &Settings, monitors: &[Monitor]) 
 /// The Graphics API row (TASK-108): the Automatic choice says which API it resolves to for the card the run would use.
 fn fill_api_row(row: &mut Value, settings: &Settings, cards: &[gt4l_core::gpu::GpuDevice]) {
     let plan = gt4l_core::gpu::plan(&settings.gs_value("graphics_api"), settings.get("graphics_card"), cards, Language::fallback());
-    if let Some(first) = row["values"].as_array_mut().and_then(|values| values.first_mut()) {
-        if first["value"] == gt4l_core::gpu::AUTOMATIC {
-            first["api_label"] = json!(gt4l_core::gpu::api_name(&plan.api));
-        }
+    // TASK-118: no "Automatic" in the UI. The entry is dropped and, while the stored value is still automatic, the row
+    // shows the API this start resolves to (Play then stores it).
+    if let Some(values) = row["values"].as_array_mut() {
+        values.retain(|value| value["value"] != gt4l_core::gpu::AUTOMATIC);
+    }
+    if settings.gs_value("graphics_api") == gt4l_core::gpu::AUTOMATIC {
+        row["current"] = json!(plan.api);
     }
 }
 
 /// The Graphics card row (TASK-108): Automatic (best), then every card by name. A stored card that is not present is
 /// listed too, so the page shows what is stored; the run then falls back to Automatic.
 fn fill_card_row(row: &mut Value, settings: &Settings, cards: &[gt4l_core::gpu::GpuDevice]) {
-    let mut values = vec![json!({ "value": gt4l_core::gpu::AUTOMATIC, "label": "Automatic (best)" })];
+    // TASK-118: no "Automatic": the list holds the cards present, and a stored card that is gone is kept so the page
+    // still shows it (the run falls back and Play stores the card it used).
     let stored = settings.get("graphics_card").to_string();
     let mut names: Vec<String> = cards.iter().filter_map(|card| card.name().map(str::to_string)).collect();
-    if stored != gt4l_core::gpu::AUTOMATIC && !names.contains(&stored) {
+    if stored != gt4l_core::gpu::AUTOMATIC && !stored.is_empty() && !names.contains(&stored) {
         names.push(stored.clone());
     }
-    for name in names {
-        values.push(json!({ "value": name, "label": name }));
-    }
+    let values: Vec<Value> = names.iter().map(|name| json!({ "value": name, "label": name })).collect();
     row["values"] = Value::Array(values);
-    row["current"] = json!(stored);
+    let plan = gt4l_core::gpu::plan(&settings.gs_value("graphics_api"), &stored, cards, Language::fallback());
+    let current = if stored == gt4l_core::gpu::AUTOMATIC {
+        plan.card.as_ref().and_then(|card| card.name()).unwrap_or("").to_string()
+    } else {
+        stored
+    };
+    row["current"] = json!(current);
 }
 
 /// The Resolution row's choices: the chosen monitor's modes ("3440x1440 (desktop)" marks its desktop mode); without
@@ -134,7 +147,17 @@ pub fn settings_table_with_monitors(
     integrated_gpu: bool,
 ) -> Value {
     let mut rows: Vec<Value> = Vec::new();
+    // TASK-118: the release performance report and the VU code check are release-candidate settings; final builds do
+    // not ship them, so their rows do not exist there either.
+    let release_candidate = gt4l_core::LAUNCHER_VERSION.contains("-rc");
     for definition in SETTINGS {
+        // TASK-118: rows the owner removed outright (always on, or done by the preset/launcher).
+        if HIDDEN_LAUNCHER_ROWS.contains(&definition.id) {
+            continue;
+        }
+        if !release_candidate && RC_ONLY_ROWS.contains(&definition.id) {
+            continue;
+        }
         // TASK-108: the Graphics card row sits after the Graphics API row (added with the table rows below).
         if definition.id == "graphics_card" {
             continue;
@@ -878,14 +901,16 @@ mod table_tests {
         assert_eq!(api["page"], "basic");
         assert_eq!(api["control"], "dropdown");
         assert_eq!(api["default"], "auto");
-        assert_eq!(api["current"], "auto", "an install that never changed the row is Automatic");
+        assert!(
+            matches!(api["current"].as_str(), Some("vulkan") | Some("d3d12") | Some("d3d11")),
+            "TASK-118: the row shows the API this start resolves to, not Automatic"
+        );
         let values = api["values"].as_array().unwrap();
         let shown: Vec<(&str, &str)> =
             values.iter().map(|value| (value["value"].as_str().unwrap(), value["label"].as_str().unwrap())).collect();
         assert_eq!(
             shown,
             vec![
-                ("auto", "Automatic"),
                 ("vulkan", "Vulkan (recommended)"),
                 ("d3d12", "Direct3D 12 (recommended)"),
                 ("d3d11", "Direct3D 11 (older PCs)"),

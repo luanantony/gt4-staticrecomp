@@ -57,10 +57,11 @@ fn load_custom_textures_is_on_by_default_and_always_written() {
 }
 
 #[test]
-fn precache_is_in_advanced_off_by_default_and_written_only_when_on() {
+fn precache_is_hidden_off_by_default_and_written_only_when_on() {
+    // TASK-118 (owner, 2026-10-26): the row left the page; the key is still written when a stored value turns it on.
     let row = gs_table::row("texture_precache").unwrap();
-    assert_eq!((row.page.as_str(), row.default.as_str(), row.written.as_str()), ("advanced", "false", "when-set"));
-    assert!(gs_table::offered().iter().any(|offered| offered.id == "texture_precache"));
+    assert_eq!((row.page.as_str(), row.default.as_str(), row.written.as_str()), ("hidden", "false", "when-set"));
+    assert!(!gs_table::offered().iter().any(|offered| offered.id == "texture_precache"));
     let text = gs_table::render_ini(&BTreeMap::new(), &BTreeMap::new()).unwrap();
     assert!(!text.contains("PrecacheTextureReplacements"), "{text}");
     let on = BTreeMap::from([("texture_precache".to_string(), "true".to_string())]);

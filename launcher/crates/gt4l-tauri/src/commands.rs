@@ -482,6 +482,15 @@ pub fn play(app: AppHandle, shared: State<'_, Shared>) -> Result<(), String> {
         let mut state = lock(&shared);
         state.game_child = Some(running.child.clone());
         state.home_message.clear();
+        // TASK-118: the API and the card have no "Automatic" choice any more. Store what this start resolved, so the
+        // page shows the real value from the next start on.
+        if state.config.settings.gs_value("graphics_api") == gt4l_core::gpu::AUTOMATIC {
+            let _ = state.config.settings.set_gs("graphics_api", &api);
+        }
+        let resolved_card = settings.get("graphics_card").to_string();
+        if state.config.settings.get("graphics_card") == gt4l_core::gpu::AUTOMATIC && !resolved_card.is_empty() {
+            let _ = state.config.settings.set("graphics_card", &resolved_card);
+        }
         // The game played last is the one the next start shows (owner, 2026-10-23).
         state.config.selected_game = games::after_play(game);
         state.save_config();

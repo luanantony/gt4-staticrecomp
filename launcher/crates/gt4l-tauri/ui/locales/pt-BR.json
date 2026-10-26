@@ -405,6 +405,7 @@
   "rust.game.stopped_unexpectedly_code": "O Gran Turismo 4 parou inesperadamente (código de saída {code}). A pasta da sessão tem os detalhes.",
   "rust.game.stopped_unexpectedly": "O Gran Turismo 4 parou inesperadamente. A pasta da sessão tem os detalhes.",
   "rust.game.gpu_lost": "Sua placa de vídeo parou de responder. Tente uma resolução menor (Gráficos > Escala de renderização) ou mude a API gráfica para Direct3D 11.",
+  "rust.game.gpu_lost_switched": "O Direct3D 11 será usado a partir de agora.",
   "rust.game.running_blocks_move": "O Gran Turismo 4 está em execução",
   "rust.game.already_running_lock": "O Gran Turismo 4 já está em execução",
   "rust.controls.newer_file": "O arquivo de controles foi gravado por um GT4Recomp mais novo e é mantido como está. Atualize o launcher para mudar os controles.",

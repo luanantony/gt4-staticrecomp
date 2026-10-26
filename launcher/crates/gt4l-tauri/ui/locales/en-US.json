@@ -405,6 +405,7 @@
   "rust.game.stopped_unexpectedly_code": "Gran Turismo 4 stopped unexpectedly (exit code {code}). The session folder has the details.",
   "rust.game.stopped_unexpectedly": "Gran Turismo 4 stopped unexpectedly. The session folder has the details.",
   "rust.game.gpu_lost": "Your graphics card stopped responding. Try a lower resolution (Graphics > Render scale) or switch Graphics API to Direct3D 11.",
+  "rust.game.gpu_lost_switched": "Direct3D 11 will be used from now on.",
   "rust.game.running_blocks_move": "Gran Turismo 4 is running",
   "rust.game.already_running_lock": "Gran Turismo 4 is already running",
   "rust.controls.newer_file": "The controls file was written by a newer GT4Recomp and is kept as it is. Update the launcher to change controls.",

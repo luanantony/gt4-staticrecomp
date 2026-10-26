@@ -24,11 +24,20 @@ pub fn classify(log_text: &str, exit_code: Option<i32>) -> Outcome {
         .filter_map(stop_reason)
         .last()
         .map(str::to_string);
-    if exit_code == Some(0) && reason.as_deref() == Some("window closed") {
+    // Exit code 0 with no shutdown line at all: the log was read before the game flushed it (owner, 2026-10-26: three
+    // normal closes were reported as crashes). The caller retries the read, so a real crash, which exits non-zero or
+    // prints a reason, is still a crash.
+    if exit_code == Some(0) && (reason.as_deref() == Some("window closed") || reason.is_none()) {
         Outcome::NormalClose
     } else {
         Outcome::Crashed { reason, exit_code }
     }
+}
+
+/// True when the log holds the game's final shutdown line (`[ee] stopped after ...`). The launcher waits for it before
+/// classifying, so a normal close is never read mid-write.
+pub fn is_settled(log_text: &str) -> bool {
+    log_text.lines().any(|line| stop_reason(line).is_some())
 }
 
 /// `[ee] stopped after N frames, C cycles: <reason>` -> `<reason>`.
@@ -85,6 +94,18 @@ mod tests {
     fn window_closed_with_exit_zero_is_normal() {
         let log = "boot\n[ee] stopped after 1200 frames, 9000 cycles: window closed\n";
         assert_eq!(classify(log, Some(0)), Outcome::NormalClose);
+    }
+
+    #[test]
+    fn exit_zero_without_a_shutdown_line_is_normal_not_a_crash() {
+        // Owner (2026-10-26): the launcher read the log before the game wrote its last line, so a normal close was
+        // reported as Crashed { reason: None, exit_code: Some(0) } three times.
+        assert_eq!(classify("boot\n[perf] last line not flushed yet\n", Some(0)), Outcome::NormalClose);
+        assert!(!is_settled("boot\n[audio] paced: ...\n"));
+        assert!(is_settled("boot\n[ee] stopped after 120 frames, 9000 cycles: window closed\n"));
+        // A killed process (no exit code) is still a crash, and so is a non-zero exit.
+        assert_eq!(classify("boot\n", None), Outcome::Crashed { reason: None, exit_code: None });
+        assert!(matches!(classify("boot\n", Some(1)), Outcome::Crashed { exit_code: Some(1), .. }));
     }
 
     #[test]

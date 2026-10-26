@@ -228,6 +228,12 @@ pub fn gs_config_text(
     // not settable from a value yet (status resolved). It is added below the table's render, in its section.
     let adapter = user.remove("adapter").filter(|name| !name.is_empty());
     user.insert("upscale".to_string(), session_plan(settings, display, integrated_gpu).multiplier.to_string());
+    // TASK-118 (owner, 2026-10-26): Performance Mode is a preset. Blending accuracy is not a player row any more:
+    // Minimum with Performance Mode on, High otherwise (Minimum measured about 1.5 ms less per frame on the weak laptop).
+    user.insert(
+        "blending".to_string(),
+        if settings.gs_value("performance_mode") == "no-readbacks" { "minimum" } else { "high" }.to_string(),
+    );
     let present = match settings.get("vsync") {
         "fast" => "mailbox",
         "off" => "immediate",

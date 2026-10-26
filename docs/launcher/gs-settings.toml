@@ -119,8 +119,8 @@ notes = "TASK-080 addendum (owner, 2026-10-21): no longer offered. The launcher 
 [[setting]]
 id = "blending"
 label = "Blending accuracy"
-help = "Accuracy of the GS blending unit emulation. High is the GT4 default."
-page = "advanced"
+help = "Accuracy of the GS blending unit emulation. Set by Performance Mode: Minimum when it is on, High otherwise (owner, 2026-10-26: Minimum measured about 1.5 ms less per frame on the weak laptop)."
+page = "hidden"
 order = 18
 control = "dropdown"
 section = "EmuCore/GS"

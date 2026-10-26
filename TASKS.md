@@ -1078,6 +1078,36 @@ other visual difference, and the glows stopped drawing over the virtual rear-vie
 and in PCSX2 GSdx). Performance felt clearly better even with the machine busy compiling; **F8 metrics pending** on
 a free machine. The build he tested stays as delivered until that run, so TASK-118 presets do not mix with its
 numbers. Split screen keeps the headlight glow (constant path, see the study); the sun is hidden there too.
+
+#### In progress (2026-10-26, owner switching agents): the four laptop fixes
+The owner tested rc6 on an i5-7200U / Intel HD 620 and sent the sessions (`Z:` share). Four defects, each measured:
+
+1. **The launcher cost ~20% CPU in the background** (six full-screen 72 s CSS animations kept running after Play;
+   hiding the window does not stop WebView2). F8 proof: the game EE CPU itself went from 6-12 ms to 19.61/19.16 ms
+   on that run. Fix: pause them while hidden/blurred/in game (body.is-idle) and keep WebView2 GPU acceleration on.
+2. **A normal close was reported as a crash**: the launcher read `game.log` in the same instant the game wrote its last
+   line (three sessions: `Crashed { reason: None, exit_code: Some(0) }` with a normal `[ee] stopped ... window closed`).
+   Fix: wait for the shutdown line (25 ms poll, 1.5 s cap) and treat exit 0 without one as a normal close.
+3. **Vulkan loses the device on the HD 620** at the showroom (issue #89; it reports Vulkan 1.3, so the automatic API
+   rule picks it). Direct3D 11 runs fine; Direct3D 12 is clearly slower there. Fix: remember `graphics_api = d3d11`
+   after a Vulkan device loss and say so.
+4. **Render scale jumped 1x -> 4x in one notch** on the integrated GPU (100% = 1x by issue #89, then k x percent).
+   Fix: additive steps, one multiplier per 25% from the 100% plan (integrated 1/2/3/4/5x), clamped 1..12.
+
+Code state when the session ended (all in the worktree, `cargo test -p gt4l-core` green, `cargo check -p gt4l-tauri`
+green with `GT4_SDL3_ROOT` set):
+- `display.rs`: additive mapping + tests; `exit.rs`: `is_settled` + relaxed `classify` + test;
+- `commands.rs`: `read_settled_log`, `PlayInputs.api`, the Vulkan->D3D11 memory; locale key
+  `rust.game.gpu_lost_switched`; `gs-settings.toml`: `blending` hidden; `launch.rs`: preset writes blending
+  Minimum (Performance Mode on) or High (off).
+- **Still missing:** the UI pause (`app.css` body.is-idle + `app.js` game-state/visibilitychange/blur), and the
+  portable launcher rebuild + owner/laptop copies. Full checklist: ai-memory `procedures/task-118-launcher-fixes`.
+
+Performance Mode preset (supersedes the earlier list): `HWDownloadMode 2` + `accurate_blending_unit Minimum` only.
+Trilinear, dithering, preloading, filtering and mipmapping stay at their accurate defaults: measured on the laptop,
+turning them off changed nothing outside the noise and cost picture quality. Details in ai-memory
+`gotchas/weak-laptop-ee-bound` and `decisions/rc6-laptop-launcher-fixes`.
+
 ### TASK‑118 — Graphics settings simplification (owner, 2026-10-25, 1.3.0-rc6)
 Owner decision, recorded directly by the implementation session (no orchestrator round trip). The Advanced page of
 Settings > Graphics is too technical and Performance Mode is only a readback switch today.

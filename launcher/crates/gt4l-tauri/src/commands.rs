@@ -6,6 +6,7 @@ use gt4l_core::messages;
 use std::fs;
 use std::panic::{self, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 
 use gt4controls::{self as controls_file, default_bindings};
 use gt4l_core::display::{self as display_rules, DisplayTarget};
@@ -349,6 +350,9 @@ pub struct PlayInputs {
     pub extra: Vec<(String, String)>,
     /// The note for the player when this run falls back to Direct3D 11 (TASK-108); `None` otherwise.
     pub graphics_notice: Option<String>,
+    /// The API this run resolved to (`graphics.api`: `vulkan`, `d3d12` or `d3d11`). Used after the run to remember a
+    /// lost Vulkan device so the next Play does not repeat it (owner, 2026-10-26).
+    pub api: String,
 }
 
 /// The checks of Play before anything starts. `program_dir` is the folder of `GT4Recomp.exe`.
@@ -444,6 +448,7 @@ pub fn prepare_play(shared: &Shared, program_dir: &Path) -> Result<PlayInputs, S
         pcsx2,
         extra,
         graphics_notice: graphics.notice,
+        api: graphics.api,
     })
 }
 
@@ -464,7 +469,8 @@ pub fn play(app: AppHandle, shared: State<'_, Shared>) -> Result<(), String> {
     let inputs = prepare_play(&shared, &program_directory()).inspect_err(|message| {
         lock(&shared).home_message = message.clone();
     })?;
-    let PlayInputs { game, dirs, disc, elf, executable, settings, pcsx2, display, extra, graphics_notice } = inputs;
+    let PlayInputs { game, dirs, disc, elf, executable, settings, pcsx2, display, extra, graphics_notice, api } = inputs;
+    let run_api = api.clone();
     // TASK-097: a direct start of the game reads these files; they follow the monitors connected now.
     lock(&shared).write_standalone_files(&settings);
     let card = dirs.runtime_card();
@@ -498,7 +504,9 @@ pub fn play(app: AppHandle, shared: State<'_, Shared>) -> Result<(), String> {
     std::thread::spawn(move || {
         let outcome = game::wait_for_exit(&running);
         // TASK-096: a GSdx restart request ends the session with the GSdx error. CoreGS 1.1 is never started.
-        let log_text = fs::read_to_string(&running.log_path).unwrap_or_default();
+        // The game writes its last line as it exits; wait for it before classifying, so a normal close is never read
+        // mid-write (owner, 2026-10-26: three normal closes were reported as crashes).
+        let log_text = read_settled_log(&running.log_path);
         let gsdx_error = launch::restart_requested(&log_text)
             .then(|| launch::gsdx_unavailable_message(launch::GSDX_RESTART_REQUESTED, &dirs.logs()));
         // Issue #89: a lost graphics card is named in plain words, ahead of the restart and the generic crash text.
@@ -510,6 +518,24 @@ pub fn play(app: AppHandle, shared: State<'_, Shared>) -> Result<(), String> {
         let log_path = running.log_path.clone();
         drop(running);
         lock(&shared).game_child = None;
+        // Owner (2026-10-26): Vulkan loses the device on the Intel HD 620 (issue #89). Remember it for this machine so
+        // the next Play starts on Direct3D 11 instead of losing the device again.
+        let switched = if gpu_lost.is_some() && run_api == "vulkan" {
+            let mut state = lock(&shared);
+            match state.config.settings.set_gs("graphics_api", "d3d11") {
+                Ok(()) => {
+                    state.save_config();
+                    state::log(&dirs, "graphics: Vulkan lost the device; the stored API is now d3d11");
+                    true
+                }
+                Err(error) => {
+                    state::log_warn(&dirs, &format!("graphics: could not store d3d11 after the Vulkan loss: {error}"));
+                    false
+                }
+            }
+        } else {
+            false
+        };
         let ended = format!("game ended: {outcome:?} (log {})", log_path.display());
         if matches!(outcome, gt4l_core::exit::Outcome::Crashed { .. }) {
             state::log_error(&dirs, &ended);
@@ -521,7 +547,12 @@ pub fn play(app: AppHandle, shared: State<'_, Shared>) -> Result<(), String> {
         let message = match (gpu_lost, gsdx_error, &outcome) {
             (Some(line), _, _) => {
                 state::log_error(&dirs, &format!("graphics card lost: {line}"));
-                exit::gpu_lost_message_in(state::current_language())
+                let mut text = exit::gpu_lost_message_in(state::current_language());
+                if switched {
+                    text.push_str("\n\n");
+                    text.push_str(&messages::text("game.gpu_lost_switched", state::current_language()));
+                }
+                text
             }
             (None, Some(error), _) => {
                 state::log_warn(&dirs, "GSdx asked for a restart; the launcher does not start CoreGS 1.1");
@@ -537,6 +568,21 @@ pub fn play(app: AppHandle, shared: State<'_, Shared>) -> Result<(), String> {
         crate::tray::handle(&app, crate::tray::Event::GameEnded { message });
     });
     Ok(())
+}
+
+/// Reads a finished session's log, waiting for the game's last line: the runtime writes `[ee] stopped after ...` while
+/// the process exits, and the launcher used to read the file in that same instant, so a normal close could be classified
+/// as a crash (owner, 2026-10-26). Waits at most `SETTLE_TIMEOUT`, returning as soon as the line is there.
+fn read_settled_log(path: &Path) -> String {
+    const SETTLE_TIMEOUT: Duration = Duration::from_millis(1500);
+    let deadline = Instant::now() + SETTLE_TIMEOUT;
+    loop {
+        let text = fs::read_to_string(path).unwrap_or_default();
+        if exit::is_settled(&text) || Instant::now() >= deadline {
+            return text;
+        }
+        std::thread::sleep(Duration::from_millis(25));
+    }
 }
 
 /// Stops the game process. The card is harvested by the watcher thread after the exit.

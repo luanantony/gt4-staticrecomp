@@ -35,7 +35,8 @@ pub const RENDER_SCALE_STEP: u32 = 25;
 pub const RENDER_SCALE_DEFAULT: u32 = 100;
 
 /// The internal multiplier an integrated GPU gets while the Render scale is the untouched default (issue #89): GT4's
-/// native 640 x 448 frame, so a 1440 x 900 screen starts at native resolution instead of 3x.
+/// native 640 x 448 frame, so a 1440 x 900 screen starts at native resolution instead of 3x. It is also the baseline the
+/// slider climbs from: 125% is 2x, 150% is 3x, up to 5x at 200%.
 pub const INTEGRATED_DEFAULT_MULTIPLIER: u32 = 1;
 
 /// What a renderer accepts as an internal-resolution multiplier.
@@ -65,7 +66,8 @@ pub struct DisplayPlan {
     pub base_multiplier: u32,
     /// The render scale in percent that was applied.
     pub render_scale: u32,
-    /// k x scale, rounded to the nearest accepted multiplier (ties go up), clamped to 1 .. caps.max_multiplier.
+    /// One whole multiplier per 25% step from the 100% plan (the integrated GPU's 1x baseline included), clamped to
+    /// 1 .. caps.max_multiplier.
     pub multiplier: u32,
     /// 640 x multiplier by 448 x multiplier.
     pub internal_width: u32,
@@ -110,7 +112,9 @@ pub fn render_scale_steps() -> Vec<u32> {
 
 /// Whether the integrated-GPU default applies: the GPU is integrated and the Render scale is still the default. A
 /// stored scale that was changed (any value but 100%) is kept as the player chose it. Note that the stored value
-/// cannot tell an untouched 100% from a chosen one, so a 100% chosen on an integrated GPU gets the same default.
+/// cannot tell an untouched 100% from a chosen one, so a 100% chosen on an integrated GPU gets the same default. The
+/// flag only drives the log line: the multiplier itself always climbs from [`INTEGRATED_DEFAULT_MULTIPLIER`] on an
+/// integrated GPU, so the slider has no jump at 125%.
 pub fn integrated_default_applies(render_scale: u32, integrated_gpu: bool) -> bool {
     integrated_gpu && render_scale == RENDER_SCALE_DEFAULT
 }
@@ -129,8 +133,9 @@ pub fn display_plan(
     display_plan_on(output_width, output_height, render_scale, caps, false)
 }
 
-/// [`display_plan`] for the GPU the game will use: on an integrated GPU with the default render scale the multiplier is
-/// [`INTEGRATED_DEFAULT_MULTIPLIER`] (issue #89). Otherwise the plan is the same as [`display_plan`].
+/// [`display_plan`] for the GPU the game will use: on an integrated GPU the slider's baseline is
+/// [`INTEGRATED_DEFAULT_MULTIPLIER`] instead of k (issue #89), and each 25% step adds one multiplier. Otherwise the plan is
+/// the same as [`display_plan`].
 pub fn display_plan_on(
     output_width: u32,
     output_height: u32,
@@ -156,14 +161,13 @@ pub fn display_plan_on(
         return Err(PlanError(format!("output size {output_width}x{output_height} is not a display ratio the game accepts")));
     }
     let base_multiplier = ceil_div(width, NATIVE_FRAME_WIDTH).max(ceil_div(height, NATIVE_FRAME_HEIGHT));
-    // Round k x scale / 100 to the nearest whole number, ties up: floor((2 k s + 100) / 200).
-    let scaled = (2 * base_multiplier * render_scale + 100) / 200;
+    // TASK-118 (owner, 2026-10-26): the slider is additive. The plan at 100% is the baseline (on an integrated GPU that
+    // is the 1x of issue #89, not k), and each 25% step adds or removes one whole multiplier. Before, a changed scale
+    // multiplied k by the percentage: on the laptop 100% gave 1x and 125% gave 4x, a four-times jump for one notch.
     let integrated_default = integrated_default_applies(render_scale, integrated_gpu);
-    let multiplier = if integrated_default {
-        INTEGRATED_DEFAULT_MULTIPLIER.min(caps.max_multiplier.max(1))
-    } else {
-        scaled.clamp(1, caps.max_multiplier.max(1))
-    };
+    let baseline = if integrated_gpu { INTEGRATED_DEFAULT_MULTIPLIER } else { base_multiplier };
+    let steps = (render_scale as i32 - RENDER_SCALE_DEFAULT as i32) / RENDER_SCALE_STEP as i32;
+    let multiplier = (baseline as i32 + steps).clamp(1, caps.max_multiplier.max(1) as i32) as u32;
     Ok(DisplayPlan {
         output_width: width,
         output_height: height,
@@ -386,22 +390,38 @@ mod tests {
     }
 
     #[test]
-    fn render_scale_multiplies_and_rounds_ties_up() {
-        // The owner's example: 2560x1440 at 50% -> 2x, 100% -> 4x, 200% -> 8x.
-        assert_eq!(plan(2560, 1440, 50).multiplier, 2);
-        assert_eq!(plan(2560, 1440, 100).multiplier, 4);
-        assert_eq!(plan(2560, 1440, 200).multiplier, 8);
-        assert_eq!(describe_plan(&plan(2560, 1440, 100)), "4x \u{00B7} 2560x1792");
-        // k = 3: 50% = 1.5 -> 2 (tie up), 75% = 2.25 -> 2, 125% = 3.75 -> 4, 150% = 4.5 -> 5, 175% = 5.25 -> 5.
+    fn render_scale_moves_one_multiplier_per_step() {
+        // Owner (2026-10-26): each 25% step is one whole multiplier from the 100% plan, never a multiplication of it.
+        // A discrete 3x baseline: 50/75/100/125/150/175/200% -> 1/2/3/4/5/6/7x.
         let steps: Vec<u32> = render_scale_steps().iter().map(|&scale| plan(1920, 1080, scale).multiplier).collect();
-        assert_eq!(steps, vec![2, 2, 3, 4, 5, 5, 6]);
-        // k = 6 at 200% = 12, the gt4-gs maximum; nothing goes above it.
-        assert_eq!(plan(3440, 1440, 200).multiplier, 12);
-        assert_eq!(plan(3840, 2160, 200).multiplier, 12);
-        assert_eq!(plan(7680, 4320, 200).multiplier, 12, "k = 12 x 2 is clamped to 12");
-        assert_eq!(plan(640, 480, 50).multiplier, 1, "1 x 50% = 0.5 rounds up to 1");
+        assert_eq!(steps, vec![1, 2, 3, 4, 5, 6, 7]);
+        assert_eq!(describe_plan(&plan(1920, 1080, 125)), "4x \u{00B7} 2560x1792");
+        // 2560x1440 has a 4x baseline: 100% stays 4x and one notch is 5x (the old formula gave 8x at 200%).
+        assert_eq!(plan(2560, 1440, 75).multiplier, 3);
+        assert_eq!(plan(2560, 1440, 100).multiplier, 4);
+        assert_eq!(plan(2560, 1440, 125).multiplier, 5);
+        assert_eq!(plan(2560, 1440, 200).multiplier, 8);
+        // Clamped at the bottom (1x) and at the gt4-gs maximum (12x).
+        assert_eq!(plan(640, 480, 50).multiplier, 1);
+        assert_eq!(plan(3840, 2160, 200).multiplier, 10, "6x baseline + 4 steps");
+        assert_eq!(plan(7680, 4320, 200).multiplier, 12, "12x baseline clamped");
         let small = RendererCaps { max_multiplier: 6 };
-        assert_eq!(display_plan(3440, 1440, 200, small).unwrap().multiplier, 6);
+        assert_eq!(display_plan(3840, 2160, 200, small).unwrap().multiplier, 6);
+    }
+
+    #[test]
+    fn integrated_gpu_climbs_from_1x_without_a_jump() {
+        // issue #89: 100% on an integrated GPU is 1x. The slider used to jump to 4x at 125% (k 3 x 125%); it now climbs
+        // one multiplier per step, so the laptop can try 2x and 3x.
+        let integrated: Vec<u32> = render_scale_steps()
+            .iter()
+            .map(|&scale| display_plan_on(1366, 768, scale, PCSX2_GS_CAPS, true).unwrap().multiplier)
+            .collect();
+        assert_eq!(integrated, vec![1, 1, 1, 2, 3, 4, 5]);
+        let plan_100 = display_plan_on(1366, 768, 100, PCSX2_GS_CAPS, true).unwrap();
+        assert!(plan_100.integrated_default);
+        assert_eq!((plan_100.base_multiplier, plan_100.multiplier), (3, 1));
+        assert!(!display_plan_on(1366, 768, 125, PCSX2_GS_CAPS, true).unwrap().integrated_default);
     }
 
     #[test]
@@ -543,9 +563,10 @@ mod tests {
     }
 
     #[test]
-    fn a_changed_render_scale_is_kept_on_an_integrated_gpu() {
-        // The player's choice wins: 50% gives 2x at 1440 x 900, 200% gives 6x.
-        for (scale, expected) in [(50, 2), (75, 2), (125, 4), (200, 6)] {
+    fn a_changed_render_scale_climbs_from_the_integrated_baseline() {
+        // The player's choice wins, one multiplier per 25% step from the integrated 1x baseline (TASK-118, owner
+        // 2026-10-26): 50/75% stay at 1x, 125% is 2x, 200% is 5x.
+        for (scale, expected) in [(50, 1), (75, 1), (125, 2), (150, 3), (200, 5)] {
             let plan = display_plan_on(1440, 900, scale, PCSX2_GS_CAPS, true).unwrap();
             assert_eq!(plan.multiplier, expected, "{scale}%");
             assert!(!plan.integrated_default, "{scale}%");

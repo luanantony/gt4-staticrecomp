@@ -270,7 +270,7 @@ fn the_internal_resolution_follows_the_output_size_and_the_render_scale() {
         (2560, 1440, "100", "4"),
         (2560, 1440, "200", "8"),
         (3440, 1440, "100", "6"),
-        (3440, 1440, "200", "12"),
+        (3440, 1440, "200", "10"),
         (3088, 1440, "100", "5"),
         (3840, 2160, "75", "5"),
         (1280, 720, "100", "2"),
@@ -297,7 +297,7 @@ fn an_integrated_gpu_plays_the_untouched_default_at_native_resolution() {
     assert_eq!(multiplier_line(&launch::gs_config_text(&settings, &paths, Some(&target), false).unwrap()), "upscale_multiplier = 3");
     settings.set("render_scale", "150").unwrap();
     let text = launch::gs_config_text(&settings, &paths, Some(&target), true).unwrap();
-    assert_eq!(multiplier_line(&text), "upscale_multiplier = 5");
+    assert_eq!(multiplier_line(&text), "upscale_multiplier = 3");
 }
 
 #[test]

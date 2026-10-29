@@ -1817,7 +1817,7 @@ Focus: Identify bottlenecks outside the GS renderer on low-end 2-core / 15W CPUs
 
 ### TASK-135 — Launcher controller toggle navigation (issue #123)
 
-State: implementation complete, PR open awaiting owner review (2026-10-29).
+State: implementation complete, PR #138 open awaiting owner review (2026-10-29).
 Issue: https://github.com/moesuito/gt4-staticrecomp/issues/123
 Report: When navigating the launcher UI on Steam Deck / gamepad, focus skips boolean toggle rows (such as Fullscreen or Performance Mode) or fails to toggle them with gamepad buttons.
 Root cause:
@@ -1832,7 +1832,7 @@ Fix:
 4. In `launcher/crates/gt4l-tauri/ui/js/pages/settings.js`, updated `focusRow()` to prioritize controls inside `.ctl` over `.info` buttons.
 5. In `launcher/crates/gt4l-tauri/ui/js/nav.js`, updated `activate()` to support checkbox/radio inputs.
 6. In `launcher/crates/gt4l-tauri/ui/dev/nav-test.js`, added spatial navigation unit tests verifying that narrow toggle rows are not skipped when column bounds are normalized.
-Branch: task/135-launcher-controller-toggles.
+Branch: task/135-launcher-controller-toggles. PR: https://github.com/moesuito/gt4-staticrecomp/pull/138
 
 ### TASK-136 — PCSX2 GS DataRoot OneDrive / Documentos failure handling (issue #131)
 

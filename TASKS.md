@@ -1721,7 +1721,7 @@ Fix:
 1. Updated `native/window.cpp` to handle `WM_ERASEBKGND` (returning 1) and `WM_PAINT` (validating with `BeginPaint`/`EndPaint`) while `surface_attached` is active, preventing background erase flickering and message loop saturation.
 2. Updated `launcher/crates/gt4l-core/src/exit.rs` to recognize `STATUS_APPLICATION_HANG` (`-805306369`) and present a clear diagnostic message.
 3. Added unit tests in `launcher/crates/gt4l-core/src/exit.rs` for `STATUS_APPLICATION_HANG` reporting.
-Branch: task/127-flashing-window-diagnostics.
+Branch: task/127-flashing-window-diagnostics. PR: https://github.com/moesuito/gt4-staticrecomp/pull/137
 
 ### TASK-128 — Optional use of an existing disc image (issue #95)
 

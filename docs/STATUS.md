@@ -1,5 +1,30 @@
 # Current Status
 
+# Current Status
+
+## Project and GitHub status snapshot (2026-10-29)
+
+- Upstream releases: stable Latest is v1.2.5 (published 2026-10-26, PR #125); public pre-release is v1.3.0-rc6.
+- Pull requests open awaiting owner gameplay review:
+  - PR #116 (TASK-025, #98): active save deletion fix and stale card prevention.
+  - PR #118 (TASK-125, #104): SPU2 exponential decay release clamp eliminating faint looping GT Auto sounds.
+  - PR #119 (TASK-129, #93, #94, #115): silent audio fallback when waveOutOpen fails (resolves #115 duplicate).
+  - PR #120 (TASK-104, #86): PCSX2 memory card import capacity calculation accommodating large cards.
+  - PR #121 (TASK-126, #102): keyboard message forwarding from parent to GS child window for ReShade overlay.
+  - PR #122 (TASK-124, #107): bundle vcruntime140_1.dll in CRT distribution and diagnose STATUS_DLL_NOT_FOUND in launcher.
+- Active studies and worktrees:
+  - TASK-134 in PR #130 (draft on task/134-game-code-optimization-study): game-code CPU optimization plan for the i5-7200U laptop.
+  - TASK-133 on task/133-rc7-ra-controls: integration of RetroAchievements and 1.2.5 controller curves into rc7 baseline.
+- New issue intake:
+  - #115 ("game won't start"): confirmed duplicate of #93 / TASK-129 (waveOutOpen failure).
+  - #123 ("Can't use controller to toggle all settings on the launcher"): recorded as TASK-135.
+  - #126 ("Performance is worse"): vague performance complaint, awaiting specs/logs.
+  - #128 ("Support for European release SCES-51719"): PAL release request; not in scope (target is NTSC-U SCUS-97328 / Spec II).
+  - #129 ("Crackling Sound"): audio crackling on SteamOS 3.9.5 / Proton GE.
+  - #131 ("Erro na inicialização"): OneDrive Documents PCSX2 DataRoot handshake failure, recorded as TASK-136.
+  - #132 ("Versão portatil"): standalone portable UI request without Edge WebView2 requirement.
+- Full details in docs/ISSUE-TRIAGE.md and TASKS.md.
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

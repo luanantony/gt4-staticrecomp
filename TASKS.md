@@ -1683,27 +1683,33 @@ No existing task is renumbered, copied as a new task or silently dropped here.
 
 ### TASK-124 — Game cannot start (issue #107)
 
-State: recorded, not planned (2026-10-26).
+State: implementation complete, PR #122 open awaiting owner review (2026-10-26).
 Issue: https://github.com/moesuito/gt4-staticrecomp/issues/107
-Report: cannot start on both 1.2.4 and 1.3.0; screenshot and log bundle supplied. Cause unknown.
-Priority: high, candidate for an upcoming 1.3.0 rc before final.
-Related: TASK-105 and TASK-129 only if evidence establishes a shared cause; no duplicate confirmed.
+Report: cannot start on both 1.2.4 and 1.3.0-rc5; screenshot and log bundle supplied.
+Root cause: Process failed during Windows dynamic loading before entering main() with NTSTATUS 0xC0000135 (STATUS_DLL_NOT_FOUND, exit code -1073741515). The MSVC/clang-cl x64 build requires vcruntime140_1.dll (for __CxxFrameHandler4 exception handling), but scripts/make_distribution.py only bundled vcruntime140.dll, msvcp140.dll, and msvcp140_atomic_wait.dll. On systems where the Visual C++ 2015–2022 x64 Redistributable was not already present in System32, dynamic linking failed. Furthermore, the launcher displayed an unhelpful generic exit code pointing to an empty 0-byte game.log.
+Fix:
+1. Updated scripts/make_distribution.py to include vcruntime140_1.dll in CRT_DLLS so release distributions ship the required library.
+2. Updated launcher/crates/gt4l-core/src/exit.rs to recognize STATUS_DLL_NOT_FOUND (exit code -1073741515) and display an actionable user message directing to install the Microsoft Visual C++ 2015–2022 Redistributable (x64) and verify game files.
+3. Added unit tests in gt4l-core/src/exit.rs for exit code -1073741515 diagnostics.
+Branch: task/124-startup-failure-diagnostics. PR: https://github.com/moesuito/gt4-staticrecomp/pull/122
 
 ### TASK-125 — GT Auto service audio keeps looping (issue #104)
 
-State: recorded, not planned (2026-10-26).
+State: implementation complete, PR #118 open awaiting owner review (2026-10-26).
 Issue: https://github.com/moesuito/gt4-staticrecomp/issues/104
 Report: oil-change/car-wash bubble audio persists after the service has finished.
-Priority: normal backlog, release unassigned.
-Related: distinct from missing-output-device startup behavior in TASK-129; no shared cause established.
+Root cause: SPU2 software synthesiser voice release logic asymptotically approaches zero on exponential release, lingering below audible volume indefinitely without reaching cutoff.
+Fix: Clamped voice release envelope to stop voices below silence threshold (-96 dB / 0.00002).
+Branch: task/125-gt-auto-audio-loop. PR: https://github.com/moesuito/gt4-staticrecomp/pull/118
 
 ### TASK-126 — Home key unavailable to ReShade (issue #102)
 
-State: recorded, not planned (2026-10-26).
+State: implementation complete, PR #121 open awaiting owner review (2026-10-26).
 Issue: https://github.com/moesuito/gt4-staticrecomp/issues/102
 Report: Home/Pos1 does not open the ReShade options while the game is active.
-Priority: normal backlog, release unassigned.
-Related: existing window/input tasks TASK-038 and TASK-076. No compatibility fix is claimed yet.
+Root cause: GT4_RENDERER=pcsx2 runs out-of-process (gt4-gs.exe) embedded as a Win32 WS_CHILD window. The parent window keeps focus to protect driving inputs, so child window never received WM_KEYDOWN messages.
+Fix: In native/window.cpp, forward unhandled WM_KEYFIRST..WM_KEYLAST messages to GS child window via PostMessageW.
+Branch: task/126-reshade-home-key. PR: https://github.com/moesuito/gt4-staticrecomp/pull/121
 
 ### TASK-127 — Flashing window followed by crashes (issue #99)
 
@@ -1721,13 +1727,13 @@ Request: reuse the original ISO without storing a second full copy. Claude had r
 without a task number; it remains an option under consideration, with no release assignment.
 Related: the texture-directory portion of the same issue belongs to existing TASK-053.
 
-### TASK-129 — Keep running without an audio output device (issue #93)
+### TASK-129 — Keep running without an audio output device (issues #93, #94, #115)
 
-State: recorded, not planned (2026-10-26).
-Issue: https://github.com/moesuito/gt4-staticrecomp/issues/93
-Existing diagnosis: no Windows audio output causes the game to close. Desired behavior: run silently.
-Priority: high, candidate for an upcoming 1.3.0 rc before final. Claude recorded the fix without an ID.
-Deduplication: closed issue #94 is already a duplicate of #93. Issue #107 joins only if confirmed.
+State: implementation complete, PR #119 open awaiting owner review (2026-10-26).
+Issues: https://github.com/moesuito/gt4-staticrecomp/issues/93 , https://github.com/moesuito/gt4-staticrecomp/issues/94 , https://github.com/moesuito/gt4-staticrecomp/issues/115
+Diagnosis: When no Windows audio output device is present or active, waveOutOpen returns MMSYSERR_BADDEVICEID (device ID out of range), terminating the host process. Issue #115 logs confirm the identical failure.
+Fix: Implemented silent null-audio fallback when waveOutOpen fails to find an available device, allowing the game to run silently.
+Branch: task/129-silent-audio-fallback. PR: https://github.com/moesuito/gt4-staticrecomp/pull/119
 
 ### TASK-130 — Split-screen display quality follow-up (issue #92)
 
@@ -1808,3 +1814,28 @@ Acceptance: target isolation, account/logout/HTTP cancellation regressions, cont
 preview consistency, full native/Python/Rust and en-US/pt-BR checks, both target builds/pins,
 installer+portable verification. New builds go to draft; owner gameplay/review before merge or
 publication. No code, builds, running agents or public rc7 authorized by this mapping step.
+
+### TASK-134 — Game-code optimization study for the i5-7200U laptop
+
+State: research and plan completed (PR #130 draft on task/134-game-code-optimization-study).
+Focus: Identify bottlenecks outside the GS renderer on low-end 2-core / 15W CPUs (EE critical path, VIF posting, SPU2 mixing, guest state aliasing).
+
+### TASK-135 — Launcher controller toggle navigation (issue #123)
+
+State: recorded, not planned (2026-10-29).
+Issue: https://github.com/moesuito/gt4-staticrecomp/issues/123
+Report: When navigating the launcher UI on Steam Deck / gamepad, focus skips boolean toggle rows (such as Fullscreen or Performance Mode) or fails to toggle them with gamepad buttons.
+Priority: backlog; launcher UI gamepad navigation audit.
+
+### TASK-136 — PCSX2 GS DataRoot OneDrive / Documentos failure handling (issue #131)
+
+State: implementation complete, PR open awaiting owner review (2026-10-29).
+Issue: https://github.com/moesuito/gt4-staticrecomp/issues/131
+Report: Game fails to start on Windows with exit code 1 during handshake. Logs show `Failed to initialize config` when DataRoot resolves to `OneDrive\Documentos\PCSX2` due to path permissions, sync locking or missing redirection.
+Root cause: During early static initialization before `--config` argument parsing, `gt4-gs.exe` invokes `SHGetKnownFolderPath(FOLDERID_Documents)`. On Windows configurations where the Documents folder is relocated to OneDrive with sync locks or restricted permissions, PCSX2 fails to create/access its configuration root and terminates immediately with exit code 1 (`Failed to initialize config.`). When a `portable.ini` marker file is present in the executable's directory (`AppRoot`), PCSX2 runs in portable mode, setting its early `DataRoot` to `AppRoot` directly and completely avoiding any query to `FOLDERID_Documents` or OneDrive.
+Fix:
+1. Updated `launcher/crates/gt4l-core/src/gs_release.rs` to write and enforce `portable.ini` (`PORTABLE_MARKER`) beside `gt4-gs.exe` during release staging (`stage_and_publish`) and verification (`check_installed`).
+2. Updated `launcher/crates/gt4l-core/src/launch.rs` in `Pcsx2Paths::for_session` to ensure `portable.ini` exists in the GS executable directory prior to session startup.
+3. Updated `native/gs_stream/gs_stream_client.cpp` before spawning the child process to ensure `portable.ini` exists alongside `process` if invoked without the launcher.
+4. Added unit tests in `launcher/crates/gt4l-core/tests/gs_release.rs` verifying `portable.ini` creation and automatic restoration if removed.
+Branch: task/136-onedrive-gs-dataroot.

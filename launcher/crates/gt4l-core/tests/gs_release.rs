@@ -81,6 +81,7 @@ fn stable_release_is_verified_and_installed_with_its_hash_recorded() {
     assert_eq!(fs::read(&installed.executable).unwrap(), exe);
     assert_eq!(gs_release::installed(&install), Some(installed.clone()));
     assert_eq!(fs::read_to_string(install.join("current.txt")).unwrap().trim(), "1.2.1");
+    assert!(install.join("1.2.1").join(gs_release::PORTABLE_MARKER).is_file());
 
     // Asking again with the same release is an up-to-date result, not a second install.
     assert!(matches!(gs_release::install_latest(&source(&server), &install), Ok(Outcome::UpToDate(_))));
@@ -283,6 +284,7 @@ fn an_installed_1_0_1_is_below_the_minimum_and_is_replaced_by_1_2_0() {
     assert_eq!(installed.version, Version(1, 2, 1));
     assert_eq!(fs::read(&installed.executable).unwrap(), new);
     assert_eq!(fs::read_to_string(install.join("current.txt")).unwrap().trim(), "1.2.1");
+    assert!(install.join("1.2.1").join(gs_release::PORTABLE_MARKER).is_file());
     assert_eq!(gs_release::installed(&install).unwrap().version, Version(1, 2, 1));
     assert!(!gs_release::needs_install(&install), "1.2.1 meets the minimum");
     assert!(install.join("1.0.1").is_dir(), "the previous version stays until the next upgrade");
@@ -310,4 +312,25 @@ fn a_failed_update_from_1_0_1_keeps_the_old_version() {
     assert!(error.contains("1.2.1"), "{error}");
     assert_eq!(gs_release::installed(&install).unwrap().version, Version(1, 0, 1), "the old version still works");
     assert!(gs_release::needs_install(&install), "the next launch tries again");
+}
+
+#[test]
+fn portable_marker_is_created_and_restored_if_removed() {
+    let server = scratch("portable-server");
+    let install = scratch("portable-root");
+    let exe = b"fake gt4-gs 1.2.1 portable".to_vec();
+    let entry = write_release(&server, &FakeRelease { tag: "gt4gs-v1.2.1", prerelease: false, executable: &exe, serve: &package(&exe) });
+    write_list(&server, &[entry]);
+
+    let outcome = gs_release::install_latest(&source(&server), &install).expect("install");
+    let Outcome::Installed(installed) = outcome else { panic!("expected a fresh install") };
+    let marker = installed.executable.parent().unwrap().join(gs_release::PORTABLE_MARKER);
+    assert!(marker.is_file(), "portable.ini should be created on installation");
+
+    // If portable.ini is deleted manually or by user, check_installed restores it
+    fs::remove_file(&marker).unwrap();
+    assert!(!marker.exists());
+    let rechecked = gs_release::installed(&install);
+    assert_eq!(rechecked, Some(installed));
+    assert!(marker.is_file(), "portable.ini should be restored by check_installed");
 }

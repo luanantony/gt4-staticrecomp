@@ -32,6 +32,9 @@ pub const CHECKSUM_ASSET: &str = releases::CHECKSUM_ASSET;
 pub const EXECUTABLE_NAME: &str = "gt4-gs.exe";
 /// Name of the state file in the renderer root: the version in use.
 pub const CURRENT_FILE: &str = "current.txt";
+/// Name of the portable configuration marker placed alongside `gt4-gs.exe` so the GS process operates
+/// in portable mode without querying known folders or OneDrive paths during early static initialization.
+pub const PORTABLE_MARKER: &str = "portable.ini";
 /// Largest package the launcher accepts (bytes). Protects memory on a bad or hostile response.
 pub const MAX_PACKAGE_BYTES: u64 = 256 * 1024 * 1024;
 
@@ -116,6 +119,15 @@ pub fn needs_install(root: &Path) -> bool {
     }
 }
 
+/// Ensures `portable.ini` exists in the given directory so PCSX2 GS operates in portable mode
+/// without querying known folders or OneDrive paths during early static initialization (TASK-136).
+pub fn ensure_portable_marker(directory: &Path) {
+    let marker = directory.join(PORTABLE_MARKER);
+    if !marker.exists() {
+        let _ = fs::write(marker, "");
+    }
+}
+
 /// The installed version named by `current.txt`, if its folder passes the check. Any problem gives `None`.
 pub fn installed(root: &Path) -> Option<Installed> {
     let text = fs::read_to_string(root.join(CURRENT_FILE)).ok()?;
@@ -133,6 +145,7 @@ fn check_installed(directory: &Path, version: Version) -> Result<Installed, Stri
     if recorded.trim() != actual {
         return Err(format!("{EXECUTABLE_NAME} does not match its recorded hash"));
     }
+    ensure_portable_marker(directory);
     Ok(Installed { version, executable, executable_sha256: actual })
 }
 
@@ -210,6 +223,7 @@ fn stage_and_publish(
         }
     }
     fs::write(staging.join("sha256.txt"), format!("{actual}\n")).map_err(|error| error.to_string())?;
+    ensure_portable_marker(staging);
 
     let target = version_directory(root, version);
     guard::check_write(root, &target)?;

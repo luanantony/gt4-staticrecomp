@@ -527,6 +527,20 @@ class Client {
       session_->set_data_wake_bytes(wake_bytes);
       const std::wstring arguments = L"--ipc " + ipc::widen(session_->name()) + L" --parent " +
                                      std::to_wstring(ipc::current_process_id()) + config_argument;
+      // TASK-136: ensure portable.ini exists beside gt4-gs.exe so PCSX2 GS operates
+      // in portable mode without querying known folders or OneDrive paths during early static initialization.
+      try {
+        const std::filesystem::path gs_dir = std::filesystem::path(ipc::widen(process)).parent_path();
+        if (!gs_dir.empty()) {
+          const std::filesystem::path marker = gs_dir / L"portable.ini";
+          std::error_code ec;
+          if (!std::filesystem::exists(marker, ec)) {
+            HANDLE file = CreateFileW(marker.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_NEW,
+                                      FILE_ATTRIBUTE_NORMAL, nullptr);
+            if (file != INVALID_HANDLE_VALUE) CloseHandle(file);
+          }
+        }
+      } catch (...) {}
       child_ = ipc::ChildProcess::spawn(ipc::widen(process), arguments);
       session_->set_peer(child_.process());
     } catch (const ipc::IpcError &error) {

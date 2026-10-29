@@ -86,3 +86,27 @@ version/reproduction details. No fix, completion date, closure or release was pr
 All five bodies and authors were reread after publication. A fresh open-issue query returned
 no issue without a moesuito comment. Follow-up reports on previously answered issues remain
 separate work; this does not mean every new comment has received another response.
+
+## Subsequent GitHub issue intake and triage (2026-10-29)
+
+Review of live open issues and submissions since 2026-10-26:
+
+| Issue | Report | Owning task(s) | Intake and diagnosis |
+| --- | --- | --- | --- |
+| [#132](https://github.com/moesuito/gt4-staticrecomp/issues/132) | Standalone portable request (without Edge WebView2) | Existing TASK-098 (portable) | Request recorded; backlog; player asks for self-contained UI without system WebView2 installation |
+| [#131](https://github.com/moesuito/gt4-staticrecomp/issues/131) | Startup failure on OneDrive Documents | TASK-136 (gt4-gs DataRoot path) | High; log analysis reveals `gt4-gs.exe` exits handshake (code 1) with `Failed to initialize config` when DataRoot resolves to `OneDrive\Documentos\PCSX2` |
+| [#129](https://github.com/moesuito/gt4-staticrecomp/issues/129) | Crackling Sound on SteamOS / Proton GE | Linux / Proton audio backlog | Normal; sound crackling/skipping on engine audio under Wine/Proton on SteamOS 3.9.5 |
+| [#128](https://github.com/moesuito/gt4-staticrecomp/issues/128) | European PAL disc request (SCES-51719) | Out of current scope | Request recorded; not planned; current static recompilation targets are NTSC-U SCUS-97328 and SCUS-97436 Spec II |
+| [#126](https://github.com/moesuito/gt4-staticrecomp/issues/126) | Performance worse after update | Existing TASK-041 / TASK-134 | Vague performance complaint without hardware specs or logs; pending user clarification |
+| [#123](https://github.com/moesuito/gt4-staticrecomp/issues/123) | Controller toggle navigation in launcher | TASK-135 (UI controller navigation) | Normal; Steam Deck / controller navigation skips boolean toggle settings (Fullscreen, Performance Mode) or cannot toggle them |
+| [#115](https://github.com/moesuito/gt4-staticrecomp/issues/115) | Game won't start without audio device | TASK-129 | Direct duplicate of #93; confirmed in session logs (`waveOutOpen: A device ID has been used that is out of range`); resolved by PR #119 |
+
+### Status of open PRs awaiting owner review
+
+- **PR #116 (TASK-025, #98):** Save-manager active save deletion fix.
+- **PR #118 (TASK-125, #104):** SPU2 exponential decay release clamp eliminating faint looping GT Auto sounds.
+- **PR #119 (TASK-129, #93, #94, #115):** Host audio silent fallback when `waveOutOpen` encounters missing/invalid device ID.
+- **PR #120 (TASK-104, #86):** PCSX2 memory card import capacity calculation accommodating large cards.
+- **PR #121 (TASK-126, #102):** Win32 keyboard message forwarding from parent to GS child window for ReShade overlay.
+- **PR #122 (TASK-124, #107):** Bundling `vcruntime140_1.dll` in CRT distribution and detecting `STATUS_DLL_NOT_FOUND` in launcher.
+- **PR #130 (TASK-134, draft):** Research study and staged plan on CPU bottleneck optimization for low-power laptop (i5-7200U).

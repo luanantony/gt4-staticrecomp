@@ -76,6 +76,9 @@ pub struct Pcsx2Paths {
 impl Pcsx2Paths {
     /// The paths of an installed renderer, with the cache and data folders under the renderer root.
     pub fn for_session(installed: &Installed, renderer_root: &Path, session_dir: &Path, textures: &Path) -> Pcsx2Paths {
+        if let Some(parent) = installed.executable.parent() {
+            crate::gs_release::ensure_portable_marker(parent);
+        }
         Pcsx2Paths {
             executable: installed.executable.clone(),
             executable_sha256: installed.executable_sha256.clone(),

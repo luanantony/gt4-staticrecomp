@@ -273,6 +273,17 @@ LRESULT CALLBACK window_procedure(HWND window, UINT message, WPARAM first,
     ps2::gs::resize_window(LOWORD(second), HIWORD(second));
     return 0;
   }
+  // TASK-127: suppress background erasing when the render surface is active, preventing flashes
+  // during presentation flips, window activation or resize, and validate dirty regions on paint.
+  if (message == WM_ERASEBKGND && surface_attached) {
+    return 1;
+  }
+  if (message == WM_PAINT && surface_attached) {
+    PAINTSTRUCT ps{};
+    BeginPaint(window, &ps);
+    EndPaint(window, &ps);
+    return 0;
+  }
   return DefWindowProcW(window, message, first, second);
 }
 

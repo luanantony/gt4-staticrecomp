@@ -1707,11 +1707,21 @@ Related: existing window/input tasks TASK-038 and TASK-076. No compatibility fix
 
 ### TASK-127 — Flashing window followed by crashes (issue #99)
 
-State: recorded, not planned (2026-10-26).
+State: implementation complete, PR open awaiting owner review (2026-10-29).
 Issue: https://github.com/moesuito/gt4-staticrecomp/issues/99
 Report: repeated flashing and random crashes in 1.2.2, 1.2.3 and rc5, for both games; logs attached.
-Priority: high, candidate for an upcoming 1.3.0 rc before final.
-Related: TASK-105 and TASK-124 remain separate until evidence confirms the same cause.
+Evidence & Root cause:
+1. Analysis of reporter log bundle `GT4Recomp-logs-20261025-094852.zip`:
+   - System: AMD Ryzen, NVIDIA GeForce RTX 3070, LG Ultrawide 3440x1440, Fullscreen on, Vsync off, immediate presentation mode (`DisableMailboxPresentation = true`), upscale 6x (3840x2688).
+   - In 1.3.0-rc5, the session terminated after 149 seconds with exit code `-805306369` (`0xCFFFFFFF`, `STATUS_APPLICATION_HANG`), generated when the message loop becomes unresponsive and Windows terminates the hanging process.
+   - The primary reporter (`Rafeku`) tested `1.3.0-rc6` and confirmed that the flashing and crashes were completely eliminated on their RTX 3070 Ultrawide setup: "Ok so I've tested with this newest release, it's working fine as it should. I'm running Spec II, fullscreen. Also running with HD Textures, it seems to be running normally, no crashes."
+2. The Win32 parent game window lacked `WM_ERASEBKGND` handling, allowing Windows `DefWindowProcW` to repeatedly repaint the window background (`BLACK_BRUSH`) during buffer presentation, focus shifts, and window resizes, producing black/flicker frames. Additionally, missing `WM_PAINT` validation left unhandled invalid update regions.
+3. The launcher lacked descriptive reporting for exit code `-805306369` (`STATUS_APPLICATION_HANG`), showing an opaque generic message.
+Fix:
+1. Updated `native/window.cpp` to handle `WM_ERASEBKGND` (returning 1) and `WM_PAINT` (validating with `BeginPaint`/`EndPaint`) while `surface_attached` is active, preventing background erase flickering and message loop saturation.
+2. Updated `launcher/crates/gt4l-core/src/exit.rs` to recognize `STATUS_APPLICATION_HANG` (`-805306369`) and present a clear diagnostic message.
+3. Added unit tests in `launcher/crates/gt4l-core/src/exit.rs` for `STATUS_APPLICATION_HANG` reporting.
+Branch: task/127-flashing-window-diagnostics.
 
 ### TASK-128 — Optional use of an existing disc image (issue #95)
 

@@ -35,12 +35,18 @@ fn stop_reason(line: &str) -> Option<&str> {
     Some(rest[index + CYCLES_MARKER.len()..].trim())
 }
 
+/// NTSTATUS 0xCFFFFFFF: Windows terminated the application because its message loop stopped responding (TASK-127).
+pub const STATUS_APPLICATION_HANG: i32 = -805306369;
+
 /// One plain sentence for the crash dialog. Technical detail stays in the log.
 pub fn user_message(outcome: &Outcome) -> String {
     match outcome {
         Outcome::NormalClose => String::new(),
         Outcome::Crashed { reason: Some(reason), .. } => {
             format!("Gran Turismo 4 stopped unexpectedly ({reason}). The session folder has the details.")
+        }
+        Outcome::Crashed { reason: None, exit_code: Some(STATUS_APPLICATION_HANG) } => {
+            "Gran Turismo 4 stopped responding and was closed by Windows (application hang). The session folder has the details.".to_string()
         }
         Outcome::Crashed { reason: None, exit_code: Some(code) } => {
             format!("Gran Turismo 4 stopped unexpectedly (exit code {code}). The session folder has the details.")
@@ -80,6 +86,15 @@ mod tests {
     #[test]
     fn missing_stop_line_and_killed_process_is_a_crash_without_reason() {
         assert_eq!(classify("", None), Outcome::Crashed { reason: None, exit_code: None });
+    }
+
+    #[test]
+    fn application_hang_exit_code_gives_actionable_message() {
+        let outcome = Outcome::Crashed { reason: None, exit_code: Some(STATUS_APPLICATION_HANG) };
+        assert_eq!(
+            user_message(&outcome),
+            "Gran Turismo 4 stopped responding and was closed by Windows (application hang). The session folder has the details."
+        );
     }
 
     #[test]

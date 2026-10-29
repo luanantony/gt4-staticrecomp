@@ -1838,4 +1838,4 @@ Fix:
 2. Updated `launcher/crates/gt4l-core/src/launch.rs` in `Pcsx2Paths::for_session` to ensure `portable.ini` exists in the GS executable directory prior to session startup.
 3. Updated `native/gs_stream/gs_stream_client.cpp` before spawning the child process to ensure `portable.ini` exists alongside `process` if invoked without the launcher.
 4. Added unit tests in `launcher/crates/gt4l-core/tests/gs_release.rs` verifying `portable.ini` creation and automatic restoration if removed.
-Branch: task/136-onedrive-gs-dataroot.
+Branch: task/136-onedrive-gs-dataroot. PR: https://github.com/moesuito/gt4-staticrecomp/pull/136

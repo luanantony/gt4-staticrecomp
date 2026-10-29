@@ -42,17 +42,29 @@
       role: "switch",
       "aria-checked": String(!!checked),
       "aria-label": label,
+      data: { adjust: "1" },
       on: {
         click: function () {
           onToggle(!checked);
         }
       }
     });
+    toggleBtn.addEventListener("gt4-adjust", function (event) {
+      var next = event.detail.delta > 0;
+      if (next !== !!checked) {
+        onToggle(next);
+      }
+    });
+    var labelSpan = h("span", { text: label });
+    labelSpan.style.cursor = "pointer";
+    labelSpan.addEventListener("click", function () {
+      onToggle(!checked);
+    });
     return {
       button: toggleBtn,
       row: h("div", { class: "row" }, [
         h("div", { class: "k" }, [
-          h("span", { text: label }),
+          labelSpan,
           infoTip(label, helpText)
         ]),
         h("div", { class: "ctl" }, [toggleBtn])

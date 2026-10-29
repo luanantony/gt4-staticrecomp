@@ -1808,3 +1808,41 @@ Acceptance: target isolation, account/logout/HTTP cancellation regressions, cont
 preview consistency, full native/Python/Rust and en-US/pt-BR checks, both target builds/pins,
 installer+portable verification. New builds go to draft; owner gameplay/review before merge or
 publication. No code, builds, running agents or public rc7 authorized by this mapping step.
+
+
+### TASK-134 — Game-code optimization study for the i5-7200U laptop
+
+State: research and plan completed (PR #130 draft on task/134-game-code-optimization-study).
+Focus: Identify bottlenecks outside the GS renderer on low-end 2-core / 15W CPUs (EE critical path, VIF posting, SPU2 mixing, guest state aliasing).
+
+### TASK-135 — Launcher controller toggle navigation (issue #123)
+
+State: implementation complete, PR open awaiting owner review (2026-10-29).
+Issue: https://github.com/moesuito/gt4-staticrecomp/issues/123
+Report: When navigating the launcher UI on Steam Deck / gamepad, focus skips boolean toggle rows (such as Fullscreen or Performance Mode) or fails to toggle them with gamepad buttons.
+Root cause:
+1. In `launcher/crates/gt4l-tauri/ui/js/spatial.js`, candidate scoring penalizes horizontal offset (`across = dx`) twice as much as forward distance (`ahead = dy`). Because `.row .ctl` has `width: 220px` with `justify-content: flex-end`, dropdowns (`.select`) occupy the full 220px (center offset +110px), while 36px toggle buttons (`.toggle`) are pushed to the far right (center offset +202px, a 92px offset). When moving down from a dropdown, the 92px horizontal shift on the narrow toggle incurs a penalty of `2 * 92 = 184`, making the next dropdown (distance 96, penalty 0, score 96) score lower than the toggle (distance 48, penalty 184, score 232). As a result, spatial navigation completely skips past toggle rows.
+2. In `launcher/crates/gt4l-tauri/ui/js/pages/settings.js`, toggle buttons lacked `data-adjust="1"` and `gt4-adjust` handling. When focused on a toggle, pressing D-pad Left or Right invoked `move("left")` / `move("right")`, moving focus away from the toggle to the sidebar or info button instead of changing the toggle value.
+3. In `launcher/crates/gt4l-tauri/ui/js/pages/settings.js`, `focusRow()` selected the first focusable element in a row matching `rowKeyOf(el) === key`. Since `.info` appears before `.ctl` in `.row`, remembered rows focused the `.info` tooltip button instead of the actual setting control in `.ctl`.
+4. In `launcher/crates/gt4l-tauri/ui/js/nav.js`, `activate()` skipped click dispatch for all elements with `tagName === "INPUT"`, preventing activation on native checkbox inputs.
+Fix:
+1. In `launcher/crates/gt4l-tauri/ui/js/nav.js`, updated `move()` to normalize spatial navigation bounding boxes for elements inside `.ctl` to their parent `.ctl` container bounds, eliminating horizontal offset penalties between rows in the control column.
+2. In `launcher/crates/gt4l-tauri/ui/js/pages/settings.js` and `achievements.js`, added `data: { adjust: "1" }` and `gt4-adjust` event listeners to toggle buttons so D-pad Left turns the toggle Off and D-pad Right turns it On without moving focus away.
+3. Added click listener on toggle row labels to toggle the setting when clicking/tapping the row label text.
+4. In `launcher/crates/gt4l-tauri/ui/js/pages/settings.js`, updated `focusRow()` to prioritize controls inside `.ctl` over `.info` buttons.
+5. In `launcher/crates/gt4l-tauri/ui/js/nav.js`, updated `activate()` to support checkbox/radio inputs.
+6. In `launcher/crates/gt4l-tauri/ui/dev/nav-test.js`, added spatial navigation unit tests verifying that narrow toggle rows are not skipped when column bounds are normalized.
+Branch: task/135-launcher-controller-toggles.
+
+### TASK-136 — PCSX2 GS DataRoot OneDrive / Documentos failure handling (issue #131)
+
+State: implementation complete, PR #136 open awaiting owner review (2026-10-29).
+Issue: https://github.com/moesuito/gt4-staticrecomp/issues/131
+Report: Game fails to start on Windows with exit code 1 during handshake. Logs show `Failed to initialize config` when DataRoot resolves to `OneDrive\Documentos\PCSX2` due to path permissions, sync locking or missing redirection.
+Root cause: During early static initialization before `--config` argument parsing, `gt4-gs.exe` invokes `SHGetKnownFolderPath(FOLDERID_Documents)`. On Windows configurations where the Documents folder is relocated to OneDrive with sync locks or restricted permissions, PCSX2 fails to create/access its configuration root and terminates immediately with exit code 1 (`Failed to initialize config.`). When a `portable.ini` marker file is present in the executable's directory (`AppRoot`), PCSX2 runs in portable mode, setting its early `DataRoot` to `AppRoot` directly and completely avoiding any query to `FOLDERID_Documents` or OneDrive.
+Fix:
+1. Updated `launcher/crates/gt4l-core/src/gs_release.rs` to write and enforce `portable.ini` (`PORTABLE_MARKER`) beside `gt4-gs.exe` during release staging (`stage_and_publish`) and verification (`check_installed`).
+2. Updated `launcher/crates/gt4l-core/src/launch.rs` in `Pcsx2Paths::for_session` to ensure `portable.ini` exists in the GS executable directory prior to session startup.
+3. Updated `native/gs_stream/gs_stream_client.cpp` before spawning the child process to ensure `portable.ini` exists alongside `process` if invoked without the launcher.
+4. Added unit tests in `launcher/crates/gt4l-core/tests/gs_release.rs` verifying `portable.ini` creation and automatic restoration if removed.
+Branch: task/136-onedrive-gs-dataroot. PR: https://github.com/moesuito/gt4-staticrecomp/pull/136

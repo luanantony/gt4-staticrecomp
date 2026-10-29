@@ -96,6 +96,11 @@
     }
     var rects = list.map(function (el) {
       var box = el.getBoundingClientRect();
+      var ctl = el.closest ? el.closest(".ctl") : null;
+      if (ctl) {
+        var ctlBox = ctl.getBoundingClientRect();
+        return { left: ctlBox.left, top: box.top, width: ctlBox.width, height: box.height };
+      }
       return { left: box.left, top: box.top, width: box.width, height: box.height };
     });
     var next = GT4.spatial.pickNext(rects, index, direction);
@@ -130,7 +135,7 @@
       return;
     }
     var el = document.activeElement;
-    if (el && el.tagName !== "INPUT" && typeof el.click === "function") {
+    if (el && (el.tagName !== "INPUT" || el.type === "checkbox" || el.type === "radio") && typeof el.click === "function") {
       el.click();
     } else if (el && el.hasAttribute && el.hasAttribute("data-focusable")) {
       // SVG elements (the Controls drawing) have no click(): send the event the page listens to.

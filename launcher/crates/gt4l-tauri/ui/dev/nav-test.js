@@ -37,6 +37,18 @@
   var penalty = [rect(0, 0), rect(0, 100), rect(30, 60)];
   expect("straight below beats a nearer diagonal item", pick(penalty, 0, "down"), 1);
 
+  // Control column alignment (TASK-135): controls in a column with normalized container widths
+  // don't skip narrow toggles due to horizontal offset.
+  var row1Dropdown = rect(600, 0, 220, 48);
+  var row2ToggleNarrow = rect(784, 48, 36, 20); // without container normalization
+  var row2ToggleNormalized = rect(600, 48, 220, 20); // with .ctl container normalization
+  var row3Dropdown = rect(600, 96, 220, 48);
+
+  // Without normalization, row 3 beats row 2 because dx penalty (2 * 92 = 184) exceeds dy gap (48):
+  expect("without normalization, narrow toggle row is skipped", pick([row1Dropdown, row2ToggleNarrow, row3Dropdown], 0, "down"), 2);
+  // With .ctl normalization, row 2 is selected correctly:
+  expect("with normalization, toggle row is visited in order", pick([row1Dropdown, row2ToggleNormalized, row3Dropdown], 0, "down"), 1);
+
   // Grid 3x3, index = row * 3 + col.
   var grid = [];
   for (var r = 0; r < 3; r++) {

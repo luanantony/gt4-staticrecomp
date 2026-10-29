@@ -167,23 +167,35 @@
   }
 
   function toggleControl(ctx, row) {
+    function toggle() {
+      if (button.disabled) {
+        return;
+      }
+      var next = !button.classList.contains("on");
+      button.classList.toggle("on", next);
+      button.setAttribute("aria-checked", String(next));
+      commit(ctx, row.id, next);
+    }
     var button = h("button", {
       class: "toggle" + (row.current ? " on" : ""),
       role: "switch",
       "aria-checked": String(!!row.current),
       "aria-label": row.label,
       disabled: !!row.disabled,
-      data: { setting: row.id },
+      data: { setting: row.id, adjust: "1" },
       on: {
-        click: function () {
-          var next = !button.classList.contains("on");
-          button.classList.toggle("on", next);
-          button.setAttribute("aria-checked", String(next));
-          commit(ctx, row.id, next);
-        }
+        click: toggle
       }
     });
-    return { node: [button] };
+    // Left/Right on gamepad/keyboard changes the toggle (Left = off, Right = on)
+    button.addEventListener("gt4-adjust", function (event) {
+      var current = button.classList.contains("on");
+      var next = event.detail.delta > 0;
+      if (next !== current) {
+        toggle();
+      }
+    });
+    return { node: [button], toggle: toggle };
   }
 
   function enabledOptions(options) {
@@ -308,6 +320,12 @@
     if (row.note) {
       // A row that is shown but not available now (the launcher sends `note` only for such a row).
       keyNodes.push(h("span", { class: "hint-text", text: row.note }));
+    }
+    if (row.control === "toggle" && control.toggle) {
+      keyNodes[0].style.cursor = "pointer";
+      keyNodes[0].addEventListener("click", function () {
+        control.toggle();
+      });
     }
     return h("div", { class: "row" + (row.disabled ? " is-disabled" : ""), data: { row: row.id } }, [
       h("div", { class: "k" }, keyNodes),
@@ -778,7 +796,8 @@
         if (!target) {
           var list = GT4.nav.focusables();
           var key = FL.rowFor(state);
-          target = key ? list.filter(function (el) { return rowKeyOf(el) === key; })[0] : null;
+          target = key ? (list.filter(function (el) { return rowKeyOf(el) === key && !!el.closest(".ctl"); })[0] ||
+                          list.filter(function (el) { return rowKeyOf(el) === key; })[0]) : null;
           target = target || list.filter(function (el) { return !!el.closest(".ctl"); })[0] || list[0];
         }
         if (target) {

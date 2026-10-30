@@ -1891,4 +1891,4 @@ tdll.dll and support for GT4_AUDIO_LATENCY_MS (20..500 ms).
 ative/host_io_fixture.cpp, updated pacing bound assertions and verified buffer capacity bounds.
 6. In launcher/crates/gt4l-core/src/launch.rs, added "GT4_PACING" and "GT4_AUDIO_LATENCY_MS" to PASSED_THROUGH so custom overrides in Steam Launch Options are preserved and passed to the game process.
 7. In launcher/crates/gt4l-core/tests/launch_contract.rs, updated unit test assertions verifying that GT4_PACING and GT4_AUDIO_LATENCY_MS pass through without scrubbing.
-Branch: task/138-proton-audio-crackling.
+Branch: task/138-proton-audio-crackling. PR: https://github.com/moesuito/gt4-staticrecomp/pull/141

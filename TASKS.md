@@ -1866,4 +1866,4 @@ Fix:
 8. In
 ative/controls_fixture.cpp, added unit test assertions verifying that 	riggers-as-pedals.toml parses scale=0.353 and that
 ead_trigger(..., 255).pressure == 90.
-Branch: task/137-full-range-triggers.
+Branch: task/137-full-range-triggers. PR: https://github.com/moesuito/gt4-staticrecomp/pull/140

@@ -90,11 +90,14 @@ public:
   std::uint64_t received_frames() const { return received_; }
   std::uint64_t completed_frames() const { return completed_; }
   std::uint64_t canceled_frames() const { return canceled_; }
+  std::size_t target_latency_frames() const { return target_latency_frames_; }
+  std::size_t frames_per_buffer() const { return frames_per_buffer_; }
+  std::size_t buffer_count() const { return buffer_count_; }
   void close(bool drain);
 
 private:
   static constexpr std::size_t max_frames_per_buffer = 512;
-  static constexpr std::size_t max_buffers = 16;
+  static constexpr std::size_t max_buffers = 32;
   struct Buffer {
     std::array<std::int16_t, max_frames_per_buffer * 2> samples{};
     WAVEHDR header{};
@@ -106,6 +109,7 @@ private:
   std::size_t pending_frames_ = 0;
   std::size_t frames_per_buffer_ = 512;
   std::size_t buffer_count_ = 4;
+  std::size_t target_latency_frames_ = gt4::pacing::target_latency_frames;
   std::size_t next_buffer_ = 0;
   gt4::pacing::Mode mode_ = gt4::pacing::Mode::audio;
   bool started_ = false;

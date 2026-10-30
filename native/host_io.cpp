@@ -274,16 +274,58 @@ namespace {
 // Blocking audio path: four 512-frame buffers, as before the paced mode.
 constexpr std::size_t blocking_frames_per_buffer = 512;
 constexpr std::size_t blocking_buffer_count = 4;
-// Paced path: sixteen 256-frame buffers (5.3 ms each) under a 60 ms target.
+// Paced path (native Windows default): sixteen 256-frame buffers (5.3 ms each) under a 60 ms target.
 constexpr std::size_t paced_frames_per_buffer = 256;
 constexpr std::size_t paced_buffer_count = 16;
+// Paced path (Wine / Proton / SteamOS): twenty-four 512-frame buffers (10.7 ms each) under a 100 ms target
+// to match Linux PipeWire / PulseAudio quantum sizes (typically 512-1024 frames) and prevent XRuns (issue #129).
+constexpr std::size_t wine_paced_frames_per_buffer = 512;
+constexpr std::size_t wine_paced_buffer_count = 24;
+
+bool is_running_under_wine() {
+  static const bool under_wine = [] {
+    HMODULE ntdll = GetModuleHandleW(L"ntdll.dll");
+    return ntdll && GetProcAddress(ntdll, "wine_get_version") != nullptr;
+  }();
+  return under_wine;
+}
+
+std::size_t determine_target_latency_frames() {
+  const char *env = std::getenv("GT4_AUDIO_LATENCY_MS");
+  if (env && *env) {
+    char *end = nullptr;
+    const long val = std::strtol(env, &end, 10);
+    if (end && *end == '\0' && val >= 20 && val <= 500) {
+      return static_cast<std::size_t>(val) * gt4::pacing::sample_rate_hz / 1000;
+    }
+    std::fprintf(stderr,
+                 "[audio] warning: invalid GT4_AUDIO_LATENCY_MS '%s', ignoring (valid: 20..500 ms)\n",
+                 env);
+  }
+  if (is_running_under_wine())
+    return 100 * gt4::pacing::sample_rate_hz / 1000; // 4800 frames (100 ms) for Wine/Proton PipeWire
+  return gt4::pacing::target_latency_frames; // 2880 frames (60 ms) default for native Windows
+}
 } // namespace
 
 AudioOutput::AudioOutput(std::function<bool()> pump_messages, gt4::pacing::Mode mode)
-    : mode_(mode), pump_messages_(std::move(pump_messages)) {
+    : mode_(mode), pump_messages_(std::move(pump_messages)),
+      target_latency_frames_(determine_target_latency_frames()),
+      controller_(static_cast<double>(target_latency_frames_),
+                  1.0 / static_cast<double>(gt4::pacing::guest_vblank_rate)) {
   const bool paced = mode_ == gt4::pacing::Mode::paced;
-  frames_per_buffer_ = paced ? paced_frames_per_buffer : blocking_frames_per_buffer;
-  buffer_count_ = paced ? paced_buffer_count : blocking_buffer_count;
+  if (paced) {
+    if (target_latency_frames_ >= 80 * gt4::pacing::sample_rate_hz / 1000) {
+      frames_per_buffer_ = wine_paced_frames_per_buffer;
+      buffer_count_ = wine_paced_buffer_count;
+    } else {
+      frames_per_buffer_ = paced_frames_per_buffer;
+      buffer_count_ = paced_buffer_count;
+    }
+  } else {
+    frames_per_buffer_ = blocking_frames_per_buffer;
+    buffer_count_ = blocking_buffer_count;
+  }
   event_ = CreateEventW(nullptr, TRUE, FALSE, nullptr);
   if (!event_)
     throw std::runtime_error("Cannot create audio completion event");
@@ -309,14 +351,19 @@ AudioOutput::AudioOutput(std::function<bool()> pump_messages, gt4::pacing::Mode 
           "waveOutPrepareHeader");
       buffer.prepared = true;
     }
-    if (paced)
+    if (paced) {
+      const bool wine = is_running_under_wine();
+      const bool custom = std::getenv("GT4_AUDIO_LATENCY_MS") != nullptr;
       std::fprintf(stderr,
                    "[audio] Windows PCM stereo16 48000 Hz, paced: %zu x %zu "
-                   "frames, 60 ms target, non-blocking, rate control +-0.5 percent\n",
-                   buffer_count_, frames_per_buffer_);
-    else
+                   "frames, %zu ms target%s, non-blocking, rate control +-0.5 percent\n",
+                   buffer_count_, frames_per_buffer_,
+                   target_latency_frames_ * 1000 / gt4::pacing::sample_rate_hz,
+                   wine ? (custom ? " (custom + Wine/Proton)" : " (Wine/Proton auto-adjusted)") : (custom ? " (custom)" : ""));
+    } else {
       std::fprintf(stderr,
-                   "[audio] Windows PCM stereo16 48000 Hz, 4 x 512 frames\n");
+                   "[audio] Windows PCM stereo16 48000 Hz, 4 x 512 frames (blocking mode)\n");
+    }
   } catch (...) {
     try {
       close(false);
@@ -459,7 +506,7 @@ void AudioOutput::pump() {
   if (mode_ != gt4::pacing::Mode::paced || !device_)
     return;
   reap();
-  if (!started_ && ring_.size() >= gt4::pacing::target_latency_frames)
+  if (!started_ && ring_.size() >= target_latency_frames_)
     started_ = true;
   if (!started_)
     return;
@@ -472,7 +519,7 @@ void AudioOutput::pump() {
   // the ring, where the controller can see it.
   while (ring_.size() >= frames_per_buffer_ &&
          (queued_device_buffers() + 1) * frames_per_buffer_ <=
-             gt4::pacing::target_latency_frames &&
+             target_latency_frames_ &&
          !buffers_[next_buffer_].queued)
     submit_paced_block();
 }

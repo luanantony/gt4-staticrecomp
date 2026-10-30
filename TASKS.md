@@ -1808,3 +1808,87 @@ Acceptance: target isolation, account/logout/HTTP cancellation regressions, cont
 preview consistency, full native/Python/Rust and en-US/pt-BR checks, both target builds/pins,
 installer+portable verification. New builds go to draft; owner gameplay/review before merge or
 publication. No code, builds, running agents or public rc7 authorized by this mapping step.
+
+### TASK-134 â€” Game-code optimization study for the i5-7200U laptop
+
+State: research and plan completed (PR #130 draft on task/134-game-code-optimization-study).
+Focus: Identify bottlenecks outside the GS renderer on low-end 2-core / 15W CPUs (EE critical path, VIF posting, SPU2 mixing, guest state aliasing).
+
+### TASK-135 â€” Launcher controller toggle navigation (issue #123)
+
+State: implementation complete, PR #138 open awaiting owner review (2026-10-29).
+Issue: https://github.com/moesuito/gt4-staticrecomp/issues/123
+Report: When navigating the launcher UI on Steam Deck / gamepad, focus skips boolean toggle rows (such as Fullscreen or Performance Mode) or fails to toggle them with gamepad buttons.
+Root cause:
+1. In launcher/crates/gt4l-tauri/ui/js/spatial.js, candidate scoring penalizes horizontal offset (cross = dx) twice as much as forward distance (head = dy). Because .row .ctl has width: 220px with justify-content: flex-end, dropdowns (.select) occupy the full 220px (center offset +110px), while 36px toggle buttons (.toggle) are pushed to the far right (center offset +202px, a 92px offset). When moving down from a dropdown, the 92px horizontal shift on the narrow toggle incurs a penalty of 2 * 92 = 184, making the next dropdown (distance 96, penalty 0, score 96) score lower than the toggle (distance 48, penalty 184, score 232). As a result, spatial navigation completely skips past toggle rows.
+2. In launcher/crates/gt4l-tauri/ui/js/pages/settings.js, toggle buttons lacked data-adjust="1" and gt4-adjust handling. When focused on a toggle, pressing D-pad Left or Right invoked move("left") / move("right"), moving focus away from the toggle to the sidebar or info button instead of changing the toggle value.
+3. In launcher/crates/gt4l-tauri/ui/js/pages/settings.js, ocusRow() selected the first focusable element in a row matching
+owKeyOf(el) === key. Since .info appears before .ctl in .row, remembered rows focused the .info tooltip button instead of the actual setting control in .ctl.
+4. In launcher/crates/gt4l-tauri/ui/js/nav.js, ctivate() skipped click dispatch for all elements with 	agName === "INPUT", preventing activation on native checkbox inputs.
+Fix:
+1. In launcher/crates/gt4l-tauri/ui/js/nav.js, updated move() to normalize spatial navigation bounding boxes for elements inside .ctl to their parent .ctl container bounds, eliminating horizontal offset penalties between rows in the settings column.
+2. In launcher/crates/gt4l-tauri/ui/js/pages/settings.js and chievements.js, added data: { adjust: "1" } and gt4-adjust event listeners to toggle buttons so D-pad Left turns the toggle Off and D-pad Right turns it On without moving focus away.
+3. Added click listener on toggle row labels to toggle the setting when clicking/tapping the row label text.
+4. In launcher/crates/gt4l-tauri/ui/js/pages/settings.js, updated ocusRow() to prioritize controls inside .ctl over .info buttons.
+5. In launcher/crates/gt4l-tauri/ui/js/nav.js, updated ctivate() to support checkbox/radio inputs.
+6. In launcher/crates/gt4l-tauri/ui/dev/nav-test.js, added spatial navigation unit tests verifying that narrow toggle rows are not skipped when column bounds are normalized.
+Branch: task/135-launcher-controller-toggles. PR: https://github.com/moesuito/gt4-staticrecomp/pull/138
+
+### TASK-136 â€” PCSX2 GS DataRoot OneDrive / Documentos failure handling (issue #131)
+
+State: implementation complete, PR #136 open awaiting owner review (2026-10-29).
+Issue: https://github.com/moesuito/gt4-staticrecomp/issues/131
+Report: Game fails to start on Windows with exit code 1 during handshake. Logs show Failed to initialize config when DataRoot resolves to OneDrive\Documentos\PCSX2 due to path permissions, sync locking or missing redirection.
+Root cause: During early static initialization before --config argument parsing, gt4-gs.exe invokes SHGetKnownFolderPath(FOLDERID_Documents). On Windows configurations where the Documents folder is relocated to OneDrive with sync locks or restricted permissions, PCSX2 fails to create/access its configuration root and terminates immediately with exit code 1 (Failed to initialize config.). When a portable.ini marker file is present in the executable's directory (AppRoot), PCSX2 runs in portable mode, setting its early DataRoot to AppRoot directly and completely avoiding any query to FOLDERID_Documents or OneDrive.
+Fix:
+1. Updated launcher/crates/gt4l-core/src/gs_release.rs to write and enforce portable.ini (PORTABLE_MARKER) beside gt4-gs.exe during release staging (stage_and_publish) and verification (check_installed).
+2. Updated launcher/crates/gt4l-core/src/launch.rs in Pcsx2Paths::for_session to ensure portable.ini exists in the GS executable directory prior to session startup.
+3. Updated
+ative/gs_stream/gs_stream_client.cpp before spawning the child process to ensure portable.ini exists alongside process if invoked without the launcher.
+4. Added unit tests in launcher/crates/gt4l-core/tests/gs_release.rs verifying portable.ini creation and automatic restoration if removed.
+Branch: task/136-onedrive-gs-dataroot. PR: https://github.com/moesuito/gt4-staticrecomp/pull/136
+
+### TASK-137 â€” Full range trigger sensitivity and calibration (issue #134)
+
+State: implementation complete, PR #140 open awaiting owner review (2026-10-29).
+Issue: https://github.com/moesuito/gt4-staticrecomp/issues/134
+Report: When modern gamepad triggers (Xbox, DualSense, Steam Deck) are mapped to throttle and brake, the car reaches 100% throttle or full brake lockup at only ~35% of the physical trigger pull. The remaining 65% of trigger travel is dead/saturated.
+Root cause: Gran Turismo 4 was designed for DualShock 2 pressure-sensitive buttons (Cross and Square). Because thumb pressure on rubber domes cannot comfortably reach digital 255 without extreme strain, Polyphony Digital scaled in-game throttle and brake calculations to reach 100% saturation at pressure ~90 (0x5A in hex, or ~35% of 255). Modern controller triggers have linear travel producing 0..255. When fed raw 0..255 to the PS2 controller registers, saturation occurs at physical pull 35%, leaving the remaining 65% as dead travel. Runtime .pnach cheat patches (by Silent and Aero_) work in PCSX2 by rewriting MIPS EE instructions, but GT4Recomp has no EE interpreter or JIT; guest code is statically precompiled into ps2game.lib, so .pnach files are ignored. The native controls architecture (
+ative/controls.cpp) already supported a scale multiplier (pressure = floor(min(1.0, curve(fraction) * scale) * 255)). Scaling trigger output by  .353 (90 / 255 = 0.35294) maps 100% of the physical trigger throw to exactly pressure 90 (0x5A), providing true 1-to-1 linear pedal travel without dead saturation.
+Fix:
+1. In launcher/crates/gt4controls/src/lib.rs, added scale to TriggerTuning struct, parsed scale= option from trigger sources in TOML, serialized scale={scale:.3} when scale != 1.0, and defined TRIGGER_PEDAL_SCALE = 90.0 / 255.0 constant. Added round-trip unit tests.
+2. In launcher/crates/gt4l-app/src/main.rs, preserved scale in TriggerTuning constructor.
+3. In launcher/crates/gt4l-tauri/src/commands.rs, handled scale / sensitivity in set_setting for L2 and R2.
+4. In launcher/crates/gt4l-tauri/src/model.rs, added Sensitivity slider row (10% to 100%, step 5%, default 100%) to launcher Controls settings table, updated 	rigger_rows(), and validated scale percentage.
+5. In launcher/crates/gt4l-tauri/ui/js/controls-model.js and pages/controls.js, applied scale parameter in live trigger evaluation and preview, added sensitivity row UI label and slider handler.
+6. In launcher/crates/gt4l-tauri/ui/dev/nav-test.js, added unit tests verifying 	riggerOutput with scale=0.353 (yielding exactly 90/255 at full travel) and scale=0.5 (yielding 127/255).
+7. In docs/controls/triggers-as-pedals.toml, updated LT and RT bindings to deadzone=0.05 scale=0.353 and documented the 0x5A PS2 saturation scaling.
+8. In
+ative/controls_fixture.cpp, added unit test assertions verifying that 	riggers-as-pedals.toml parses scale=0.353 and that
+ead_trigger(..., 255).pressure == 90.
+Branch: task/137-full-range-triggers. PR: https://github.com/moesuito/gt4-staticrecomp/pull/140
+
+### TASK-138 â€” Audio crackling and underruns on Proton / SteamOS (issue #129)
+
+State: implementation complete, PR open awaiting owner review (2026-10-30).
+Issue: https://github.com/moesuito/gt4-staticrecomp/issues/129
+Report: When running on SteamOS 3.9.5 with Proton GE on desktop PC, audio crackles, pops, and skips, particularly on continuous engine noises.
+Root cause:
+1. In
+ative/host_io.cpp, the paced audio implementation used a fixed 60 ms target latency (	arget_latency_frames = 2880), sixteen 256-frame buffers (5.33 ms each), and refused to submit blocks when the device queue exceeded 2816 frames (58.6 ms).
+2. In Wine / Proton on Linux, waveOut is emulated on top of PipeWire/PulseAudio (winepulse.drv), which operates with larger audio buffer quanta (typically 512, 1024, or 2048 frames; 1024 frames = 21.3 ms on SteamOS).
+3. Submitting small 256-frame buffers once per VBlank (16.67 ms) under a tight 58.6 ms device cap creates phase alignment mismatch with PipeWire's 1024-frame (21.3 ms) pulls, causing the waveOut queue to periodically drop to zero. This triggers PipeWire XRuns (buffer underruns), heard as sharp pops/crackling on continuous harmonic waveforms like engine RPM audio.
+4. Furthermore, launcher/crates/gt4l-core/src/launch.rs scrubbed all GT4_* variables (SCRUBBED_PREFIXES = &["GT4_", "PS2_"]), preventing users from passing GT4_PACING=audio or custom audio knobs via Steam launch options.
+Fix:
+1. In
+ative/host_io.hpp, expanded Buffer storage capacity to max_buffers = 32 and exposed 	arget_latency_frames(), rames_per_buffer(), and uffer_count().
+2. In
+ative/host_io.cpp, added Wine/Proton detection via wine_get_version in
+tdll.dll and support for GT4_AUDIO_LATENCY_MS (20..500 ms).
+3. When running under Wine/Proton, default latency is auto-adjusted to 100 ms (4800 frames) with twenty-four 512-frame buffers (10.67 ms each, matching PipeWire quanta and providing ample buffer headroom), while native Windows retains the exact 60 ms / 256-frame / 16-buffer baseline.
+4. Updated AudioOutput::pump() to use 	arget_latency_frames_.
+5. In
+ative/host_io_fixture.cpp, updated pacing bound assertions and verified buffer capacity bounds.
+6. In launcher/crates/gt4l-core/src/launch.rs, added "GT4_PACING" and "GT4_AUDIO_LATENCY_MS" to PASSED_THROUGH so custom overrides in Steam Launch Options are preserved and passed to the game process.
+7. In launcher/crates/gt4l-core/tests/launch_contract.rs, updated unit test assertions verifying that GT4_PACING and GT4_AUDIO_LATENCY_MS pass through without scrubbing.
+Branch: task/138-proton-audio-crackling.

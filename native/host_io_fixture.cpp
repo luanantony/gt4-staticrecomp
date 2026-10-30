@@ -248,7 +248,7 @@ int main() {
       gt4::pacing::FramePacer pacer(clock.frequency(), gt4::pacing::guest_vblank_rate);
       AudioOutput paced(nullptr, gt4::pacing::Mode::paced);
       std::array<std::int16_t, 800 * 2> frame_audio{};
-      const std::uint64_t bound = gt4::pacing::target_latency_frames + 16 * 256;
+      const std::uint64_t bound = paced.target_latency_frames() + paced.buffer_count() * paced.frames_per_buffer();
       const std::int64_t longest_push = static_cast<std::int64_t>(clock.frequency() / 500);
       std::int64_t worst_push = 0;
       std::uint64_t worst_queue = 0;
@@ -271,6 +271,8 @@ int main() {
       require(paced.resampler_ratio() >= 0.995 && paced.resampler_ratio() <= 1.005,
               "resample ratio bounded");
       require(paced.overflow_frames() == 0, "ring never overflows at nominal rate");
+      require(paced.buffer_count() <= 32 && paced.frames_per_buffer() <= 512,
+              "buffer parameters stay within max storage capacity");
       std::fprintf(stderr,
                    "PASS: paced audio (3 s, 60 Hz): worst push %.3f ms, max queue %llu "
                    "frames, completed %llu, underruns %llu, ratio %.6f\n",

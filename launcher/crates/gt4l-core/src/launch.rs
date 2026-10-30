@@ -221,7 +221,13 @@ fn flag(on: bool) -> String {
 /// hidden owner test knob that the game validates itself (an invalid value refuses the start):
 /// - `GT4_ASPECT_FOV_EXTRA` (TASK-080 owner test T1, 0.5..3.0, default 1.0): an extra horizontal FOV factor on top of
 ///   the geometry-correct Hor+ widening, to compare roundness. It is not a setting and no row writes it.
-pub const PASSED_THROUGH: &[&str] = &["GT4_ASPECT_FOV_EXTRA"];
+/// - `GT4_PACING` (TASK-138): audio pacing mode override ("paced" or "audio").
+/// - `GT4_AUDIO_LATENCY_MS` (TASK-138): audio latency buffer target override in milliseconds (20..500 ms).
+pub const PASSED_THROUGH: &[&str] = &[
+    "GT4_ASPECT_FOV_EXTRA",
+    "GT4_PACING",
+    "GT4_AUDIO_LATENCY_MS",
+];
 
 /// Whether an inherited variable must be removed for the game process.
 pub fn is_scrubbed(name: &str) -> bool {

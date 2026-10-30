@@ -102,17 +102,20 @@ fn inherited_gt4_and_ps2_variables_are_scrubbed_and_others_kept() {
         session_dir: Path::new("session"),
     };
     let inherited = vec![
-        "GT4_PACING".to_string(),
+        "GT4_PERF".to_string(),
         "PS2_DUMP_AUDIO".to_string(),
         "PATH".to_string(),
         "VK_LAYER_PATH".to_string(),
         "GT4_ASPECT_FOV_EXTRA".to_string(),
+        "GT4_PACING".to_string(),
+        "GT4_AUDIO_LATENCY_MS".to_string(),
         "GT4_DISPLAY_ASPECT".to_string(),
     ];
     let plan = plan_launch(&inputs, &Settings::default(), None, &inherited);
-    // TASK-080 T1: the hidden FOV factor passes through; the aspect itself is always auto.
-    assert_eq!(plan.removed_inherited, vec!["GT4_DISPLAY_ASPECT", "GT4_PACING", "PS2_DUMP_AUDIO"]);
+    // TASK-080 T1 & TASK-138: FOV factor, pacing and audio latency pass through; the aspect itself is always auto.
+    assert_eq!(plan.removed_inherited, vec!["GT4_DISPLAY_ASPECT", "GT4_PERF", "PS2_DUMP_AUDIO"]);
     assert!(!plan.removed_inherited.iter().any(|name| name == "PATH" || name == "VK_LAYER_PATH"));
+    assert!(!plan.removed_inherited.iter().any(|name| name == "GT4_PACING" || name == "GT4_AUDIO_LATENCY_MS"));
 }
 
 #[test]

@@ -126,7 +126,13 @@ impl Curve {
 pub struct TriggerTuning {
     pub deadzone: f32,
     pub curve: Curve,
+    pub scale: f32,
 }
+
+/// Default trigger scale: full pressure (1.0).
+pub const TRIGGER_DEFAULT_SCALE: f32 = 1.0;
+/// Calibrated trigger scale for full-range pedals in GT4 (90 of 255 saturation threshold).
+pub const TRIGGER_PEDAL_SCALE: f32 = 90.0 / 255.0;
 
 /// Default trigger deadzone: 30 of 255 raw units.
 pub const TRIGGER_DEFAULT_DEADZONE: f32 = 30.0 / 255.0;
@@ -222,7 +228,7 @@ impl Controls {
 
     /// Trigger tuning of an input, read from its analog trigger source (`xinput:LT` or `xinput:RT`).
     pub fn trigger_tuning(&self, input: &str) -> TriggerTuning {
-        let mut tuning = TriggerTuning { deadzone: TRIGGER_DEFAULT_DEADZONE, curve: Curve::Linear };
+        let mut tuning = TriggerTuning { deadzone: TRIGGER_DEFAULT_DEADZONE, curve: Curve::Linear, scale: TRIGGER_DEFAULT_SCALE };
         let source = self.sources(input).and_then(|sources| {
             sources.iter().find(|source| source.starts_with("xinput:LT") || source.starts_with("xinput:RT"))
         });
@@ -232,6 +238,11 @@ impl Controls {
                 if let Some(value) = option.strip_prefix("deadzone=") {
                     if let Ok(parsed) = value.parse::<f32>() {
                         tuning.deadzone = parsed;
+                    }
+                }
+                if let Some(value) = option.strip_prefix("scale=") {
+                    if let Ok(parsed) = value.parse::<f32>() {
+                        tuning.scale = parsed;
                     }
                 }
                 match option {
@@ -252,7 +263,12 @@ impl Controls {
     pub fn set_trigger_tuning(&mut self, input: &str, tuning: TriggerTuning) -> Result<(), ControlsError> {
         let current: Vec<String> = self.sources(input).map(|sources| sources.to_vec()).unwrap_or_default();
         let deadzone = tuning.deadzone.clamp(0.0, 0.95);
-        let options = format!("deadzone={deadzone:.3} curve={}", tuning.curve.as_str());
+        let scale = tuning.scale.clamp(0.05, 2.0);
+        let options = if (scale - 1.0).abs() < 0.001 {
+            format!("deadzone={deadzone:.3} curve={}", tuning.curve.as_str())
+        } else {
+            format!("deadzone={deadzone:.3} curve={} scale={scale:.3}", tuning.curve.as_str())
+        };
         let updated: Vec<String> = current
             .into_iter()
             .map(|source| {
@@ -707,7 +723,7 @@ mod tests {
     fn trigger_tuning_round_trips_through_the_source_options() {
         let mut controls = Controls::default();
         controls
-            .set_trigger_tuning("l2", TriggerTuning { deadzone: 0.05, curve: Curve::Quadratic })
+            .set_trigger_tuning("l2", TriggerTuning { deadzone: 0.05, curve: Curve::Quadratic, scale: 1.0 })
             .unwrap();
         let tuning = controls.trigger_tuning("l2");
         assert!((tuning.deadzone - 0.05).abs() < 0.001);
@@ -766,7 +782,7 @@ mod tests {
     #[test]
     fn assign_keeps_trigger_options_and_reports_no_change() {
         let mut controls = Controls::default();
-        controls.set_trigger_tuning("l2", TriggerTuning { deadzone: 0.05, curve: Curve::Cubic }).unwrap();
+        controls.set_trigger_tuning("l2", TriggerTuning { deadzone: 0.05, curve: Curve::Cubic, scale: 1.0 }).unwrap();
         controls.assign("l2", "xinput:RT", true).unwrap();
         assert_eq!(controls.sources("l2").unwrap()[0], "xinput:RT | deadzone=0.050 curve=cubic");
         assert_eq!(controls.sources("r2").unwrap()[0], "xinput:LT | deadzone=0.050 curve=cubic");
@@ -789,7 +805,7 @@ mod tests {
     fn new_curves_round_trip_and_unsupported_raw_modes_are_rejected() {
         for curve in [Curve::SCurve, Curve::SmoothPower, Curve::Sublinear, Curve::Logarithmic] {
             let mut controls = Controls::default();
-            controls.set_trigger_tuning("r2", TriggerTuning { deadzone: 0.1, curve }).unwrap();
+            controls.set_trigger_tuning("r2", TriggerTuning { deadzone: 0.1, curve, scale: 1.0 }).unwrap();
             let parsed = Controls::parse(&controls.render()).unwrap();
             assert_eq!(parsed.trigger_tuning("r2").curve, curve);
         }
@@ -814,5 +830,27 @@ mod tests {
         let tuning = Controls::default().trigger_tuning("r2");
         assert!((tuning.deadzone - 30.0 / 255.0).abs() < 1e-6);
         assert_eq!(tuning.curve, Curve::Linear);
+        assert!((tuning.scale - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn trigger_scale_round_trips_through_the_source_options() {
+        let mut controls = Controls::default();
+        controls
+            .set_trigger_tuning(
+                "r2",
+                TriggerTuning {
+                    deadzone: 0.05,
+                    curve: Curve::Linear,
+                    scale: 0.353,
+                },
+            )
+            .unwrap();
+        let tuning = controls.trigger_tuning("r2");
+        assert!((tuning.deadzone - 0.05).abs() < 0.001);
+        assert!((tuning.scale - 0.353).abs() < 0.001);
+        let text = controls.render();
+        assert!(text.contains("r2 = [\"xinput:RT | deadzone=0.050 curve=linear scale=0.353\", \"key:R\"]"));
+        assert!(Controls::parse(&text).is_ok());
     }
 }

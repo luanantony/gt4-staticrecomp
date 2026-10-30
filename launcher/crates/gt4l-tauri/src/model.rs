@@ -115,6 +115,7 @@ pub fn settings_table_with_monitors(settings: &Settings, controls: &Controls, mo
     for trigger in ["l2", "r2"] {
         rows.push(trigger_row(trigger, controls, "deadzone"));
         rows.push(trigger_row(trigger, controls, "curve"));
+        rows.push(trigger_row(trigger, controls, "scale"));
     }
     for stick in [Stick::Left, Stick::Right] {
         rows.push(stick_row(stick, controls));
@@ -254,7 +255,11 @@ fn gs_row(row: &gs_table::Row, settings: &Settings) -> Value {
 
 fn trigger_row(trigger: &str, controls: &Controls, field: &str) -> Value {
     let tuning = controls.trigger_tuning(trigger);
-    let label = if field == "deadzone" { "deadzone" } else { "curve" };
+    let label = match field {
+        "deadzone" => "deadzone",
+        "scale" | "sensitivity" => "sensitivity",
+        _ => "curve",
+    };
     let title = format!("{} {}", trigger.to_uppercase(), label);
     if field == "deadzone" {
         json!({
@@ -268,6 +273,20 @@ fn trigger_row(trigger: &str, controls: &Controls, field: &str) -> Value {
             "values": { "min": 0, "max": 95, "step": 1, "unit": "%" },
             "default": percent(gt4controls::TRIGGER_DEFAULT_DEADZONE),
             "current": percent(tuning.deadzone),
+        })
+    } else if field == "scale" || field == "sensitivity" {
+        json!({
+            "id": format!("{trigger}_scale"),
+            "label": title,
+            "help": "Limits maximum pressure to match GT4's accelerator/brake response. Gran Turismo 4 reaches 100% \
+                     throttle and brake at ~35% DualShock 2 pressure. Set to 35% for full-throw analog pedals, \
+                     or 100% for standard PS2 button pressure.",
+            "page": "basic",
+            "group": "controls",
+            "control": "slider",
+            "values": { "min": 10, "max": 100, "step": 1, "unit": "%" },
+            "default": percent(gt4controls::TRIGGER_DEFAULT_SCALE),
+            "current": percent(tuning.scale),
         })
     } else {
         json!({
@@ -594,15 +613,19 @@ mod tests {
 
     #[test]
     fn trigger_tuning_checks_the_percentage_and_the_curve() {
-        assert!(trigger_tuning(-1.0, "linear").is_err());
-        assert!(trigger_tuning(101.0, "linear").is_err());
-        assert!(trigger_tuning(10.0, "exponential").is_err());
-        let tuning = trigger_tuning(20.0, "cubic").unwrap();
+        assert!(trigger_tuning(-1.0, "linear", 100.0).is_err());
+        assert!(trigger_tuning(101.0, "linear", 100.0).is_err());
+        assert!(trigger_tuning(10.0, "exponential", 100.0).is_err());
+        assert!(trigger_tuning(10.0, "linear", 4.0).is_err());
+        assert!(trigger_tuning(10.0, "linear", 201.0).is_err());
+        let tuning = trigger_tuning(20.0, "cubic", 35.3).unwrap();
         assert!((tuning.deadzone - 0.2).abs() < 1e-6);
         assert_eq!(tuning.curve, Curve::Cubic);
+        assert!((tuning.scale - 0.353).abs() < 1e-4);
         let rows = trigger_rows(&Controls::default());
         assert_eq!(rows[0].id, "l2");
         assert!((rows[0].deadzone - 11.8).abs() < 0.05, "default 30 of 255 is 11.8 percent");
+        assert!((rows[0].scale - 100.0).abs() < 0.05, "default scale is 100 percent");
     }
 
     #[test]
@@ -830,7 +853,7 @@ mod table_tests {
         let circle = buttons.iter().find(|button| button["id"] == "circle").unwrap();
         assert_eq!(circle["xinput"], "A", "swapped");
         let analog: Vec<&str> = view["triggers"].as_array().unwrap().iter().map(|row| row["id"].as_str().unwrap()).collect();
-        assert_eq!(analog, ["l2_deadzone", "l2_curve", "r2_deadzone", "r2_curve", "lstick_deadzone", "rstick_deadzone"]);
+        assert_eq!(analog, ["l2_deadzone", "l2_curve", "l2_scale", "r2_deadzone", "r2_curve", "r2_scale", "lstick_deadzone", "rstick_deadzone"]);
         assert_eq!(view["locked"], false);
         assert_eq!(stick_setting("rstick_deadzone"), Some(Stick::Right));
         assert_eq!(stick_setting("l2_deadzone"), None);

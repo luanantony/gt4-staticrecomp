@@ -105,13 +105,14 @@
   // The pressure the game computes from a trigger reading (native/controls.cpp): raw and deadzone are fractions of
   // full travel (255). Linear: (v - d) * 255 / (255 - d), integer division; otherwise curve(n) with n = (v - d) /
   // (255 - d). Returns 0..1.
-  function triggerOutput(raw, deadzone, curve) {
+  function triggerOutput(raw, deadzone, curve, scale) {
     var v = Math.round(Math.min(1, Math.max(0, Number(raw) || 0)) * 255);
     var d = Math.round(Math.min(0.99, Math.max(0, deadzone === undefined ? TRIGGER_DEFAULT_DEADZONE : Number(deadzone))) * 255);
     if (v <= d) {
       return 0;
     }
-    if (!curve || curve === "linear") {
+    var s = scale === undefined ? 1.0 : Number(scale);
+    if ((!curve || curve === "linear") && s === 1.0) {
       return Math.floor(((v - d) * 255) / (255 - d)) / 255;
     }
     var n = (v - d) / (255 - d);
@@ -129,7 +130,7 @@
     } else if (curve === "logarithmic" || curve === "log") {
       shaped = Math.log(1 + 9 * n) / Math.log(10);
     }
-    return Math.floor(Math.min(1, Math.max(0, shaped)) * 255) / 255;
+    return Math.floor(Math.min(1, Math.max(0, shaped * s)) * 255) / 255;
   }
 
   // Dev mock only: {"xinput:A": 1, "xinput:LT": 0.6, ...} for every standard button of a Gamepad-like object.
@@ -202,7 +203,7 @@
         var shaped = raw;
         if (family(source) === "xinput" && (name === "LT" || name === "RT")) {
           var options = sourceOptions(source);
-          shaped = triggerOutput(raw, options.deadzone === undefined ? undefined : Number(options.deadzone), options.curve);
+          shaped = triggerOutput(raw, options.deadzone === undefined ? undefined : Number(options.deadzone), options.curve, options.scale);
         }
         value = Math.max(value, raw);
         output = Math.max(output, shaped);

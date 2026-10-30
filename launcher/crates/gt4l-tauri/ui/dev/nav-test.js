@@ -233,6 +233,8 @@
   same("trigger output: smooth power quantized half travel", CM.triggerOutput(0.5, 0, "smooth_power"), 90 / 255);
   same("trigger output: sublinear quantized half travel", CM.triggerOutput(0.5, 0, "sublinear"), 180 / 255);
   same("trigger output: logarithmic quantized half travel", CM.triggerOutput(0.5, 0, "logarithmic"), 189 / 255);
+  same("trigger output: scale 0.353 at full travel gives 90/255 (GT4 pedal saturation)", CM.triggerOutput(1, 30 / 255, "linear", 0.353), 90 / 255);
+  same("trigger output: scale 0.5 halves travel", CM.triggerOutput(1, 0, "linear", 0.5), 127 / 255);
 
   same("KeyZ is Z", CM.keyFromEvent({ code: "KeyZ", key: "z" }), { name: "Z" });
   same("Digit1 is 1", CM.keyFromEvent({ code: "Digit1", key: "1" }), { name: "1" });

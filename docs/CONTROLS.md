@@ -125,8 +125,8 @@ Shipped in `docs/controls/` and checked by `controls_fixture` (CTest `native_con
 - `default.toml`: the built-in mapping, written out in full. It parses to exactly the built-in map.
 - `keyboard-only.toml`: all 16 buttons on the keyboard (WASD for the D-pad, J/K/H/U face buttons),
   sticks unbound. Use it when no controller is connected.
-- `triggers-as-pedals.toml`: L2 and R2 from LT and RT with a 0.05 deadzone, everything else default.
-  Use it with the in-game accelerate/brake assignment described in the owner test below.
+- `triggers-as-pedals.toml`: L2 and R2 from LT and RT with a 0.05 deadzone and calibrated sensitivity (`scale=0.353`), everything else default.
+  Use it with the in-game accelerate/brake assignment described in the owner test below. Because GT4 reaches 100% throttle and brake saturation at DualShock 2 pressure ~90 (0x5A out of 255), scaling by 0.353 maps the full physical trigger pull 1-to-1 to in-game travel without a dead saturation zone.
 
 ## Launcher contract (W5)
 
@@ -150,7 +150,7 @@ the order of the Inputs table, and keeps the old file when a change is refused o
   the other family stays. A trigger that replaces a trigger keeps its options.
 - **Conflict:** a source already on another button is not bound twice. Swap gives the other button
   the previous source of that family (or removes the source there when there was none).
-- **Trigger rows:** `deadzone=` (0 to 0.95) and `curve=` on the `xinput:LT`/`xinput:RT` source of L2
+- **Trigger rows:** `deadzone=` (0 to 0.95), `curve=` and `scale=` (sensitivity 10% to 100%) on the `xinput:LT`/`xinput:RT` source of L2
   and R2.
 - **Stick rows:** `deadzone=` (0 to 0.95) on every axis source of both axes of a stick; `invert` and
   the other options are kept. Example: `lstick_y = ["xinput:LY | invert=true deadzone=0.100"]`.

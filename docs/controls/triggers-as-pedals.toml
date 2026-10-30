@@ -1,8 +1,11 @@
-# GT4Recomp controls: triggers as analog pedals on L2/R2 with a small deadzone.
-# Pair this with the in-game setting that assigns accelerate/brake to R2/L2 (to be confirmed
-# by the owner test in docs/CONTROLS.md). Everything else keeps the default XInput mapping.
+# GT4Recomp controls: triggers as analog pedals on L2/R2 with a small deadzone
+# and calibrated sensitivity (scale=0.353) for full-range throttle/brake travel.
+# Gran Turismo 4 reaches 100% throttle/brake at ~35% DualShock 2 pressure (0x5A/90
+# out of 255). Scaling by 0.353 maps 100% of the physical trigger throw to 100%
+# pedal travel without dead saturation.
+# Pair this with the in-game setting that assigns accelerate/brake to R2/L2.
 schema = 1
 
 [bindings]
-l2 = ["xinput:LT | deadzone=0.05", "key:1"]
-r2 = ["xinput:RT | deadzone=0.05", "key:2"]
+l2 = ["xinput:LT | deadzone=0.05 scale=0.353", "key:1"]
+r2 = ["xinput:RT | deadzone=0.05 scale=0.353", "key:2"]

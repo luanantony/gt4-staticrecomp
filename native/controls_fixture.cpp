@@ -131,6 +131,14 @@ void check_defaults_and_example_files() {
   require(only_binding(pedals, "l2").kind == SourceKind::xinput_trigger &&
               only_binding(pedals, "r2").kind == SourceKind::xinput_trigger,
           "pedals example binds triggers to L2 and R2");
+  const auto &pedal_l2 = only_binding(pedals, "l2");
+  const auto &pedal_r2 = only_binding(pedals, "r2");
+  require(pedal_l2.scale > 0.35f && pedal_l2.scale < 0.36f &&
+              pedal_r2.scale > 0.35f && pedal_r2.scale < 0.36f,
+          "pedals example scales triggers for full-range DS2 pressure");
+  require(read_trigger(pedal_l2, 255).pressure == 90 &&
+              read_trigger(pedal_r2, 255).pressure == 90,
+          "pedals example maps full physical throw to in-game saturation (0x5A / 90)");
   require(pedals.bindings[input_index_of("cross")].size() == 3 &&
               pedals.bindings[input_index_of("cross")][0].button_mask == 0x1000,
           "pedals example keeps the default cross binding (XInput A, keys W and Enter)");

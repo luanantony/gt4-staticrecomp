@@ -194,18 +194,25 @@ pub fn set_setting_of(id: String, value: Value, shared: &Shared) -> Result<(), S
         }
     } else if let Some((trigger, field)) = id.split_once('_').filter(|(name, _)| ["l2", "r2"].contains(name)) {
         let current = state.controls.trigger_tuning(trigger);
-        let (deadzone, curve) = match field {
+        let (deadzone, curve, scale) = match field {
             "deadzone" => (
                 value.as_f64().ok_or_else(|| format!("'{id}' needs a number"))? as f32,
                 current.curve.as_str().to_string(),
+                current.scale * 100.0,
             ),
             "curve" => (
                 current.deadzone * 100.0,
                 value.as_str().ok_or_else(|| format!("'{id}' needs a curve name"))?.to_string(),
+                current.scale * 100.0,
+            ),
+            "scale" | "sensitivity" => (
+                current.deadzone * 100.0,
+                current.curve.as_str().to_string(),
+                value.as_f64().ok_or_else(|| format!("'{id}' needs a number"))? as f32,
             ),
             _ => return Err(format!("unknown setting '{id}'")),
         };
-        let tuning = model::trigger_tuning(deadzone, &curve)?;
+        let tuning = model::trigger_tuning(deadzone, &curve, scale)?;
         return change_controls(&mut state, |controls| {
             controls.set_trigger_tuning(trigger, tuning).map_err(|error| error.to_string())
         });

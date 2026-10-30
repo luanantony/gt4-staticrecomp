@@ -285,7 +285,7 @@
         content: panel,
         refresh: function (id) { return load(id); }
       };
-      [["l2", ["l2_deadzone", "l2_curve"]], ["r2", ["r2_deadzone", "r2_curve"]], ["lstick", ["lstick_deadzone"]],
+      [["l2", ["l2_deadzone", "l2_curve", "l2_scale"]], ["r2", ["r2_deadzone", "r2_curve", "r2_scale"]], ["lstick", ["lstick_deadzone"]],
         ["rstick", ["rstick_deadzone"]]].forEach(function (pair) {
         var box = analogRows[pair[0]];
         GT4.ui.clear(box);
@@ -295,7 +295,7 @@
             return;
           }
           var node = GT4.settingsRows.rowNode(context, Object.assign({}, row, {
-            label: rowId.indexOf("curve") > 0 ? "Curve" : "Deadzone",
+            label: rowId.indexOf("curve") > 0 ? "Curve" : (rowId.indexOf("scale") > 0 ? "Sensitivity" : "Deadzone"),
             disabled: state.locked || !!row.disabled
           }));
           if (node) {

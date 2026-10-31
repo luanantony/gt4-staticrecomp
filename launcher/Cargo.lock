@@ -1197,11 +1197,11 @@ dependencies = [
 
 [[package]]
 name = "gt4controls"
-version = "1.2.4"
+version = "1.2.5"
 
 [[package]]
 name = "gt4l-core"
-version = "1.2.4"
+version = "1.2.5"
 dependencies = [
  "serde",
  "serde_json",
@@ -1213,7 +1213,7 @@ dependencies = [
 
 [[package]]
 name = "gt4l-disc"
-version = "1.2.4"
+version = "1.2.5"
 dependencies = [
  "flate2",
  "serde",
@@ -1223,7 +1223,7 @@ dependencies = [
 
 [[package]]
 name = "gt4l-platform"
-version = "1.2.4"
+version = "1.2.5"
 dependencies = [
  "gt4l-core",
  "sdl3",
@@ -1232,7 +1232,7 @@ dependencies = [
 
 [[package]]
 name = "gt4l-tauri"
-version = "1.2.4"
+version = "1.2.5"
 dependencies = [
  "gt4controls",
  "gt4l-core",
@@ -1249,7 +1249,7 @@ dependencies = [
 
 [[package]]
 name = "gt4saves"
-version = "1.2.4"
+version = "1.2.5"
 dependencies = [
  "serde_json",
  "sha2 0.11.1",

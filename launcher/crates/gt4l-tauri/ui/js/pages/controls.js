@@ -73,7 +73,7 @@
     // ---- the chip mode switch (header) ----
     var modeButtons = {};
     var seg = h("div", { class: "cx-seg", role: "group", "aria-label": "Show bindings for" },
-      [["xinput", "Controller"], ["key", "Keyboard"], ["wheel", "Racing Wheel"]].map(function (pair) {
+      [["xinput", "Controller"], ["key", "Keyboard"]].map(function (pair) {
         var button = h("button", {
           class: "cx-seg-btn",
           type: "button",
@@ -178,11 +178,7 @@
       ]),
       resetAllButton
     ]);
-    var padBody = h("div", { class: "cx-body" }, [stage, panel]);
-    var wheelBody = h("div", { class: "cx-wheel-body", hidden: true });
-    var wheelMounted = false;
-    content.appendChild(padBody);
-    content.appendChild(wheelBody);
+    content.appendChild(h("div", { class: "cx-body" }, [stage, panel]));
 
     function findControl(id) {
       return state.controls.filter(function (control) { return control.id === id; })[0] || null;
@@ -252,13 +248,6 @@
         modeButtons[key].setAttribute("aria-pressed", String(key === mode));
       });
       paintBadges();
-      var isWheel = state.mode === "wheel";
-      padBody.hidden = isWheel;
-      wheelBody.hidden = !isWheel;
-      if (isWheel && !wheelMounted && GT4.mountWheelConfigurator) {
-        wheelMounted = true;
-        GT4.mountWheelConfigurator(wheelBody);
-      }
       paintLegend();
       paintCard();
     }
@@ -336,13 +325,6 @@
         ? "The controls file was written by a newer GT4Recomp and is kept as it is. Update the launcher to change controls."
         : "";
       paintBadges();
-      var isWheel = state.mode === "wheel";
-      padBody.hidden = isWheel;
-      wheelBody.hidden = !isWheel;
-      if (isWheel && !wheelMounted && GT4.mountWheelConfigurator) {
-        wheelMounted = true;
-        GT4.mountWheelConfigurator(wheelBody);
-      }
       paintCard();
       paintAnalog(focusId);
     }

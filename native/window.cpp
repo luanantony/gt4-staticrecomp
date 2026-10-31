@@ -6,7 +6,6 @@
 #include "gpu.hpp"
 #include "gs/gs.hpp"
 #include "host_io.hpp"
-#include "wheel.hpp"
 #include "native_vulkan.hpp"
 #include "ps2/system.hpp"
 #include "perf_probe.hpp"
@@ -40,7 +39,6 @@ HWND game_window = nullptr;
 bool surface_attached = false;
 bool closing = false;
 ControllerInput *controller = nullptr;
-gt4::wheel::WheelInput *wheel_controller = nullptr;
 gt4::window_mode::ToggleState fullscreen_state;
 #ifdef GT4_SHAPE_CAPTURE
 std::unique_ptr<gt4::observation::CaptureControl> capture;
@@ -59,8 +57,6 @@ gt4::display::Force480pState force_480p_state;
 AudioOutput *audio_output = nullptr;
 // Input bindings (controls.hpp). open_window loads them before the window exists.
 gt4::controls::ControlMap active_controls;
-gt4::wheel::WheelConfig active_wheel;
-bool has_explicit_wheel_file = false;
 // TASK-075: gamepad backend (GT4_INPUT=sdl default, xinput for one release). open_window loads it.
 gt4::pad::Backend input_backend = gt4::pad::Backend::sdl;
 std::vector<gt4::controls::KeyboardBinding> keyboard_keys;
@@ -265,8 +261,6 @@ LRESULT CALLBACK window_procedure(HWND window, UINT message, WPARAM first,
   }
   if (message == WM_KILLFOCUS && controller) {
     controller->stop();
-    if (wheel_controller)
-      wheel_controller->stop();
     if (ps2::g_options.presses.empty())
       apply_pad({});
   }
@@ -357,19 +351,9 @@ void on_vblank() {
     }
   }
   if (ps2::g_options.presses.empty()) {
-    // Resolve physical ownership first, so an XInput/HORI wheel never also feeds gamepad triggers.
-    if (wheel_controller) {
-      wheel_controller->prepare(focused);
-      controller->set_excluded_devices(wheel_controller->owned_device_ids());
-    }
-    PadState pad = controller->poll(focused, buttons);
-    if (wheel_controller)
-      wheel_controller->merge_prepared(pad);
-    apply_pad(pad);
+    apply_pad(controller->poll(focused, buttons));
     if (focused)
       controller->rumble(ps2::pad_rumble());
-    if (wheel_controller)
-      wheel_controller->rumble(focused, ps2::pad_rumble());
   }
   if (audio_output) {
     // Paced mode: move ring data to the device without waiting.
@@ -401,13 +385,6 @@ bool open_window(bool fullscreen) {
     return false;
   }
   keyboard_keys = gt4::controls::keyboard_bindings(active_controls);
-  try {
-    active_wheel = gt4::wheel::load_wheel_from_environment(&has_explicit_wheel_file);
-  } catch (const gt4::wheel::ConfigError &error) {
-    std::fprintf(stderr, "[wheel] invalid wheel file, game not started: %s\n",
-                 error.what());
-    return false;
-  }
   // TASK-080: an invalid GT4_DISPLAY_ASPECT, GT4_OUTPUT_SIZE or GT4_ASPECT_FOV_EXTRA stops the start here (prints and
   // exits).
   gt4::display_aspect::configured_setting();
@@ -427,10 +404,6 @@ bool open_window(bool fullscreen) {
   }
   std::fprintf(stderr, "[input] backend %s\n", gt4::pad::backend_name(input_backend));
   const char *controls_file = std::getenv("GT4_CONTROLS_FILE");
-  const char *wheel_file = std::getenv("GT4_WHEEL_FILE");
-  std::fprintf(stderr, "[wheel] %s (enabled=%s, preset=%s)\n",
-               wheel_file && *wheel_file ? wheel_file : "default wheel config",
-               active_wheel.enabled ? "true" : "false", active_wheel.preset.c_str());
   std::fprintf(stderr, "[controls] %s\n",
                controls_file && *controls_file ? controls_file : "default bindings");
   WNDCLASSW window_class{};
@@ -509,8 +482,6 @@ void flush_cards_now(); // memcard capsule sio2.cpp (scripts/prepare_memcard_flu
 
 int run_window(const std::function<int()> &emulate) {
   ControllerInput input(active_controls, input_backend);
-  gt4::wheel::WheelInput wheel_input(active_wheel, has_explicit_wheel_file);
-  wheel_controller = &wheel_input;
   controller = &input;
   const auto cleanup = [&]() {
     gt4::achievements::shutdown();
@@ -530,8 +501,6 @@ int run_window(const std::function<int()> &emulate) {
     ps2::set_audio_sink({});
     ps2::g_options.on_vblank = {};
     input.stop();
-    wheel_input.stop();
-    wheel_controller = nullptr;
     controller = nullptr;
     surface_attached = false;
     if (IsWindow(game_window))

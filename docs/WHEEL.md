@@ -1,5 +1,10 @@
 # Configurable racing-wheel inputs (TASK-018)
 
+> Historical TASK-121 implementation reference. Owner-requested TASK-131 restores main's
+> program sources to v1.2.4; the wheel page and pad-based bridge described below are no longer
+> active code on main. Their implementations remain in cbfd8b8 and the original PR branches.
+> Native DFP remains TASK-018, with research brief docs/tasks/TASK-123-DFP-WHEEL-RESEARCH.md.
+
 The launcher offers **Controls > Racing Wheel** for SDL3 joystick devices: steering, throttle,
 brake, handbrake, paddles and existing gamepad-button actions. Input is disabled on a fresh
 configuration. Enable it deliberately and select or calibrate the intended device.

@@ -1,5 +1,11 @@
 # External controller contribution integration
 
+> Historical integration evidence. TASK-131 restores main's program source to v1.2.4 at the
+> owner's request. PR #100/#106 and #101/#109/#111 remain merged in Git history, but their
+> program changes are withdrawn from the active baseline. A future 1.2.5 should reintroduce
+> only the reviewed controller improvements, without the current wheel bridge. Previous test
+> results below describe those historical candidates, not a new 1.2.5 acceptance result.
+
 Owner request: 2026-10-25. Accept the contributions one at a time, resolving conflicts and validating
 before each merge. This work does not authorize or create another release.
 

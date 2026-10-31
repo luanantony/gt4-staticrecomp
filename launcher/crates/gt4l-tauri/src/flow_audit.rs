@@ -152,15 +152,6 @@ fn walk_pages(shared: &Shared, card: &Path) -> Vec<String> {
     assert_eq!(cross["key"], json!("W"));
     log.push(format!("controls: {} inputs, cross reset, swap with l1, stick deadzone, reset all", controls["controls"].as_array().unwrap().len()));
 
-    let wheel = commands::get_wheel_config_of(shared).expect("wheel config");
-    assert_eq!(wheel["config"]["preset"], json!("generic"));
-    commands::apply_wheel_preset_of("logitech_g29".into(), shared).expect("apply g29 preset");
-    commands::set_wheel_setting_of("steering.effective_degrees".into(), json!(540), shared).expect("set wheel range");
-    let assigned = commands::assign_wheel_binding_of("handbrake".into(), "axis:4".into(), Some("normal".into()), shared).expect("assign handbrake");
-    assert_eq!(assigned["config"]["steering"]["effective_degrees"], json!(540));
-    assert!(lock(shared).wheel_path().exists(), "wheel.toml written on disk");
-    commands::reset_wheel_config_of(shared).expect("reset wheel config");
-
     let about = commands::about_info_of(shared).expect("about");
     assert!(about.game_files.ends_with("disc"), "{}", about.game_files);
     log.push(format!("about: GT4Recomp {} gt4-gs {} files {}", about.gt4recomp, about.gt4gs, about.game_files));
@@ -586,27 +577,4 @@ fn real_flow_end_to_end() {
         }
     }
     fs::write(data.parent().unwrap().join("real-flow-report.txt"), report.join("\n")).unwrap();
-}
-
-/// Replays the actual production wheel page's recorded command objects against the real command bodies.
-#[test]
-fn recorded_wheel_ui_settings_use_the_real_command_contract() {
-    let Ok(path) = std::env::var("GT4_WHEEL_UI_COMMANDS_JSON") else { return; };
-    let calls: Vec<Value> = serde_json::from_slice(&fs::read(path).unwrap()).unwrap();
-    assert!(!calls.is_empty(), "the UI recording must contain actual commands");
-    let root = scratch("recorded-wheel-ui");
-    let shared = launch(&DataDirs::new(root.join("data")), &Pins::embedded().unwrap());
-    for call in &calls {
-        assert_eq!(call["command"], "set_wheel_setting");
-        let args = &call["args"];
-        let key = args["key"].as_str().expect("production set_wheel_setting requires key");
-        commands::set_wheel_setting_of(key.into(), args["value"].clone(), &shared).unwrap();
-        let view = commands::get_wheel_config_of(&shared).unwrap();
-        let (section, field) = key.split_once('.').unwrap();
-        let actual = if section == "wheel" { &view["config"][field] } else { &view["config"][section][field] };
-        assert_eq!(actual, &args["value"], "UI command must persist the selected value for {key}");
-    }
-    for required in ["wheel.enabled", "wheel.device_guid", "wheel.pedal_map_mode"] {
-        assert!(calls.iter().any(|c| c["args"]["key"] == required), "missing recorded UI action: {required}");
-    }
 }

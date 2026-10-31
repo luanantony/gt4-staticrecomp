@@ -290,26 +290,6 @@
   same("Triangle up is R1", padMove("triangle", "up"), "r1");
   same("Circle right leaves the drawing (the panel is next)", padMove("circle", "right"), null);
 
-  var wm = root.GT4.wheelModel;
-  var wd = {id:1,guid:"wheel",is_wheel:true,axes:[1234,-25000],buttons:[true,false],hats:[3]};
-  var other = {id:2,guid:"other",is_wheel:false,is_gamepad:true,axes:[30000],buttons:[false],hats:[0]};
-  expect("wheel primary axis is read from the selected physical device",wm.readSourceAxis("axis:0",[wd,other],"wheel"),1234);
-  expect("missing wheel GUID cannot fall back to another axis",wm.readSourceAxis("dev:missing:axis:0",[other],""),null);
-  expect("generic gamepad is not an automatic wheel",wm.readSourceAxis("axis:0",[other],""),null);
-  expect("duplicate GUID is neutral",wm.readSourceAxis("axis:0",[wd,Object.assign({},wd,{id:3})],"wheel"),null);
-  expect("disconnected inverted pedal output is zero",wm.pedal({mode:"inverted"},null).out,0);
-  expect("disconnected normal pedal output is zero",wm.pedal({mode:"normal"},null).out,0);
-  expect("raw button highlights without synthetic active_sources",wm.sourcePressed("btn:0",[wd],"wheel"),true);
-  expect("qualified hat reads actual bits",wm.sourcePressed("dev:wheel:hat:0:right",[wd],""),true);
-  expect("signed negative axis binding highlights",wm.sourcePressed("axis:1-",[wd],"wheel"),true);
-  expect("opposite axis direction stays unpressed",wm.sourcePressed("axis:1+",[wd],"wheel"),false);
-  expect("legacy bare axis matches native digital semantics",wm.sourcePressed("axis:1",[wd],"wheel"),true);
-  expect("missing button GUID cannot highlight another device",wm.sourcePressed("dev:missing:btn:0",[wd],""),false);
-  expect("all disconnected wheel buttons are neutral",wm.sourcePressed("btn:0",[],"wheel"),false);
-
-  expect("digital pedal button displays full pressure",wm.readPedal({source:"dev:wheel:btn:0"},[wd],"").out,1);
-  expect("missing digital pedal is neutral",wm.readPedal({source:"dev:missing:btn:0"},[wd],"").out,0);
-
   function run() {
     var list = document.getElementById("results");
     var passed = 0;

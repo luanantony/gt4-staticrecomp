@@ -76,34 +76,13 @@ XINPUT_VIBRATION map_rumble(std::uint16_t rumble) {
 
 ControllerInput::ControllerInput(ControlMap map, gt4::pad::Backend backend)
     : map_(std::move(map)), backend_(backend) {
-  if (backend_ == gt4::pad::Backend::sdl) ensure_sdl();
-}
-
-void ControllerInput::ensure_sdl() {
-  if (sdl_initialized_) return;
-  SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
-  if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD))
-    throw std::runtime_error(std::string("SDL_InitSubSystem(SDL_INIT_GAMEPAD) failed: ") + SDL_GetError());
-  sdl_initialized_ = true;
-}
-
-void ControllerInput::set_excluded_devices(std::vector<std::uint32_t> ids) {
-  std::sort(ids.begin(), ids.end());
-  ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
-  if (ids == excluded_devices_) return;
-  const auto previous = backend();
-  stop();
-  close_sdl_pad();
-  slot_ = XUSER_MAX_COUNT;
-  motors_ = 0;
-  next_scan_ = sdl_next_scan_ = 0;
-  excluded_devices_ = std::move(ids);
-  if (backend() == gt4::pad::Backend::sdl) ensure_sdl();
-  if (previous != backend())
-    std::fprintf(stderr, "[input] effective backend %s: %s\n",
-                 backend() == gt4::pad::Backend::sdl ? "SDL" : "XInput",
-                 excluded_devices_.empty() ? "wheel ownership ended" :
-                 "wheel owns SDL instance IDs; use SDL identity routing for remaining gamepads");
+  if (backend_ == gt4::pad::Backend::sdl) {
+    // Gamepads only: SDL creates no window and takes no part in the game's message loop.
+    SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
+    if (!SDL_Init(SDL_INIT_GAMEPAD))
+      throw std::runtime_error(std::string("SDL_Init(SDL_INIT_GAMEPAD) failed: ") + SDL_GetError());
+    sdl_initialized_ = true;
+  }
 }
 
 ControllerInput::~ControllerInput() {
@@ -121,7 +100,7 @@ void ControllerInput::close_sdl_pad() {
 }
 
 PadState ControllerInput::poll(bool focused, std::uint16_t keyboard_buttons) {
-  PadState pad = backend() == gt4::pad::Backend::sdl ? poll_sdl(focused) : poll_xinput(focused);
+  PadState pad = backend_ == gt4::pad::Backend::sdl ? poll_sdl(focused) : poll_xinput(focused);
   // Without focus the pad is neutral: the keyboard counts only in the game window.
   if (!focused)
     return pad;
@@ -218,13 +197,7 @@ PadState ControllerInput::poll_sdl(bool focused) {
     int count = 0;
     SDL_JoystickID *ids = SDL_GetGamepads(&count);
     std::uint32_t player_one = 0;
-    std::vector<SDL_JoystickID> eligible;
-    for (int i = 0; ids && i < count; ++i) {
-      if (std::find(excluded_devices_.begin(), excluded_devices_.end(), ids[i]) == excluded_devices_.end())
-        eligible.push_back(ids[i]);
-    }
-    if (!eligible.empty()) gt4::pad::first_pad(eligible.data(), eligible.size(), player_one);
-    if (player_one != 0) {
+    if (ids && gt4::pad::first_pad(ids, static_cast<std::size_t>(count), player_one)) {
       sdl_pad_ = SDL_OpenGamepad(player_one);
       if (sdl_pad_) {
         const char *name = SDL_GetGamepadName(sdl_pad_);
@@ -242,7 +215,7 @@ PadState ControllerInput::poll_sdl(bool focused) {
 }
 
 void ControllerInput::rumble(std::uint16_t value) {
-  if (backend() == gt4::pad::Backend::sdl)
+  if (backend_ == gt4::pad::Backend::sdl)
     rumble_sdl(value);
   else
     rumble_xinput(value);
@@ -280,7 +253,7 @@ void ControllerInput::rumble_sdl(std::uint16_t value) {
 }
 
 void ControllerInput::stop() {
-  if (backend() == gt4::pad::Backend::sdl) {
+  if (backend_ == gt4::pad::Backend::sdl) {
     if (sdl_pad_ && motors_)
       SDL_RumbleGamepad(sdl_pad_, 0, 0, 0);
     motors_ = 0;

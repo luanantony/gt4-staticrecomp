@@ -121,6 +121,23 @@ github.com/Kaezzey/gt4-staticrecomp is read-only.
 
 ## Workflow
 
+- **Bounded Gemini work and evidence review (owner, 2026-10-26):** every brief must
+  define the starting baseline/inputs, ordered work, explicit deliverables, acceptance evidence,
+  and a final stop. Leave no open-ended permission to expand scope or choose another task.
+  Unknown or unmeasured facts must remain labelled as such, never filled with invented numbers,
+  assumed compatibility or stale test results. Treat agent reports as claims: independently
+  inspect commits/diffs, artifact provenance/hashes and logs, and rerun relevant checks before
+  accepting completion. A plausible explanation or a passed mock is not gameplay evidence.
+  For TASK-133, the worker is authorized only for integration, local test builds and its own
+  scoped tests, then must return evidence for review. No PR creation/merge, release upload,
+  draft publication, public release or follow-on task without a new owner instruction.
+- **Agent task handoff (owner, 2026-10-26):** before handing any task to another agent,
+  write its consolidated plan as a `.md` file inside the exact worktree where that agent
+  will operate (normally `docs/tasks/`). The plan holds scope, references, constraints,
+  validation and review gates. End the handoff response with a ready-to-copy prompt for
+  the owner to paste into a fresh agent chat, naming the absolute workspace and plan-file
+  paths plus required first reads. Keep that prompt short; do not duplicate the plan in it.
+  Preparing a handoff does not authorize launching or messaging an agent.
 - Speak Brazilian Portuguese with the owner, in plain lay language. Keep all
   repository docs, reports, prompts and code comments in en-US.
 - The main agent orchestrates, reviews and tests; implementation and research go

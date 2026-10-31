@@ -255,60 +255,6 @@
       slider("lstick_deadzone", "Left stick deadzone", 24), slider("rstick_deadzone", "Right stick deadzone", 26.5)];
   }
   var analog = analogDefaults();
-  // Mirrors the production wheel view; unknown command keys fail instead of hiding contract bugs.
-  function freshWheelConfig() {
-    function pedal(source, dz, sat) {return {source:source, mode:"inverted", deadzone:dz, saturation:sat, curve:"linear"};}
-    return {
-      version:1, enabled:false, preset:"generic", device_guid:"", device_name:"", pedal_map_mode:"cross_square",
-      steering:{source:"axis:0",rotation_degrees:900,effective_degrees:900,deadzone:0,linearity:"linear",sensitivity:1,invert:false},
-      throttle:pedal("axis:1",0.02,0.98),brake:pedal("axis:2",0.02,0.98),handbrake:pedal("",0.05,0.95),clutch:pedal("axis:3",0.05,0.95),
-      ffb:{enabled:true,strength:1,centering_spring:0.25,damper:0.15,curb_rumble:1,invert:false},
-      buttons:{dpad_up:["hat:0:up"],dpad_right:["hat:0:right"],dpad_down:["hat:0:down"],dpad_left:["hat:0:left"],
-        cross:["btn:0"],square:["btn:1"],circle:["btn:2"],triangle:["btn:3"],r2:["btn:4"],l2:["btn:5"],r1:["btn:6"],l1:["btn:7"],select:["btn:8"],start:["btn:9"],l3:["btn:10"],r3:["btn:11"]}
-    };
-  }
-  var wheelState = freshWheelConfig();
-  var wheelPresets=["generic","hori","logitech_g29","logitech_dfgt","thrustmaster","fanatec_moza","combined_pedals"];
-  function mockWheelView() {
-    return {config:JSON.parse(JSON.stringify(wheelState)),status:"Development fixture",presets:wheelPresets,
-      pedal_map_modes:["cross_square","rstick_y","l2_r2","both"],pedal_axis_modes:["inverted","normal","positive","combined_negative","combined_positive"],curves:["linear","quadratic","cubic"],
-      button_slots:Object.keys(wheelState.buttons).map(function(id){return {id:id,label:CONTROL_NAMES[id]||id,bindings:wheelState.buttons[id].slice()};}),
-      wheel_status:{available:true,devices:[],error:""}};
-  }
-  function applyMockWheelPreset(preset) {
-    if(wheelPresets.indexOf(preset)<0)throw new Error("Unknown wheel preset "+preset);
-    var old=wheelState;wheelState=freshWheelConfig();wheelState.enabled=old.enabled;wheelState.device_guid=old.device_guid;wheelState.device_name=old.device_name;wheelState.preset=preset;
-    if(preset==="hori") {
-      wheelState.steering.rotation_degrees=wheelState.steering.effective_degrees=270;
-      wheelState.throttle.source="axis:5";wheelState.throttle.mode=wheelState.brake.mode="normal";
-      wheelState.clutch.source=wheelState.handbrake.source="";wheelState.ffb.enabled=false;
-      wheelState.buttons.l2=["btn:4"];wheelState.buttons.r2=["btn:5"];wheelState.buttons.square=["btn:2"];wheelState.buttons.circle=["btn:1"];
-      wheelState.buttons.l1=["btn:8"];wheelState.buttons.r1=["btn:9"];wheelState.buttons.select=["btn:6"];wheelState.buttons.start=["btn:7"];
-    } else if(preset==="logitech_dfgt") {wheelState.clutch.source="";wheelState.buttons.r2=["btn:4","btn:12"];wheelState.buttons.l2=["btn:5","btn:13"];}
-    else if(preset==="thrustmaster") {wheelState.throttle.source="axis:2";wheelState.brake.source="axis:1";wheelState.buttons.l2=["btn:0"];wheelState.buttons.r2=["btn:1"];wheelState.buttons.cross=["btn:5"];wheelState.buttons.square=["btn:3"];wheelState.buttons.circle=["btn:4"];wheelState.buttons.triangle=["btn:2"];}
-    else if(preset==="fanatec_moza") {wheelState.throttle.mode=wheelState.brake.mode=wheelState.clutch.mode="normal";wheelState.ffb.centering_spring=0.15;wheelState.ffb.damper=0.1;}
-    else if(preset==="combined_pedals") {wheelState.steering.rotation_degrees=wheelState.steering.effective_degrees=270;wheelState.throttle.mode="combined_negative";wheelState.brake.mode="combined_positive";wheelState.brake.source="axis:1";wheelState.clutch.source="";}
-  }
-  function mockWheelCommand(command,args) {
-    if(command==="set_wheel_setting") {
-      var parts=String(args.key||"").split(".");var target=parts[0]==="wheel"?wheelState:wheelState[parts[0]];
-      if(parts.length!==2||!target||!Object.prototype.hasOwnProperty.call(target,parts[1]))throw new Error("Unknown wheel setting "+args.key);
-      if(typeof args.value!==typeof target[parts[1]])throw new Error("Invalid wheel setting value "+args.key);
-      target[parts[1]]=args.value;
-    } else if(command==="apply_wheel_preset")applyMockWheelPreset(args.preset);
-    else if(command==="reset_wheel_config")wheelState=freshWheelConfig();
-    else if(command==="assign_wheel_binding"||command==="reset_wheel_binding") {
-      var targetName=args.target;var source=args.source||"";
-      if(command==="reset_wheel_binding") {
-        var defaults=freshWheelConfig();source=args.clear?"":targetName==="steering"?defaults.steering.source:defaults[targetName]?defaults[targetName].source:(defaults.buttons[targetName]||[])[0]||"";
-      }
-      if(targetName==="steering")wheelState.steering.source=source;
-      else if(["throttle","brake","handbrake","clutch"].indexOf(targetName)>=0){wheelState[targetName].source=source;if(args.pedalMode)wheelState[targetName].mode=args.pedalMode;}
-      else if(Object.prototype.hasOwnProperty.call(wheelState.buttons,targetName))wheelState.buttons[targetName]=source?[source]:[];
-      else throw new Error("Unknown wheel target "+targetName);
-    }
-    return mockWheelView();
-  }
 
   function base(source) { return String(source).split("|")[0].trim(); }
   function familyOf(source) { return base(source).split(":")[0]; }
@@ -554,21 +500,6 @@
         bindings[args.control] = DEFAULT_SOURCES[args.control].slice();
         return null;
       case "reset_all_bindings":
-        bindings = JSON.parse(JSON.stringify(DEFAULT_SOURCES));
-        analog = analogDefaults();
-        return controlsView();
-      case "get_wheel_config":
-      case "set_wheel_setting":
-      case "apply_wheel_preset":
-      case "assign_wheel_binding":
-      case "reset_wheel_binding":
-      case "reset_wheel_config":
-        return mockWheelCommand(command, args);
-      case "capture_wheel_binding":
-        return Promise.resolve({ target: args.target || "", source: "btn:0", detected_pedal_mode:null });
-      case "cancel_wheel_capture":
-      case "test_wheel_ffb":
-        return null;
         bindings = JSON.parse(JSON.stringify(DEFAULT_SOURCES));
         analog = analogDefaults();
         return controlsView();

@@ -1808,3 +1808,23 @@ Acceptance: target isolation, account/logout/HTTP cancellation regressions, cont
 preview consistency, full native/Python/Rust and en-US/pt-BR checks, both target builds/pins,
 installer+portable verification. New builds go to draft; owner gameplay/review before merge or
 publication. No code, builds, running agents or public rc7 authorized by this mapping step.
+
+
+### TASK-141 — European PAL (SCES-51719) support triage and diagnostic guidance (issue #128)
+
+State: ✅ Done (2026-10-31), branch `task/141-pal-sces51719-triage`.
+Issue: https://github.com/moesuito/gt4-staticrecomp/issues/128
+Documents: [PAL-SCES51719-STUDY](docs/PAL-SCES51719-STUDY.md), [Decision 0073](docs/decisions/0073-pal-sces51719-target-triage.md).
+
+- Technical feasibility triage: analyzed why European PAL (`SCES-51719`) cannot be run by dropping its ISO into the
+  current NTSC-U engine. GT4Recomp's 326 translated C++ units (`ps2game.lib`) were compiled ahead of time specifically
+  from NTSC-U `SCUS-97328`. PAL has 0% address parity, shifts all function and jump boundaries due to multi-language
+  string tables, and requires distinct 50Hz/60Hz VBlank pacing and hook addresses.
+- Architecture: Recorded as an independent target candidate (Decision 0073) following the Spec II model (Decision 0072).
+  Not scheduled for release 1.x; CoreGS 2.0 (Phase 2) remains priority.
+- Launcher diagnostics: Updated `gt4l-disc::setup` to recognize known Gran Turismo 4 regional releases
+  (`SCES-51719` Europe, `SCPS-15055` Japan, `SCKA-20001` Korea, `SCAJ-30007` Asia) and provide polite, informative
+  diagnostics explaining that GT4Recomp's game code is statically compiled ahead of time specifically from the NTSC-U
+  release, avoiding user confusion between static recompilation and dynamic emulation.
+- Automated tests: Added test in `tests/setup_fake_iso.rs` validating that European PAL GT4 produces the clear diagnostic
+  message.

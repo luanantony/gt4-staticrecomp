@@ -111,7 +111,21 @@ impl SetupError {
             SetupError::Unsupported(kind) => {
                 let detail = match kind {
                     Unsupported::SpecII => "This looks like Gran Turismo 4 Spec II or GT4 Online (SCUS-97436).".into(),
-                    Unsupported::OtherRegion { serial } => format!("This disc is {serial}, another region."),
+                    Unsupported::OtherRegion { serial } => match serial.as_str() {
+                        "SCES-51719" | "SCED-51719" => {
+                            "This looks like Gran Turismo 4 (Europe, SCES-51719). GT4Recomp's game code is statically compiled ahead of time specifically from the NTSC-U release (SCUS-97328); PAL releases have a different executable layout and are not supported yet.".into()
+                        }
+                        "SCPS-15055" | "SLPS-25450" | "SCPS-17001" => {
+                            "This looks like Gran Turismo 4 (Japan, SCPS-15055). GT4Recomp's game code is statically compiled ahead of time specifically from the NTSC-U release (SCUS-97328); Japanese releases have a different executable layout and are not supported yet.".into()
+                        }
+                        "SCKA-20001" => {
+                            "This looks like Gran Turismo 4 (Korea, SCKA-20001). GT4Recomp's game code is statically compiled ahead of time specifically from the NTSC-U release (SCUS-97328); Korean releases have a different executable layout and are not supported yet.".into()
+                        }
+                        "SCAJ-30007" | "SCAJ-20101" => {
+                            "This looks like Gran Turismo 4 (Asia, SCAJ-30007). GT4Recomp's game code is statically compiled ahead of time specifically from the NTSC-U release (SCUS-97328); Asian releases have a different executable layout and are not supported yet.".into()
+                        }
+                        _ => format!("This disc is {serial}, another region."),
+                    },
                     Unsupported::OtherRevision { version } => {
                         format!("This SCUS-97328 disc (version {version}) has different game code.")
                     }

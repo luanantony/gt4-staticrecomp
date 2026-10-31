@@ -203,12 +203,21 @@ fn other_games_regions_and_spec_ii_get_the_not_supported_yet_message() {
     assert_eq!(error.user_message(), format!("{UNSUPPORTED_MESSAGE} This disc is SCUS-97100."));
     assert!(error.is_disc_refusal());
 
-    // A PAL boot path.
+    // A generic PAL boot path.
     let image = image_for(&game, "SCES_500.01", "2.00", "GT4 EUR");
     fs::write(&disc, &image).unwrap();
     let error = run_setup(&fixture, &disc, &pins, &cancel).unwrap_err();
     assert!(matches!(error, SetupError::Unsupported(Unsupported::OtherRegion { .. })), "{error:?}");
     assert!(error.user_message().starts_with(UNSUPPORTED_MESSAGE));
+
+    // Known European GT4 PAL disc (SCES-51719, issue #128): produces detailed diagnostic guidance.
+    let pal_disc = fixture.path("gt4_pal.iso");
+    let image = image_for(&game, "SCES_517.19", "1.00", "GRANTURISMO4");
+    fs::write(&pal_disc, &image).unwrap();
+    let error = run_setup(&fixture, &pal_disc, &pins, &cancel).unwrap_err();
+    assert!(matches!(&error, SetupError::Unsupported(Unsupported::OtherRegion { serial }) if serial == "SCES-51719"));
+    assert!(error.user_message().contains("Gran Turismo 4 (Europe, SCES-51719)"));
+    assert!(error.user_message().contains("statically compiled ahead of time specifically from the NTSC-U release"));
 
     // Spec II as it really is: GT4 Online's serial SCUS-97436 and the plain GRANTURISMO4 volume name.
     let spec = fixture.path("spec.iso");

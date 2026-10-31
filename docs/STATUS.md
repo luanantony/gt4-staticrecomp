@@ -1,5 +1,20 @@
 # Current Status
 
+## TASK-141: European release (SCES-51719) support triage and diagnostic guidance (Issue #128, 2026-10-31)
+
+Triaged community Issue #128 regarding support for the European release of Gran Turismo 4 (PAL `SCES-51719`).
+- Technical assessment ([PAL-SCES51719-STUDY](docs/PAL-SCES51719-STUDY.md), [Decision 0073](docs/decisions/0073-pal-sces51719-target-triage.md)):
+  Documented why PAL cannot simply be booted into the existing NTSC-U v2.00 engine. GT4Recomp's 326 translated C++ units
+  (`ps2game.lib`) were compiled ahead of time specifically from NTSC-U `SCUS-97328`. PAL has 0% address parity, shifts
+  all function boundaries due to multi-language string tables (Multi-5), and requires distinct 50Hz/60Hz VBlank pacing.
+- Architecture: Recorded PAL `SCES-51719` as a future independent secondary/regional target (Decision 0073) following
+  the Spec II precedent (Decision 0072). Priority remains Phase 2 (CoreGS 2.0).
+- Launcher diagnostics: Updated `gt4l-disc::setup` to recognize known GT4 regional releases (`SCES-51719` Europe,
+  `SCPS-15055` Japan, `SCKA-20001` Korea, `SCAJ-30007` Asia) and provide clear, informative guidance explaining
+  that GT4Recomp is an ahead-of-time static recompilation of the NTSC-U release.
+- Tests: Added unit test in `setup_fake_iso.rs`. All 12 disc setup tests passing.
+
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

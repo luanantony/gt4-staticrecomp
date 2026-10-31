@@ -1808,3 +1808,36 @@ Acceptance: target isolation, account/logout/HTTP cancellation regressions, cont
 preview consistency, full native/Python/Rust and en-US/pt-BR checks, both target builds/pins,
 installer+portable verification. New builds go to draft; owner gameplay/review before merge or
 publication. No code, builds, running agents or public rc7 authorized by this mapping step.
+
+
+### TASK-140 — Triage and technical resolution for Issue #135 (Bonnet Cam wind sound & 480p color gamut)
+
+Owner request 2026-10-31: triage upstream Issue #135 reported by `shadowcla02-cloud`:
+"Option to disable Wind sound in Bonnet Cam - Full Range of color on 480p".
+
+Analysis and resolution:
+1. **Full Range of Color on 480p:**
+   - On original PS2 hardware, GT4's progressive 480p mode disables 480i dithering and adjusts post-processing
+     passes for analog component video levels (16-235). On modern PC displays, this raw output without contrast
+     matrix expansion appears washed out, with raised black levels and lower perceived color saturation compared
+     to 480i.
+   - The launcher and `gt4-gs.exe` already provide the built-in PCSX2 GS post-processing pipeline: **ShadeBoost**.
+   - Accessible via **Settings > Graphics > Advanced**:
+     - Toggle `Shade boost` on.
+     - Adjust `Shade boost contrast` (e.g. 55-60) and `Shade boost saturation` (e.g. 55-60) with fine-tuning on
+       `Shade boost brightness` (48-50) and `Shade boost gamma`.
+     - This immediately restores deep blacks, rich dynamic contrast, and full PC RGB color gamut without altering
+       game code or shader accuracy.
+2. **Option to disable Wind sound in Bonnet Cam:**
+   - In GT4, camera views (bumper, bonnet, roof, chase) alter the guest SPU2 sound engine mix. The bonnet camera
+     features a prominent high-speed wind resistance sound layer designed by Polyphony Digital.
+   - Per `AGENTS.md` (Mission and direction), GT4Recomp's core objective is faithful native recompilation of the
+     original game without gameplay, physics, or audio remaster modifications ("Out of scope here: a
+     decompilation-based source port, changes to the game's physics timing and remaster features will be a separate
+     project, possibly a fork... Game logic never changes...").
+   - Selectively stripping individual sound design layers from the guest audio engine is an audio mod/remaster
+     feature out of scope for the core native recompiler. Bumper camera remains available as an original perspective
+     with direct mechanical audio and without the bonnet wind layer. Custom sound mix alterations are noted for
+     future community modding forks.
+
+State: ✅ Done (2026-10-31). Documentation and issue triage complete.

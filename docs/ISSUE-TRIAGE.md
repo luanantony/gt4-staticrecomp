@@ -39,6 +39,12 @@ Sources: live open issues/comments; main fa92d05; modern TASKS at frozen rc6 com
 
 | Issue | Report | Owning task(s) | Intake and priority |
 | --- | --- | --- | --- |
+| [#139](https://github.com/moesuito/gt4-staticrecomp/issues/139) | GSdx download failure / offline install | TASK-139 | Implemented in PR #143: retry download button and manual .zip archive installation |
+| [#135](https://github.com/moesuito/gt4-staticrecomp/issues/135) | Bonnet wind sound & 480p color range | TASK-140 | Triage complete: wind sound is original game design (out of scope per AGENTS.md); 480p color gamut handled by ShadeBoost in Settings > Graphics > Advanced |
+| [#134](https://github.com/moesuito/gt4-staticrecomp/issues/134) | Full Range Trigger Support | TASK-137 | Implemented in PR #140: configurable trigger sensitivity scale |
+| [#131](https://github.com/moesuito/gt4-staticrecomp/issues/131) | OneDrive DataRoot startup crash | TASK-136 | Implemented in PR #136: ensure portable.ini beside gt4-gs |
+| [#129](https://github.com/moesuito/gt4-staticrecomp/issues/129) | Crackling sound on Proton/SteamOS | TASK-138 | Implemented in PR #141: audio underrun prevention and buffer tuning |
+| [#123](https://github.com/moesuito/gt4-staticrecomp/issues/123) | Gamepad toggle for launcher booleans | TASK-135 | Implemented in PR #138: controller navigation and toggle support |
 | [#112](https://github.com/moesuito/gt4-staticrecomp/issues/112) | Integrated-graphics slowdown | Existing TASK-041; related 082/105/116/117/118 and CPU-parity119@rc6 | Same performance backlog as #97, separate hardware evidence; candidate rc follow-up |
 | [#107](https://github.com/moesuito/gt4-staticrecomp/issues/107) | Cannot start the game | TASK-124 | New; high, candidate rc; cause unknown |
 | [#104](https://github.com/moesuito/gt4-staticrecomp/issues/104) | Service sound continues | TASK-125 | New; normal, release unassigned |

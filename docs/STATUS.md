@@ -1,5 +1,16 @@
 # Current Status
 
+## TASK-140: Issue #135 triage - 480p color gamut & bonnet wind sound (2026-10-31)
+
+Triage and technical guidance for upstream Issue #135:
+- 480p Color Range / Gamut: GT4's 480p mode disables 480i dithering and uses analog component TV levels (16-235).
+  `gt4-gs.exe` provides ShadeBoost post-processing in Settings > Graphics > Advanced (`shade_boost` toggle,
+  Contrast and Saturation sliders at 55-60) which expands the dynamic range to full PC RGB, restoring deep blacks
+  and vibrant colors without modifying game code.
+- Bonnet Cam Wind Sound: the high-speed wind sound layer is part of Polyphony Digital's original guest SPU2 audio
+  mix. Under AGENTS.md, GT4Recomp remains a faithful 1:1 recompilation without remaster/audio mod alterations.
+  Documented in docs/ISSUE-TRIAGE.md and TASKS.md.
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

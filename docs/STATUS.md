@@ -1,5 +1,17 @@
 # Current Status
 
+## TASK-125: SPU2 exponential release underflow fix for looping GT Auto service audio (2026-10-31)
+
+Resolved upstream Issue #104 ("Oil Change/Car Wash Noise persists").
+In IOP SPU2 `Envelope::step`, exponential release calculated `delta = delta * level / 0x8000`. Integer division
+truncated `delta` to 0 once `level` fell below residual thresholds (e.g. < 32-4096), causing the envelope level to
+stall indefinitely. Because `level <= 0` was never reached, the voice's release phase never transitioned to `kOff`,
+leaving looping ADPCM samples (such as GT Auto car wash and oil change bubble audio) playing forever across menus
+and races.
+Fixed by deriving `runtime/src/iop/spu2.cpp` with an underflow guard enforcing `if (delta == 0 && level > 0) delta = -1`.
+Automated tests added: CTest fixture `native/spu2_envelope_fixture.cpp` (`native_spu2_envelope`) and Python test
+`tests/python/test_spu2_envelope.py`. Study documented in `docs/GT-AUTO-AUDIO-LOOP-ISSUE104-STUDY.md`.
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

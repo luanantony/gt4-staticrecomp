@@ -42,7 +42,7 @@ Sources: live open issues/comments; main fa92d05; modern TASKS at frozen rc6 com
 | [#112](https://github.com/moesuito/gt4-staticrecomp/issues/112) | Integrated-graphics slowdown | Existing TASK-041; related 082/105/116/117/118 and CPU-parity119@rc6 | Same performance backlog as #97, separate hardware evidence; candidate rc follow-up |
 | [#107](https://github.com/moesuito/gt4-staticrecomp/issues/107) | Cannot start the game | TASK-124 | New; high, candidate rc; cause unknown |
 | [#104](https://github.com/moesuito/gt4-staticrecomp/issues/104) | Service sound continues | TASK-125 | New; normal, release unassigned |
-| [#102](https://github.com/moesuito/gt4-staticrecomp/issues/102) | Home key unavailable to ReShade | TASK-126 | New; normal, release unassigned |
+| [#102](https://github.com/moesuito/gt4-staticrecomp/issues/102) | Home key unavailable to ReShade | TASK-126 | Completed in task/126; study in [RESHADE-HOME-KEY-ISSUE102-STUDY](RESHADE-HOME-KEY-ISSUE102-STUDY.md) |
 | [#99](https://github.com/moesuito/gt4-staticrecomp/issues/99) | Window flashes and game crashes | TASK-127 | New; high, candidate rc; not a proven duplicate of #89/#107 |
 | [#98](https://github.com/moesuito/gt4-staticrecomp/issues/98) | Deleted save returns | Existing TASK-025, related 058 | Save-manager follow-up; high, candidate rc; no new duplicate task |
 | [#97](https://github.com/moesuito/gt4-staticrecomp/issues/97) | Low-end hardware performance | Existing TASK-041 and modern performance work | Group with #112 under existing backlog; retain separate reports |

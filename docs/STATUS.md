@@ -1,5 +1,17 @@
 # Current Status
 
+## TASK-126: forward keyboard messages to PCSX2 GS child window for ReShade (2026-10-31)
+
+Resolved upstream Issue #102 ("Cant use Home (Pos1) Keys while in Game for reshade").
+In `GT4_RENDERER=pcsx2` mode, the PCSX2 GS renderer runs out-of-process (`gt4-gs.exe`) as a child window
+attached to `game_window`. To ensure controller polling and keyboard driving inputs are never interrupted,
+`native/window.cpp` strictly retains focus on `game_window` (`SetFocus(window)`). Because Windows delivers
+keyboard messages solely to the window holding keyboard focus, the child window in `gt4-gs.exe` received no
+keystrokes, preventing ReShade from detecting `VK_HOME` (Pos1).
+Fixed in `native/window.cpp` by forwarding unhandled keyboard messages (`WM_KEYFIRST`..`WM_KEYLAST`) to
+child windows of `game_window` via non-blocking `PostMessageW`. Overlays such as ReShade now receive hotkeys
+and character text input. Details: `docs/RESHADE-HOME-KEY-ISSUE102-STUDY.md`.
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

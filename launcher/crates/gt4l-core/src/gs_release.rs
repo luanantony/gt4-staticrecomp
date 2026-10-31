@@ -193,6 +193,90 @@ pub fn install_latest_reporting(
     result
 }
 
+/// Extracts a semantic version from freeform text such as a file name, directory name or version file.
+pub fn extract_version(text: &str) -> Option<Version> {
+    let clean = text.trim();
+    if let Some(version) = Version::parse(clean) {
+        return Some(version);
+    }
+    let body = clean.strip_suffix(".zip").unwrap_or(clean);
+    for part in body.split(|c: char| c == '-' || c == '_' || c == ' ' || c == '/' || c == '\\') {
+        if let Some(version) = Version::parse(part) {
+            return Some(version);
+        }
+    }
+    None
+}
+
+/// Detects the renderer version from an archive's file name, internal version file or wrapping folder.
+pub fn detect_version(archive_path: &Path, bytes: &[u8]) -> Option<Version> {
+    if let Some(name) = archive_path.file_name().and_then(|n| n.to_str()) {
+        if let Some(version) = extract_version(name) {
+            return Some(version);
+        }
+    }
+    if let Ok(mut archive) = zip::ZipArchive::new(Cursor::new(bytes)) {
+        for index in 0..archive.len() {
+            if let Ok(mut entry) = archive.by_index(index) {
+                let name = entry.name().to_lowercase();
+                if name == "version.txt" || name == "version" || name.ends_with("/version.txt") {
+                    let mut text = String::new();
+                    if entry.read_to_string(&mut text).is_ok() {
+                        if let Some(version) = extract_version(&text) {
+                            return Some(version);
+                        }
+                    }
+                }
+            }
+        }
+        let mut names = Vec::new();
+        for index in 0..archive.len() {
+            if let Ok(entry) = archive.by_index(index) {
+                if let Some(enclosed) = entry.enclosed_name() {
+                    names.push(enclosed);
+                }
+            }
+        }
+        if let Some(folder) = wrapping_folder(&names) {
+            if let Some(version) = extract_version(&folder.to_string_lossy()) {
+                return Some(version);
+            }
+        }
+    }
+    None
+}
+
+/// Installs the renderer from a local zip package (`archive_path`).
+///
+/// Used for offline installation or when GitHub releases cannot be reached (TASK-139, issue #139).
+/// Infers or detects the version, unpacks into a staging directory under `root`, verifies that `gt4-gs.exe`
+/// exists and meets [`MINIMUM_VERSION`], and publishes it as the current renderer.
+pub fn install_from_archive(archive_path: &Path, root: &Path) -> Result<Outcome, String> {
+    let bytes = fs::read(archive_path).map_err(|error| format!("{}: {error}", archive_path.display()))?;
+    if bytes.len() as u64 > MAX_PACKAGE_BYTES {
+        return Err(format!("{}: package is larger than the limit", archive_path.display()));
+    }
+    let version = detect_version(archive_path, &bytes).unwrap_or(MINIMUM_VERSION);
+    if version < MINIMUM_VERSION {
+        return Err(format!(
+            "the archive version ({}) is older than the minimum required version ({})",
+            version.text(),
+            MINIMUM_VERSION.text()
+        ));
+    }
+
+    fs::create_dir_all(root).map_err(|error| format!("{}: {error}", root.display()))?;
+    let staging = root.join(format!(".staging-{}", version.text()));
+    guard::check_write(root, &staging)?;
+    let _ = fs::remove_dir_all(&staging);
+    let sums = BTreeMap::new();
+    let result = stage_and_publish(&bytes, &staging, root, version, &sums);
+    if result.is_err() {
+        let _ = fs::remove_dir_all(&staging);
+    }
+    result
+}
+
 fn stage_and_publish(
     package: &[u8],
     staging: &Path,
@@ -329,6 +413,16 @@ mod tests {
     #[test]
     fn sha256_matches_the_known_empty_digest() {
         assert_eq!(sha256_hex(b""), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    }
+
+    #[test]
+    fn extract_version_parses_various_formats() {
+        assert_eq!(extract_version("1.2.1"), Some(Version(1, 2, 1)));
+        assert_eq!(extract_version("v1.2.1"), Some(Version(1, 2, 1)));
+        assert_eq!(extract_version("gt4-gs-1.2.1-windows-x64.zip"), Some(Version(1, 2, 1)));
+        assert_eq!(extract_version("gt4-gs-v1.3.0-windows-x64.zip"), Some(Version(1, 3, 0)));
+        assert_eq!(extract_version("gt4-gs-1.2.1.zip"), Some(Version(1, 2, 1)));
+        assert_eq!(extract_version("random_name.zip"), None);
     }
 
     #[test]

@@ -1808,3 +1808,15 @@ Acceptance: target isolation, account/logout/HTTP cancellation regressions, cont
 preview consistency, full native/Python/Rust and en-US/pt-BR checks, both target builds/pins,
 installer+portable verification. New builds go to draft; owner gameplay/review before merge or
 publication. No code, builds, running agents or public rc7 authorized by this mapping step.
+
+
+### TASK-139 — GSdx renderer download retry and manual archive installation (issue #139)
+
+Goal: diagnose and resolve GSdx installation failure where users cannot start the game and get stranded with "GSdx is not installed yet" due to network errors (e.g. error 10061 connection refused) when downloading the renderer during setup or launch.
+Root cause: when network is unreachable or blocked by proxies/firewalls, background renderer download fails silently; `apply_update` was only offered on version updates and not exposed for missing installs; user was left stranded on home screen with an error toast and no way to retry or install from a local file.
+Fix:
+- `gt4l_core::gs_release`: added `extract_version`, `detect_version`, and `install_from_archive` to support offline / manual installation from `gt4-gs-*.zip` packages (handling bare and wrapped directory layouts, verifying minimum version, and publishing atomically).
+- `gt4l_tauri`: exposed `renderer_installed: bool` and `renderer_version: Option<String>` in `app_state`; added `install_renderer_archive` command with native file picker.
+- UI (`home.js` & `settings.js`): when Play fails due to missing GSdx, a recovery dialog prompts the user with "Download GSdx" (calls `apply_update("renderer")`) and "Install from zip..." (calls `install_renderer_archive`); added "Install GSdx from zip..." button in Settings > About.
+- Added unit and integration tests for version extraction and archive installation.
+State: ✅ Implemented (2026-10-31, branch `task/139-gsdx-install-retry`).

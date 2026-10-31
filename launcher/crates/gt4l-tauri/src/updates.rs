@@ -151,6 +151,24 @@ pub fn install_renderer(dirs: &DataDirs, progress: &mut dyn FnMut(Step)) -> Resu
     Ok(outcome)
 }
 
+/// Installs gt4-gs from a local zip archive (TASK-139, issue #139). Records the version in `version.json`.
+pub fn install_renderer_from_archive(dirs: &DataDirs, archive_path: &Path) -> Result<Outcome, String> {
+    let _serial = RENDERER_INSTALL.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let root = dirs.renderer_install_root();
+    let outcome = gs_release::install_from_archive(archive_path, &root)?;
+    let location = version_location(dirs);
+    if let Err(message) = versions::record_renderer(
+        &location.path,
+        location.path.parent().unwrap_or(dirs.root()),
+        outcome.installed().version,
+        LAUNCHER_VERSION,
+    ) {
+        state::log(dirs, &format!("version.json not updated: {message}"));
+    }
+    state::log(dirs, &format!("gt4-gs {} ready (from archive {})", outcome.installed().version.text(), archive_path.display()));
+    Ok(outcome)
+}
+
 pub fn step_name(step: Step) -> &'static str {
     match step {
         Step::Listing => "listing",

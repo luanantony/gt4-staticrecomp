@@ -37,6 +37,7 @@
     "allow-open-textures-folder",
     "allow-check-updates",
     "allow-apply-update",
+    "allow-install-renderer-archive",
     "allow-skip-update",
     "allow-confirm-close",
     "allow-ui-ready",

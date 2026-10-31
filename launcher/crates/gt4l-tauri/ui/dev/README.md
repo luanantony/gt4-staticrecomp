@@ -36,7 +36,7 @@ Arguments are the payload object shown. Errors are strings or Error objects; the
 
 | Command | Payload | Returns |
 |---|---|---|
-| `app_state` | none | `{setup: {state, step, progress, bytes_done, bytes_total, renderer_step, disc_name, problem, note}, game_running: bool, game_files}`; see "Setup states" below |
+| `app_state` | none | `{setup: {state, step, progress, bytes_done, bytes_total, renderer_step, disc_name, problem, note}, renderer_installed: bool, renderer_version: string | null, game_running: bool, game_files}`; see "Setup states" below |
 | `setup_choose_disc` | none | `{path, serial, version, name}` when the file is accepted, `null` when the picker was cancelled; a refused file is an error string (the reason), and `app_state` then says `wrong_disc` |
 | `setup_start` | none | none; called by the page right after `setup_choose_disc` accepted a file (and by "Try again") |
 | `setup_cancel` | none | none; the copy and the staging folder are removed, `app_state` says `failed` with "Setup was cancelled" |
@@ -64,6 +64,7 @@ Arguments are the payload object shown. Errors are strings or Error objects; the
 | `open_game_files_folder` | none | none; opens `game_files` in Explorer |
 | `check_updates` | none | `{offers: [offer], errors: [string], upToDate: bool, launcher, renderer}`; offer = `{stream, installed, latest, notes, package, update}` |
 | `apply_update` | `{stream}` (`launcher` or `renderer`) | `{ok, message}`; the renderer installs in place (not while the game runs); the launcher starts its setup and exits |
+| `install_renderer_archive` | none | `{cancelled: bool, version: string, message: string}`; opens file picker for the player to select `gt4-gs-*.zip` and installs it |
 | `skip_update` | `{stream, version}` | none; no offer again for exactly that version |
 | `confirm_close` | none | none; the player chose Close launcher in the close confirmation |
 

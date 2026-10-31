@@ -195,6 +195,7 @@ fn main() {
             commands::open_textures_folder,
             updates::check_updates,
             updates::apply_update,
+            commands::install_renderer_archive,
             updates::skip_update,
             tray::confirm_close,
             commands::ra_status,

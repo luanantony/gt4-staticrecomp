@@ -77,6 +77,7 @@ pub fn app_state_of(state: &AppState) -> Value {
         SetupOutcome::Done { renderer_note } => renderer_note.clone(),
         _ => String::new(),
     };
+    let installed_renderer = gs_release::installed(&state.dirs.renderer_root());
     json!({
         "setup": {
             "state": screen,
@@ -89,6 +90,8 @@ pub fn app_state_of(state: &AppState) -> Value {
             "problem": problem,
             "note": note,
         },
+        "renderer_installed": installed_renderer.is_some(),
+        "renderer_version": installed_renderer.as_ref().map(|r| r.version.text()),
         "game_running": state.game_child.is_some(),
         "game_files": state.dirs.disc_folder().display().to_string(),
         "migration": {
@@ -831,6 +834,39 @@ fn open_folder(folder: &Path) -> Result<(), String> {
         let _ = folder;
         Ok(())
     }
+}
+
+/// `install_renderer_archive()`: opens file dialog for the player to select `gt4-gs-*.zip` and installs it (TASK-139).
+#[tauri::command]
+pub async fn install_renderer_archive(app: AppHandle, shared: State<'_, Shared>) -> Result<Value, String> {
+    let shared: Shared = shared.inner().clone();
+    let picked = app
+        .dialog()
+        .file()
+        .set_title("Select GSdx renderer archive")
+        .add_filter("GSdx archive", &["zip"])
+        .blocking_pick_file();
+    let Some(picked) = picked else {
+        return Ok(json!({ "cancelled": true }));
+    };
+    let archive_path = picked.into_path().map_err(|error| error.to_string())?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let (dirs, game_running) = {
+            let state = lock(&shared);
+            (state.dirs.clone(), state.game_child.is_some())
+        };
+        if game_running {
+            return Err("Close the game before updating the renderer.".to_string());
+        }
+        let outcome = crate::updates::install_renderer_from_archive(&dirs, &archive_path)?;
+        let version = outcome.installed().version.text();
+        let message = format!("gt4-gs {version} is ready.");
+        let _ = app.emit("renderer-progress", json!({ "step": "done", "version": version }));
+        let _ = app.emit("update-finished", json!({ "stream": "renderer", "ok": true, "message": message }));
+        Ok(json!({ "cancelled": false, "version": version, "message": message }))
+    })
+    .await
+    .map_err(|error| error.to_string())?
 }
 
 /// Keeps the setup helpers in one place for tests of the command layer.

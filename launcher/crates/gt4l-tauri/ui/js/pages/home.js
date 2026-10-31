@@ -53,6 +53,45 @@
         page.classList.toggle("is-running", nowRunning);
       }
 
+      function promptGsdxInstall() {
+        if (GT4.ui.topDialog()) {
+          return;
+        }
+        GT4.ui.openDialog({
+          title: "GSdx renderer required",
+          text: "Gran Turismo 4 requires the GSdx renderer (gt4-gs.exe) to run. Would you like to download it now or install it from a downloaded zip archive?",
+          dismissable: true,
+          buttons: [
+            {
+              label: "Download GSdx",
+              primary: true,
+              run: function () {
+                GT4.ui.toast("Downloading GSdx renderer...");
+                call("apply_update", { stream: "renderer" }).then(function (res) {
+                  GT4.ui.toast(res && res.message ? res.message : "GSdx installed successfully.");
+                }, function (err) {
+                  GT4.ui.toast(GT4.errorText(err), true);
+                });
+              }
+            },
+            {
+              label: "Install from zip...",
+              run: function () {
+                call("install_renderer_archive").then(function (res) {
+                  if (res && res.cancelled) {
+                    return;
+                  }
+                  GT4.ui.toast(res && res.message ? res.message : "GSdx installed successfully.");
+                }, function (err) {
+                  GT4.ui.toast(GT4.errorText(err), true);
+                });
+              }
+            },
+            { label: "Cancel" }
+          ]
+        });
+      }
+
       function play() {
         if (isRunning) {
           return;
@@ -62,7 +101,12 @@
           // Follow the next poll for the real state.
         }, function (err) {
           paint(false);
-          GT4.ui.toast(GT4.errorText(err), true);
+          var errText = GT4.errorText(err);
+          if (errText.indexOf("GSdx is not installed yet") !== -1) {
+            promptGsdxInstall();
+          } else {
+            GT4.ui.toast(errText, true);
+          }
           // Game files missing (the data folder was cleaned): back to Setup, where the player chooses the disc again.
           call("app_state").then(function (appState) {
             if (appState.setup && appState.setup.state !== "done") {

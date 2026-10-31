@@ -498,7 +498,8 @@
     return call("about_info").then(function (info) {
       content.appendChild(h("h1", { text: "About" }));
       content.appendChild(h("p", { class: "note", text: "GT4Recomp " + (info.gt4recomp || info.version || "") }));
-      content.appendChild(h("p", { class: "note", text: "gt4-gs " + (info.gt4gs || "not installed") }));
+      var gsNote = h("p", { class: "note", text: "gt4-gs " + (info.gt4gs || "not installed") });
+      content.appendChild(gsNote);
       var checkButton = h("button", {
         class: "btn small",
         type: "button",
@@ -508,9 +509,28 @@
           }
         }
       }, "Check for updates");
+      var installArchiveButton = h("button", {
+        class: "btn small",
+        type: "button",
+        on: {
+          click: function () {
+            call("install_renderer_archive").then(function (res) {
+              if (res && res.cancelled) {
+                return;
+              }
+              GT4.ui.toast(res && res.message ? res.message : "GSdx installed successfully.");
+              call("about_info").then(function (newInfo) {
+                gsNote.textContent = "gt4-gs " + (newInfo.gt4gs || "not installed");
+              }, function () {});
+            }, function (err) {
+              GT4.ui.toast(GT4.errorText(err), true);
+            });
+          }
+        }
+      }, "Install GSdx from zip...");
       content.appendChild(h("div", { class: "row" }, [
         h("div", { class: "k", text: "Updates" }),
-        h("div", { class: "ctl" }, [checkButton])
+        h("div", { class: "ctl" }, [checkButton, installArchiveButton])
       ]));
       content.appendChild(h("div", { class: "about-notice" }, [
         h("p", { text: "GT4Recomp is an unofficial fan project. It is not affiliated with, endorsed by or sponsored by Sony Interactive Entertainment or Polyphony Digital." }),

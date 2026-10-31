@@ -384,6 +384,8 @@
 
   function appState() {
     return { setup: JSON.parse(JSON.stringify(setup)), game_running: gameRunning,
+      renderer_installed: true,
+      renderer_version: "1.2.1",
       game_files: "C:\\Program Files\\GT4Recomp\\data\\disc",
       migration: { running: false, item: "", bytes_done: 0, bytes_total: 0, notice: "", problem: false } };
   }
@@ -554,6 +556,8 @@
         return { offers: [], errors: [], upToDate: true, launcher: "1.1.0", renderer: "1.1.0" };
       case "apply_update":
         return { ok: true, message: args.stream === "launcher" ? "GT4Recomp setup started." : "gt4-gs 1.1.1 is ready." };
+      case "install_renderer_archive":
+        return { cancelled: false, version: "1.2.1", message: "gt4-gs 1.2.1 is ready." };
       case "skip_update":
       case "confirm_close":
       case "ui_ready":

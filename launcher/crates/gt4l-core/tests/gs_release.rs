@@ -311,3 +311,64 @@ fn a_failed_update_from_1_0_1_keeps_the_old_version() {
     assert_eq!(gs_release::installed(&install).unwrap().version, Version(1, 0, 1), "the old version still works");
     assert!(gs_release::needs_install(&install), "the next launch tries again");
 }
+
+#[test]
+fn archive_install_installs_bare_zip() {
+    let root = scratch("archive-install-bare");
+    let zip_dir = scratch("archive-zip-bare");
+    let exe = b"fake gt4-gs archive bare".to_vec();
+    let zip_path = zip_dir.join("gt4-gs-1.2.1-windows-x64.zip");
+    fs::write(&zip_path, package(&exe)).unwrap();
+
+    let outcome = gs_release::install_from_archive(&zip_path, &root).expect("archive install");
+    let Outcome::Installed(installed) = outcome else { panic!("expected installed outcome") };
+    assert_eq!(installed.version, Version(1, 2, 1));
+    assert_eq!(installed.executable, root.join("1.2.1").join("gt4-gs.exe"));
+    assert_eq!(installed.executable_sha256, gs_release::sha256_hex(&exe));
+}
+
+#[test]
+fn archive_install_installs_wrapped_zip() {
+    let root = scratch("archive-install-wrapped");
+    let zip_dir = scratch("archive-zip-wrapped");
+    let exe = b"fake gt4-gs archive wrapped".to_vec();
+    let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+    writer.start_file("gt4-gs-1.2.2-windows-x64/gt4-gs.exe", zip::write::SimpleFileOptions::default()).unwrap();
+    writer.write_all(&exe).unwrap();
+    let wrapped_bytes = writer.finish().unwrap().into_inner();
+    let zip_path = zip_dir.join("renderer.zip");
+    fs::write(&zip_path, wrapped_bytes).unwrap();
+
+    let outcome = gs_release::install_from_archive(&zip_path, &root).expect("archive install");
+    let Outcome::Installed(installed) = outcome else { panic!("expected installed outcome") };
+    assert_eq!(installed.version, Version(1, 2, 2));
+    assert_eq!(installed.executable, root.join("1.2.2").join("gt4-gs.exe"));
+    assert_eq!(installed.executable_sha256, gs_release::sha256_hex(&exe));
+}
+
+#[test]
+fn archive_install_refuses_version_below_minimum() {
+    let root = scratch("archive-install-old");
+    let zip_dir = scratch("archive-zip-old");
+    let exe = b"fake gt4-gs 1.0.1".to_vec();
+    let zip_path = zip_dir.join("gt4-gs-1.0.1-windows-x64.zip");
+    fs::write(&zip_path, package(&exe)).unwrap();
+
+    let err = gs_release::install_from_archive(&zip_path, &root).expect_err("should refuse old version");
+    assert!(err.contains("older than the minimum required version"));
+}
+
+#[test]
+fn archive_install_refuses_zip_without_executable() {
+    let root = scratch("archive-install-missing-exe");
+    let zip_dir = scratch("archive-zip-missing-exe");
+    let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+    writer.start_file("readme.txt", zip::write::SimpleFileOptions::default()).unwrap();
+    writer.write_all(b"no executable here").unwrap();
+    let bytes = writer.finish().unwrap().into_inner();
+    let zip_path = zip_dir.join("gt4-gs-1.2.1-windows-x64.zip");
+    fs::write(&zip_path, bytes).unwrap();
+
+    let err = gs_release::install_from_archive(&zip_path, &root).expect_err("should refuse missing exe");
+    assert!(err.contains("no gt4-gs.exe"));
+}

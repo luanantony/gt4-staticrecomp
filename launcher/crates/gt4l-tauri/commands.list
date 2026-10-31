@@ -33,6 +33,7 @@ open_replays_folder
 open_textures_folder
 check_updates
 apply_update
+install_renderer_archive
 skip_update
 confirm_close
 ui_ready

@@ -50,7 +50,7 @@ Sources: live open issues/comments; main fa92d05; modern TASKS at frozen rc6 com
 | [#93](https://github.com/moesuito/gt4-staticrecomp/issues/93) | No audio device causes exit | TASK-129 | New number for Claude's existing note; high, candidate rc; closed #94 is duplicate |
 | [#92](https://github.com/moesuito/gt4-staticrecomp/issues/92) | Split-screen display and 4:3 | Existing TASK-080/079 (4:3), TASK-130 (split display) | Existing aspect scope reused; split concern newly numbered, no release assigned |
 | [#89](https://github.com/moesuito/gt4-staticrecomp/issues/89) | Crash on integrated graphics | Existing TASK-105 on 1.3.0 line | Reporter validation/follow-up still needed; no replacement task |
-| [#88](https://github.com/moesuito/gt4-staticrecomp/issues/88) | Wheels and FFB | Existing TASK-018 and research 123 | Native DFP remains planned for 1.3.1; adapted input does not complete it |
+| [#88](https://github.com/moesuito/gt4-staticrecomp/issues/88) | Wheels and FFB | TASK-018 (research TASK-123) | Triaged request for multi-USB devices (pedals, H-pattern shifter, handbrake) and FFB. Architecture roadmap established in docs/WHEEL-FFB-ISSUE88-ROADMAP.md. Planned for 1.4.0. |
 | [#87](https://github.com/moesuito/gt4-staticrecomp/issues/87) | Cheats request | Existing TASK-057 scope/disposition and owner decision | Remains not planned; no cheat implementation task is created |
 | [#86](https://github.com/moesuito/gt4-staticrecomp/issues/86) | PCSX2 card import | Existing TASK-104 on 1.3.0 line | New chain-entry-7937 failure unresolved; high, candidate rc follow-up |
 

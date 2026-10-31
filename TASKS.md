@@ -848,6 +848,11 @@ Host-input groundwork was merged through TASK-121 and packaged in the private 1.
 Publication is now on hold. The guest USB/Logitech identity and native force-feedback protocol
 remain future acceptance for 1.3.1; this contribution does not complete TASK-018.
 
+Architecture & Multi-Device Roadmap update 2026-10-31 (Issue #88 / TASK-018):
+Synthesized requirements from Issue #88: multi-device USB support (separate pedals, H-pattern shifter, handbrake),
+native DFP 14-bit steering precision, and physics-driven force feedback via SDL3 Haptic subsystem.
+Established technical design and phased implementation roadmap in `docs/WHEEL-FFB-ISSUE88-ROADMAP.md`.
+
 ### TASK-075 — Input layer on SDL3
 Owner decision 2026-10-21. Replace the game's XInput-only pad code (native/host_io.cpp) with one input layer on
 SDL3 (zlib licence, fine in the MIT game exe; also the Linux and Android path, TASK-074 and TASK-022). SDL3 opens

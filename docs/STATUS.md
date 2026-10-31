@@ -1,5 +1,19 @@
 # Current Status
 
+## TASK-018: Racing Wheel, Multi-Device & Force Feedback Architecture Roadmap (2026-10-31)
+
+Synthesized requirements for upstream Issue #88 ("Wheel support and FFB", separate pedals, H-pattern shifter, handbrake).
+Established technical architecture and phased implementation roadmap in `docs/WHEEL-FFB-ISSUE88-ROADMAP.md`:
+1. Virtual DFP Protocol: Guest PS2 USB identity (Logitech Driving Force Pro) providing 14-bit (16384 ticks) steering
+   precision without gamepad speed dampening or artificial assists.
+2. Composite Host Input: Aggregating separate physical USB devices (wheelbase, pedals, shifter, handbrake) via SDL3
+   GUID-qualified persistent bindings in `wheel.toml`.
+3. Shifter & Handbrake: Sequential micro-step and direct transmission injection hooks for H-pattern shifters; analog/digital handbrake.
+4. Force Feedback: Translating DFP constant, spring, damper, and periodic packets into SDL3 Haptic structures, with safety
+   torque muting on window focus loss or race pause.
+5. Launcher UI: Controls > Racing Wheel calibration UI with live telemetry bars, deadzones, and test pulse button.
+Target release: 1.4.0 (owner confirmed).
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

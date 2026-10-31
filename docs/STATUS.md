@@ -1,5 +1,12 @@
 # Current Status
 
+## TASK-129: silent audio fallback when no output device is present (2026-10-31)
+
+Forensic study and architectural document completed for GitHub Issue #93 (reported by @deviljinsuresh; duplicate #94).
+Mapped the root cause: when Windows has no active audio output device (e.g. HDMI/DP monitor without speakers, headphones unplugged, or sound disabled), `waveOutOpen` fails with `MMSYSERR_BADDEVICEID` (2). `check_audio()` threw an unhandled runtime exception, causing the game to crash immediately on launch.
+Resolution in `native/host_io.*` detects missing hardware (`waveOutGetNumDevs() == 0` or `GT4_AUDIO=none/silent/off`) and runs `AudioOutput` as a silent dummy sink. In `native/window.cpp`, frame pacing automatically demotes from `Mode::audio` to `Mode::paced` when running silently, ensuring the high-resolution multimedia timer maintains strict 60 FPS pacing without hardware audio backpressure. Study document in `docs/AUDIO-SILENT-FALLBACK-STUDY.md`; implementation in PR #119.
+
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

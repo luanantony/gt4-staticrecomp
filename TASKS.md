@@ -1723,11 +1723,13 @@ Related: the texture-directory portion of the same issue belongs to existing TAS
 
 ### TASK-129 — Keep running without an audio output device (issue #93)
 
-State: recorded, not planned (2026-10-26).
+State: study completed, fix in PR #119 (2026-10-31).
 Issue: https://github.com/moesuito/gt4-staticrecomp/issues/93
-Existing diagnosis: no Windows audio output causes the game to close. Desired behavior: run silently.
-Priority: high, candidate for an upcoming 1.3.0 rc before final. Claude recorded the fix without an ID.
-Deduplication: closed issue #94 is already a duplicate of #93. Issue #107 joins only if confirmed.
+Diagnosis: missing Windows audio output devices cause waveOutOpen to fail with MMSYSERR_BADDEVICEID (2), aborting initialization.
+Solution: AudioOutput runs as a silent dummy sink when no audio endpoint is available. Pacing automatically demotes from Mode::audio to Mode::paced to maintain 60 FPS timer cadence.
+Document: docs/AUDIO-SILENT-FALLBACK-STUDY.md.
+PR: https://github.com/moesuito/gt4-staticrecomp/pull/119.
+Deduplication: closed issue #94 is already a duplicate of #93.
 
 ### TASK-130 — Split-screen display quality follow-up (issue #92)
 

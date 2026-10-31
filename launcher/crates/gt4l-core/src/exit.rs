@@ -43,7 +43,17 @@ pub fn user_message(outcome: &Outcome) -> String {
             format!("Gran Turismo 4 stopped unexpectedly ({reason}). The session folder has the details.")
         }
         Outcome::Crashed { reason: None, exit_code: Some(code) } => {
-            format!("Gran Turismo 4 stopped unexpectedly (exit code {code}). The session folder has the details.")
+            let ucode = *code as u32;
+            match ucode {
+                0xC0000135 => "Gran Turismo 4 could not start because a required system component (such as the Microsoft Visual C++ 2015-2022 Redistributable) is missing (exit code 0xC0000135).".to_string(),
+                0xCFFFFFFF => "Gran Turismo 4 was closed by Windows because the window stopped responding (exit code 0xCFFFFFFF).".to_string(),
+                _ if ucode >= 0x80000000 => {
+                    format!("Gran Turismo 4 stopped unexpectedly (exit code 0x{ucode:08X}). The session folder has the details.")
+                }
+                _ => {
+                    format!("Gran Turismo 4 stopped unexpectedly (exit code {code}). The session folder has the details.")
+                }
+            }
         }
         Outcome::Crashed { reason: None, exit_code: None } => {
             "Gran Turismo 4 stopped unexpectedly. The session folder has the details.".to_string()
@@ -86,5 +96,28 @@ mod tests {
     fn user_message_names_the_reason_in_one_sentence() {
         let outcome = Outcome::Crashed { reason: Some("no translated code".into()), exit_code: Some(1) };
         assert!(user_message(&outcome).starts_with("Gran Turismo 4 stopped unexpectedly (no translated code)"));
+    }
+
+    #[test]
+    fn user_message_interprets_dll_not_found_exit_code() {
+        let outcome = Outcome::Crashed { reason: None, exit_code: Some(-1073741515) };
+        assert!(user_message(&outcome).contains("Visual C++ 2015-2022 Redistributable"));
+        assert!(user_message(&outcome).contains("0xC0000135"));
+    }
+
+    #[test]
+    fn user_message_interprets_application_hang_exit_code() {
+        let outcome = Outcome::Crashed { reason: None, exit_code: Some(-805306369) };
+        assert!(user_message(&outcome).contains("window stopped responding"));
+        assert!(user_message(&outcome).contains("0xCFFFFFFF"));
+    }
+
+    #[test]
+    fn user_message_formats_high_exit_codes_as_hex() {
+        let outcome = Outcome::Crashed { reason: None, exit_code: Some(-1073741819) };
+        assert_eq!(
+            user_message(&outcome),
+            "Gran Turismo 4 stopped unexpectedly (exit code 0xC0000005). The session folder has the details."
+        );
     }
 }

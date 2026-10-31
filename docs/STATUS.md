@@ -1,5 +1,16 @@
 # Current Status
 
+## TASK-124 / TASK-127: startup crash and flashing window study (2026-10-31)
+
+Forensic diagnosis of Issue #107 (TASK-124) and Issue #99 (TASK-127).
+Issue #107 was identified as STATUS_DLL_NOT_FOUND (0xC0000135 / -1073741515) due to missing Visual C++
+runtime libraries on fresh/portable environments causing premature exit before CRT main() (0-byte game.log).
+Issue #99 was identified as STATUS_APPLICATION_HANG (0xCFFFFFFF / -805306369) due to unthrottled swapchain
+presentation under 6x ultrawide resolution starving the DWM message loop and creating ghost window flicker.
+Reporter verified issue resolved on 1.3.0-rc6. Upgraded gt4l-core::exit error classification to explicitly
+identify missing system runtimes and window hang codes in plain language instead of raw negative decimals.
+Documented in docs/STARTUP-CRASH-AND-FLASHING-WINDOW-STUDY.md.
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

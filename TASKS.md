@@ -1683,11 +1683,12 @@ No existing task is renumbered, copied as a new task or silently dropped here.
 
 ### TASK-124 — Game cannot start (issue #107)
 
-State: recorded, not planned (2026-10-26).
+State: diagnosed and documented (2026-10-31).
 Issue: https://github.com/moesuito/gt4-staticrecomp/issues/107
-Report: cannot start on both 1.2.4 and 1.3.0; screenshot and log bundle supplied. Cause unknown.
+Report: cannot start on both 1.2.4 and 1.3.0; screenshot and log bundle supplied.
+Cause identified: NTSTATUS 0xC0000135 (STATUS_DLL_NOT_FOUND, exit code -1073741515); process aborted during static DLL import resolution before CRT main() (0-byte game.log) due to missing Visual C++ 2015-2022 x64 runtime or DirectX/Vulkan loader components on fresh installs.
+Solution: upgraded exit error mapping in gt4l-core::exit to explicitly guide users to install the Microsoft Visual C++ 2015-2022 Redistributable; full study in docs/STARTUP-CRASH-AND-FLASHING-WINDOW-STUDY.md.
 Priority: high, candidate for an upcoming 1.3.0 rc before final.
-Related: TASK-105 and TASK-129 only if evidence establishes a shared cause; no duplicate confirmed.
 
 ### TASK-125 — GT Auto service audio keeps looping (issue #104)
 
@@ -1707,11 +1708,12 @@ Related: existing window/input tasks TASK-038 and TASK-076. No compatibility fix
 
 ### TASK-127 — Flashing window followed by crashes (issue #99)
 
-State: recorded, not planned (2026-10-26).
+State: diagnosed and verified on rc6 (2026-10-31).
 Issue: https://github.com/moesuito/gt4-staticrecomp/issues/99
 Report: repeated flashing and random crashes in 1.2.2, 1.2.3 and rc5, for both games; logs attached.
+Cause identified: NTSTATUS 0xCFFFFFFF (STATUS_APPLICATION_HANG, exit code -805306369); occurred on ultrawide display (3440x1440) with 6x upscale (3840x2688) and unthrottled presentation (vsync=off, DisableMailboxPresentation=true), causing swapchain acquire starvation, DWM ghost window creation/flicker, and watchdog hang termination.
+Verification: reporter confirmed issue resolved in 1.3.0-rc6; upgraded crash mapping in gt4l-core::exit; study in docs/STARTUP-CRASH-AND-FLASHING-WINDOW-STUDY.md.
 Priority: high, candidate for an upcoming 1.3.0 rc before final.
-Related: TASK-105 and TASK-124 remain separate until evidence confirms the same cause.
 
 ### TASK-128 — Optional use of an existing disc image (issue #95)
 

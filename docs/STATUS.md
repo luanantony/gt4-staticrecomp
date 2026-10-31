@@ -1,5 +1,14 @@
 # Current Status
 
+## TASK-053 / TASK-128: external texture directory and zero-copy ISO reuse study (2026-10-31)
+
+Architecture study and storage assessment for Issue #95.
+Analyzed storage overhead of default disc copying (5.3 GB per target) and texture pack duplication (10-15 GB).
+Documented transparent NTFS junction (mklink /J) workarounds for immediate zero-copy PCSX2 texture sharing.
+Designed configurable custom textures directory path for launcher settings (gt4-gs.ini [Folders] Textures)
+and zero-copy in-place disc image setup (receipt schema v3 with external path verification and read-only safety).
+Enables saving up to ~22.6 GB per installation. Documented in docs/EXTERNAL-TEXTURES-AND-ISO-REUSE-STUDY.md.
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

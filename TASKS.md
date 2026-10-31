@@ -1374,6 +1374,7 @@ Acceptance: Python tests: golden INI unchanged without the option; with the opti
 folder appear; relative paths refused; UTF-8 path with non-ASCII characters round trips; allow-list regenerated;
 pins regenerated where the probe changes. Owner: one in-game run with a synthetic or community pack.
 Risks: gt4-gs pin and allow-list drift (TASK-037/038 enforcement).
+Follow-up (Issue #95): analyzed custom texture folder integration and Windows NTFS junction workarounds in docs/EXTERNAL-TEXTURES-AND-ISO-REUSE-STUDY.md.
 
 ### TASK-054 — Launcher Mods page
 Repo: launcher branch after TASK-019 resumes (Tauri 2). Haiku, 2-3 sessions.
@@ -1715,10 +1716,10 @@ Related: TASK-105 and TASK-124 remain separate until evidence confirms the same 
 
 ### TASK-128 — Optional use of an existing disc image (issue #95)
 
-State: request recorded, not planned or approved for implementation (2026-10-26).
+State: study complete and architecture documented (2026-10-31).
 Issue: https://github.com/moesuito/gt4-staticrecomp/issues/95
-Request: reuse the original ISO without storing a second full copy. Claude had recorded the idea
-without a task number; it remains an option under consideration, with no release assignment.
+Request: reuse the original ISO without storing a second full copy (saves ~5.3 GB per installed game).
+Study: analyzed zero-copy setup mode, receipt schema v3 external path verification, and safety contracts in docs/EXTERNAL-TEXTURES-AND-ISO-REUSE-STUDY.md.
 Related: the texture-directory portion of the same issue belongs to existing TASK-053.
 
 ### TASK-129 — Keep running without an audio output device (issue #93)

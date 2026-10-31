@@ -1,5 +1,17 @@
 # Current Status
 
+## TASK-045: high-FPS presentation & GSdx decoupling roadmap (2026-10-31)
+
+Comprehensive roadmap and architectural design document completed for TASK-045 (redone from TASK-031 for the Decision 0070 separate-process GSdx architecture).
+Strict constraint: game physics simulation, tire dynamics, and vehicle handling remain 100% exact and fixed at 60 Hz (RaceBase__updateRace constant dt = 1/60s).
+Mapped out four presentation tiers:
+1. Mode 1 (VRR / Low Latency Mailbox): presents completed 60 Hz frames immediately on FreeSync/G-Sync displays without VSync wait, saving ~8-12 ms input lag.
+2. Mode 2 (GS-Stream Primitive Interpolation via AUX_FRAME): engine holds frame N+1, matches primitives, lerps screen-space XYZ/ST/RGBA, and transmits AUX_FRAME across IPC ring to gt4-gs.exe (+1 frame latency, true 120/144 Hz rasterization).
+3. Mode 3 (Late-Stage Camera Reprojection): compute shader delta-matrix space warp.
+4. Mode 4 (Host Driver / Interop): integration with host frame generation tools.
+Detailed roadmap in `docs/TASK-045-HIGH-FPS-ROADMAP.md`.
+
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

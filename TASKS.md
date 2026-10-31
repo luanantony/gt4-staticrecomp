@@ -82,7 +82,7 @@ See [GS renderer options](docs/GS-RENDERER-OPTIONS.md) and [GSDX-PLAN](docs/GSDX
 | TASK‑075 | Input layer on SDL3 (game side in slice210: SDL3 3.4.18 gamepads mapped to the DS2 layout, controls.toml applied, GT4_INPUT=sdl default / xinput for one release) | ✅ Done (2026-10-21) · game (slice210) and launcher read pads through SDL3 3.4.18; owner tested and approved |
 | TASK‑076 | Modern fixed keyboard layout (several keys per DS2 button, table in docs/CONTROLS.md `keyboard-default`) | ✅ Done (2026-10-21) · fixed keyboard layout in game and launcher, P = Start (owner choice); owner tested |
 | TASK‑044 | Packaging, release notes and the release 1.0.0 plan update | ✅ Done (2026-10-17) · release 1.0.0 ships gt4-gs 1.0.1; fork release notes, README, THIRD_PARTY and RELEASE-1.0.0-PLAN updated (docs only) |
-| TASK‑045 | High frame rate on the PCSX2 GS (TASK-031 redone) | 📋 Planned (after 1.0.0) |
+| TASK‑045 | High frame rate on the PCSX2 GS (TASK-031 redone) | 📋 Roadmap ready (docs/TASK-045-HIGH-FPS-ROADMAP.md) |
 | TASK‑046 | Launcher "Prepare shaders": compile GT4's PCSX2 GS pipeline list headless (gt4-gs --warm-selectors) and keep the cache warm | 📋 Planned (study done, 2026-10-16) |
 | TASK‑047 | PCSX2 GS deinterlacing in the 480i menus (field and interlace state in the stream) | ✅ Done · owner test 2026-10-16: 480i menus clean on Automatic; root cause missing SYNCV and a one-field-early VSYNC field (protocol 1.1, gt4-gs 0.3.2) |
 | TASK‑048 | Mod manager in the launcher (umbrella): texture packs first, Content Manager style | 📋 Planned for 1.1.0 (umbrella; owner decisions 2026-10-16) |
@@ -1279,6 +1279,7 @@ race PSNR < 32 dB) (2-3 sessions). (3) In engine: the game holds frame N+1, gene
 side effects (readbacks and signals stripped; targets overwritten by N+1); present scheduler for 120/144 Hz;
 +1 frame latency measured (6-10 sessions).
 Risks: texture-cache pollution by auxiliary frames, page alternation (HIGH-FPS 9.3), HUD.
+Roadmap: [docs/TASK-045-HIGH-FPS-ROADMAP.md](docs/TASK-045-HIGH-FPS-ROADMAP.md) (2026-10-31).
 
 ### TASK-058 — Crash-safe memory card in the real build
 Repo: worktree `C:\Antigravity\gt4-wt-058-harden`, branch `task/058-059-release-hardening` (from main `3b5334d`). Release 1.0.0 hardening, game side. One writer.

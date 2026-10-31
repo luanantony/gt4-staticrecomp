@@ -1731,12 +1731,22 @@ Deduplication: closed issue #94 is already a duplicate of #93. Issue #107 joins 
 
 ### TASK-130 — Split-screen display quality follow-up (issue #92)
 
-State: recorded, not planned (2026-10-26).
+State: ✅ Done (2026-10-31), branch `task/130-split-screen-triage`.
 Issue: https://github.com/moesuito/gt4-staticrecomp/issues/92
-Report: split-screen resolution/quality concern; the reporter supplied the requested screenshot.
-Priority: backlog, owner to select release priority. The old split-screen concern had no task number.
-Related: 4:3 stays with TASK-080/TASK-079. Broader two-controller support remains the existing future
-idea; this display intake does not silently schedule it.
+Study: [SPLIT-SCREEN-STUDY](docs/SPLIT-SCREEN-STUDY.md).
+
+- Technical investigation & study: Analyzed why split-screen in GT4 exhibited lower perceived resolution and
+  why players were locked out of 4:3 horizontal split-screen.
+  * GT4 split-screen architecture (`RaceSplitDisplayBase__initialize`): 4:3 mode uses horizontal split (two
+    640x224 viewports); 16:9 mode uses vertical split (two 320x448 viewports).
+  * 4:3 lockout cause: `GT4_FORCE_WIDESCREEN=1` (TASK-079) forces 16:9 in guest RAM at every VBlank, overriding
+    in-game option changes and locking players into vertical split.
+  * Quality cause: PS2 eDRAM bandwidth forced half-resolution viewports (320px wide or 224px high), which causes
+    blurry texture sampling and lower geometric fidelity even when upscaled by GSdx.
+  * Presentation behavior: In `native/display_aspect.cpp`, split-screen canvases return early to prevent HUD
+    distortion, intentionally leaving the picture in 16:9 pillarbox mode.
+- Roadmap: Documented requirements for two-player controller mapping (`pad1`/`pad2`) and future CoreGS 2.0/3.0
+  native viewport resolution scaling.
 
 
 ### TASK-131 — Restore main to the released 1.2.4 program baseline

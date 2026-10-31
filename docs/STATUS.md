@@ -1,5 +1,21 @@
 # Current Status
 
+## TASK-130: Split-screen display quality and aspect ratio triage (Issue #92, 2026-10-31)
+
+Addressed community feedback in Issue #92 regarding split-screen resolution quality and inability to
+switch to 4:3 (horizontal split-screen mode).
+- Technical investigation ([SPLIT-SCREEN-STUDY](docs/SPLIT-SCREEN-STUDY.md)):
+  Documented that Gran Turismo 4's 2-player mode provides two viewports: 640x224 (horizontal split) in 4:3,
+  and 320x448 (vertical split) in 16:9. Players were locked into vertical split because `TASK-079` (`GT4_FORCE_WIDESCREEN=1`)
+  holds 16:9 in guest RAM at VBlank, immediately overwriting in-game screen option toggles back to 16:9.
+  Additionally, PS2 eDRAM bandwidth constraints halved the rasterized buffer resolution on original hardware,
+  causing lower visual density than full-screen 1P even when scaled by GSdx.
+- Pillarboxing analysis: In `native/display_aspect.cpp`, split-screen canvases bypass `on_race_display_render`,
+  intentionally keeping the presentation in 16:9 pillarbox mode (`game_aspect`) rather than stretching.
+- Roadmap: Established roadmap for two-controller mapping (`pad1` and `pad2`) under the controls backlog,
+  and native viewport resolution decoupling under CoreGS 2.0 / 3.0.
+
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

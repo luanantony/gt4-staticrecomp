@@ -1675,6 +1675,7 @@ Existing tasks reused; do not allocate replacements:
 - #92 -> TASK-080/TASK-079 for 4:3, TASK-130 for split-screen display.
 - #87 -> existing TASK-057 mod-scope disposition and the owner's not-planned cheat policy.
   This is not approval or scheduling of a cheat feature.
+- #134 -> TASK-144 (related to TASK-029/TASK-120): full-range trigger sensitivity and pedal modulation.
 
 TASK-104/105 exist in frozen rc6 commit 58322229c0bd63a0652b0550c5ad2154bd907039.
 The CPU-parity TASK-119 is recorded in commit 9226927 on task/116-117-flare-perf, distinct
@@ -1808,3 +1809,14 @@ Acceptance: target isolation, account/logout/HTTP cancellation regressions, cont
 preview consistency, full native/Python/Rust and en-US/pt-BR checks, both target builds/pins,
 installer+portable verification. New builds go to draft; owner gameplay/review before merge or
 publication. No code, builds, running agents or public rc7 authorized by this mapping step.
+
+
+### TASK-144 — Full-range trigger support (issue #134)
+
+State: study completed, implementation planned (2026-10-31).
+Issue: https://github.com/moesuito/gt4-staticrecomp/issues/134
+Report: LT/RT triggers act like an on/off switch when mapped to gas/brake; reaches 100% saturation at ~35% physical travel.
+Investigation: GT4 hardcodes 100% saturation threshold at pressure byte 0x5A (90/255); Silent & Aero_ PCSX2 patch removes the clamp.
+Solution: Immediate zero-guest fix via host trigger scaling (scale=0.353 in controls.toml); native translation unit patch planned.
+Document: docs/FULL-RANGE-TRIGGERS-STUDY.md.
+Related: TASK-029 (controller mapping), TASK-120 (DualSense response curves).

@@ -1,5 +1,17 @@
 # Current Status
 
+## TASK-144: full-range trigger sensitivity and pedal modulation study (2026-10-31)
+
+Forensic study and resolution document completed for GitHub Issue #134 (reported by @shadowcla02-cloud).
+Mapped the root cause: GT4's internal input routine hardcodes 100% saturation at pressure byte 0x5A
+(90/255, ~35% of travel) designed for DualShock 2 rubber pressure membranes. On modern analog triggers
+(Xbox LT/RT, DualSense L2/R2 with 8-12mm stroke), this causes car acceleration/braking to max out at 35%
+travel, leaving 65% dead and feeling like an on/off switch. Reverse-engineered the PCSX2 community patch
+by Silent & Aero_ and established host-side input calibration (scale=0.353 in controls.toml) providing
+instant full-range pedal modulation with zero binary modifications. Detailed technical study in
+docs/FULL-RANGE-TRIGGERS-STUDY.md.
+
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

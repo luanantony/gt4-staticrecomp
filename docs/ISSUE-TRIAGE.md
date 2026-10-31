@@ -39,6 +39,7 @@ Sources: live open issues/comments; main fa92d05; modern TASKS at frozen rc6 com
 
 | Issue | Report | Owning task(s) | Intake and priority |
 | --- | --- | --- | --- |
+| [#134](https://github.com/moesuito/gt4-staticrecomp/issues/134) | Full range trigger support | TASK-144 (related TASK-029/120) | New; normal backlog, trigger saturation curve & sensitivity study |
 | [#112](https://github.com/moesuito/gt4-staticrecomp/issues/112) | Integrated-graphics slowdown | Existing TASK-041; related 082/105/116/117/118 and CPU-parity119@rc6 | Same performance backlog as #97, separate hardware evidence; candidate rc follow-up |
 | [#107](https://github.com/moesuito/gt4-staticrecomp/issues/107) | Cannot start the game | TASK-124 | New; high, candidate rc; cause unknown |
 | [#104](https://github.com/moesuito/gt4-staticrecomp/issues/104) | Service sound continues | TASK-125 | New; normal, release unassigned |

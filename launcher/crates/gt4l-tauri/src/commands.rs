@@ -139,7 +139,8 @@ pub fn get_settings_table_of(shared: &Shared) -> Result<Value, String> {
 
 pub fn get_settings_table_with_monitors(shared: &Shared, monitors: &[display_rules::Monitor]) -> Result<Value, String> {
     let state = lock(shared);
-    let mut table = model::settings_table_with_monitors(&state.config.settings, &state.controls, monitors);
+    let integrated_gpu = gt4l_platform::system::integrated_gpu_name().is_some();
+    let mut table = model::settings_table_with_monitors(&state.config.settings, &state.controls, monitors, integrated_gpu);
     // TASK-091: the launcher's own row (Graphics > Advanced), not a game setting.
     let safe_mode = webview_guard::safe_mode_on(state.user_dirs.root());
     if let Some(rows) = table.get_mut("rows").and_then(Value::as_array_mut) {
@@ -309,7 +310,9 @@ pub fn prepare_play(shared: &Shared, program_dir: &Path) -> Result<PlayInputs, S
             );
         }
     }
-    let plan = launch::session_plan(&settings, display.as_ref());
+    // Issue #89: on an integrated GPU the untouched default scale plays at 1x (the GPU the system check reports).
+    let integrated_gpu = gt4l_platform::system::integrated_gpu_name();
+    let plan = launch::session_plan(&settings, display.as_ref(), integrated_gpu.is_some());
     state::log(
         &dirs,
         &format!(
@@ -325,6 +328,9 @@ pub fn prepare_play(shared: &Shared, program_dir: &Path) -> Result<PlayInputs, S
             if plan.ultrawide_on { ", aspect path on" } else { "" }
         ),
     );
+    if let (true, Some(name)) = (plan.integrated_default, integrated_gpu.as_deref()) {
+        state::log(&dirs, &format!("display: integrated GPU {name}: default internal {}x", plan.multiplier));
+    }
     Ok(PlayInputs {
         display,
         elf: dirs.prepared().join(disc_setup::ELF_FILE),

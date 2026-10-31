@@ -7,7 +7,7 @@
 //!   instance. It opens no window and allocates no GPU memory. A loaded driver stays in the launcher process until it
 //!   exits; the probe runs once per launch when it succeeds (`checked_vulkan`).
 
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
 
 use gt4l_core::system_check::{CpuFeatures, VulkanDevice, VulkanProbe};
 
@@ -27,6 +27,20 @@ pub fn read_cpu_features() -> CpuFeatures {
 #[cfg(not(target_arch = "x86_64"))]
 pub fn read_cpu_features() -> CpuFeatures {
     CpuFeatures::default()
+}
+
+/// The integrated GPU the game renders on, read once per launcher process (issue #89): its name, or `None` when the
+/// machine has a discrete card, no GPU with its own driver, or the probe fails. The rule is
+/// `gt4l_core::system_check::integrated_gpu_name`; the same probe as the system check.
+static INTEGRATED_GPU: OnceLock<Option<String>> = OnceLock::new();
+
+pub fn integrated_gpu_name() -> Option<String> {
+    INTEGRATED_GPU
+        .get_or_init(|| match probe_vulkan() {
+            VulkanProbe::Ready { devices, .. } => gt4l_core::system_check::integrated_gpu_name(&devices),
+            _ => None,
+        })
+        .clone()
 }
 
 /// The last successful Vulkan check of this launcher session. A failure is not kept, so a driver installed while the

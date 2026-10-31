@@ -1,5 +1,16 @@
 # Current Status
 
+## TASK-105: Integrated GPU 1x resolution default & GPU-lost diagnostics (2026-10-31)
+
+Diagnosed root cause of upstream Issue #89 ("Game crashes on creating game data", Intel Core i3-1005G1 / Intel UHD Graphics).
+Isolated crash to Windows TDR / VK_ERROR_DEVICE_LOST in GSdx when rendering memory card save creation at 3x/2x internal resolution.
+Implemented:
+1. `gt4l-core::display`: integrated GPUs with default render scale (100%) start at native 1x resolution (640x448).
+2. `gt4l-core::system_check` and `gt4l-platform`: detect integrated-only environments via Vulkan physical devices.
+3. `gt4l-core::exit`: parse "Host GPU lost" / "VK_ERROR_DEVICE_LOST" in game.log, replacing generic "GS process exited"
+   with clear actionable advice to lower render scale or switch Graphics API to Direct3D 11.
+Documented in `docs/INTEGRATED-GPU-ISSUE89-STUDY.md`. 117 gt4l-core library tests and 17 launch contract tests pass.
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

@@ -242,13 +242,13 @@ fn pcsx2_plan_keeps_the_probe_argument_list_and_scrubs_inherited_names() {
 #[test]
 fn session_ini_matches_the_python_writer_for_the_default_settings() {
     let paths = pcsx2_paths();
-    let text = launch::gs_config_text(&Settings::default(), &paths, None).unwrap();
+    let text = launch::gs_config_text(&Settings::default(), &paths, None, false).unwrap();
     let bytes = gt4l_core::gs_table::ini_file_bytes(&text);
     let expected = include_bytes!("fixtures/gs/default-session.ini");
     assert_eq!(bytes.as_slice(), expected.as_slice(), "Rust gt4-gs.ini differs from scripts/gs_settings.py");
     // A 1920x1080 output at 100% is the same 3x: the default INI did not change with the display plan.
     let full_hd = display_target(r"\\.\DISPLAY1", 1920, 1080);
-    assert_eq!(launch::gs_config_text(&Settings::default(), &paths, Some(&full_hd)).unwrap(), text);
+    assert_eq!(launch::gs_config_text(&Settings::default(), &paths, Some(&full_hd), false).unwrap(), text);
 }
 
 fn display_target(device: &str, width: u32, height: u32) -> DisplayTarget {
@@ -277,13 +277,28 @@ fn the_internal_resolution_follows_the_output_size_and_the_render_scale() {
     ] {
         settings.set("render_scale", scale).unwrap();
         let target = display_target(r"\\.\DISPLAY1", width, height);
-        let text = launch::gs_config_text(&settings, &paths, Some(&target)).unwrap();
+        let text = launch::gs_config_text(&settings, &paths, Some(&target), false).unwrap();
         assert_eq!(multiplier_line(&text), format!("upscale_multiplier = {expected}"), "{width}x{height} at {scale}%");
     }
     // A stored upscale (an old file edited by hand) never wins: the plan does.
     settings.set("render_scale", "100").unwrap();
-    let text = launch::gs_config_text(&settings, &paths, Some(&display_target("x", 2560, 1440))).unwrap();
+    let text = launch::gs_config_text(&settings, &paths, Some(&display_target("x", 2560, 1440)), false).unwrap();
     assert_eq!(multiplier_line(&text), "upscale_multiplier = 4");
+}
+
+
+#[test]
+fn an_integrated_gpu_plays_the_untouched_default_at_native_resolution() {
+    // Issue #89: 1440 x 900 is 3x on a discrete card; the integrated default is 1x, a changed scale is kept.
+    let paths = pcsx2_paths();
+    let target = display_target(r"\\.\DISPLAY1", 1440, 900);
+    let mut settings = Settings::default();
+    let text = launch::gs_config_text(&settings, &paths, Some(&target), true).unwrap();
+    assert_eq!(multiplier_line(&text), "upscale_multiplier = 1");
+    assert_eq!(multiplier_line(&launch::gs_config_text(&settings, &paths, Some(&target), false).unwrap()), "upscale_multiplier = 3");
+    settings.set("render_scale", "150").unwrap();
+    let text = launch::gs_config_text(&settings, &paths, Some(&target), true).unwrap();
+    assert_eq!(multiplier_line(&text), "upscale_multiplier = 5");
 }
 
 #[test]

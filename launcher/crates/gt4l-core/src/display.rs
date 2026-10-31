@@ -34,6 +34,10 @@ pub const RENDER_SCALE_MAX: u32 = 200;
 pub const RENDER_SCALE_STEP: u32 = 25;
 pub const RENDER_SCALE_DEFAULT: u32 = 100;
 
+/// The internal multiplier an integrated GPU gets while the Render scale is the untouched default (issue #89): GT4's
+/// native 640 x 448 frame, so a 1440 x 900 screen starts at native resolution instead of 3x.
+pub const INTEGRATED_DEFAULT_MULTIPLIER: u32 = 1;
+
 /// What a renderer accepts as an internal-resolution multiplier.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RendererCaps {
@@ -54,6 +58,9 @@ pub struct DisplayPlan {
     pub output_height: u32,
     /// Whether the input was portrait (height above width) and was turned.
     pub portrait_input: bool,
+    /// Whether the integrated-GPU default applied: the render scale is the untouched default on an integrated GPU, so
+    /// the multiplier is [`INTEGRATED_DEFAULT_MULTIPLIER`] instead of the scaled value (issue #89).
+    pub integrated_default: bool,
     /// k = ceil(max(W / 640, H / 448)): the smallest whole multiplier whose frame covers the output on both axes.
     pub base_multiplier: u32,
     /// The render scale in percent that was applied.
@@ -101,7 +108,15 @@ pub fn render_scale_steps() -> Vec<u32> {
     (RENDER_SCALE_MIN..=RENDER_SCALE_MAX).step_by(RENDER_SCALE_STEP as usize).collect()
 }
 
-/// The render plan for an output size, a render scale (percent) and a renderer. Pure.
+/// Whether the integrated-GPU default applies: the GPU is integrated and the Render scale is still the default. A
+/// stored scale that was changed (any value but 100%) is kept as the player chose it. Note that the stored value
+/// cannot tell an untouched 100% from a chosen one, so a 100% chosen on an integrated GPU gets the same default.
+pub fn integrated_default_applies(render_scale: u32, integrated_gpu: bool) -> bool {
+    integrated_gpu && render_scale == RENDER_SCALE_DEFAULT
+}
+
+/// The render plan for an output size, a render scale (percent) and a renderer. Pure. Discrete GPUs and every
+/// changed scale use [`display_plan_on`] with `integrated_gpu` false.
 ///
 /// Refused: a zero or out-of-range side, a ratio outside 1:2 .. 8:1 after turning a portrait input sideways, and a
 /// render scale that is not a slider step.
@@ -110,6 +125,18 @@ pub fn display_plan(
     output_height: u32,
     render_scale: u32,
     caps: RendererCaps,
+) -> Result<DisplayPlan, PlanError> {
+    display_plan_on(output_width, output_height, render_scale, caps, false)
+}
+
+/// [`display_plan`] for the GPU the game will use: on an integrated GPU with the default render scale the multiplier is
+/// [`INTEGRATED_DEFAULT_MULTIPLIER`] (issue #89). Otherwise the plan is the same as [`display_plan`].
+pub fn display_plan_on(
+    output_width: u32,
+    output_height: u32,
+    render_scale: u32,
+    caps: RendererCaps,
+    integrated_gpu: bool,
 ) -> Result<DisplayPlan, PlanError> {
     if !is_render_scale(render_scale) {
         return Err(PlanError(format!(
@@ -131,11 +158,17 @@ pub fn display_plan(
     let base_multiplier = ceil_div(width, NATIVE_FRAME_WIDTH).max(ceil_div(height, NATIVE_FRAME_HEIGHT));
     // Round k x scale / 100 to the nearest whole number, ties up: floor((2 k s + 100) / 200).
     let scaled = (2 * base_multiplier * render_scale + 100) / 200;
-    let multiplier = scaled.clamp(1, caps.max_multiplier.max(1));
+    let integrated_default = integrated_default_applies(render_scale, integrated_gpu);
+    let multiplier = if integrated_default {
+        INTEGRATED_DEFAULT_MULTIPLIER.min(caps.max_multiplier.max(1))
+    } else {
+        scaled.clamp(1, caps.max_multiplier.max(1))
+    };
     Ok(DisplayPlan {
         output_width: width,
         output_height: height,
         portrait_input,
+        integrated_default,
         base_multiplier,
         render_scale,
         multiplier,
@@ -487,5 +520,51 @@ mod tests {
         for bad in ["", "2560", "2560x", "x1440", "2560X1440", "-1x5", "2560x1440x1", " 2560x1440", "0x0", "99999x1"] {
             assert_eq!(Size::parse(bad), None, "{bad:?}");
         }
+    }
+
+    // Issue #89 (TASK-105): integrated GPUs start at native resolution while the render scale is the untouched default.
+
+    #[test]
+    fn an_integrated_gpu_with_the_default_scale_renders_at_native_1x() {
+        // 1440 x 900 is k 3 on a discrete card (1920 x 1344); the integrated default gives 1x = 640 x 448.
+        let plan = display_plan_on(1440, 900, RENDER_SCALE_DEFAULT, PCSX2_GS_CAPS, true).unwrap();
+        assert_eq!(plan.base_multiplier, 3);
+        assert_eq!(plan.multiplier, INTEGRATED_DEFAULT_MULTIPLIER);
+        assert_eq!((plan.internal_width, plan.internal_height), (640, 448));
+        assert!(plan.integrated_default);
+    }
+
+    #[test]
+    fn a_discrete_gpu_keeps_the_scaled_multiplier_at_the_default_scale() {
+        let plan = display_plan_on(1440, 900, RENDER_SCALE_DEFAULT, PCSX2_GS_CAPS, false).unwrap();
+        assert_eq!(plan.multiplier, 3);
+        assert!(!plan.integrated_default);
+        assert_eq!(plan, display_plan(1440, 900, RENDER_SCALE_DEFAULT, PCSX2_GS_CAPS).unwrap());
+    }
+
+    #[test]
+    fn a_changed_render_scale_is_kept_on_an_integrated_gpu() {
+        // The player's choice wins: 50% gives 2x at 1440 x 900, 200% gives 6x.
+        for (scale, expected) in [(50, 2), (75, 2), (125, 4), (200, 6)] {
+            let plan = display_plan_on(1440, 900, scale, PCSX2_GS_CAPS, true).unwrap();
+            assert_eq!(plan.multiplier, expected, "{scale}%");
+            assert!(!plan.integrated_default, "{scale}%");
+        }
+    }
+
+    #[test]
+    fn the_integrated_default_never_exceeds_the_renderer_cap() {
+        let capped = RendererCaps { max_multiplier: 1 };
+        assert_eq!(display_plan_on(1920, 1080, RENDER_SCALE_DEFAULT, capped, true).unwrap().multiplier, 1);
+        let zero_cap = RendererCaps { max_multiplier: 0 };
+        assert_eq!(display_plan_on(1920, 1080, RENDER_SCALE_DEFAULT, zero_cap, true).unwrap().multiplier, 1);
+    }
+
+    #[test]
+    fn the_integrated_default_applies_only_to_the_default_scale_on_an_integrated_gpu() {
+        assert!(integrated_default_applies(100, true));
+        assert!(!integrated_default_applies(100, false));
+        assert!(!integrated_default_applies(125, true));
+        assert!(!integrated_default_applies(50, true));
     }
 }

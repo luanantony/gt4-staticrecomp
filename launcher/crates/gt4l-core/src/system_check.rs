@@ -81,10 +81,25 @@ pub struct VulkanDevice {
 pub const MICROSOFT_VENDOR_ID: u32 = 0x1414;
 /// VK_PHYSICAL_DEVICE_TYPE_CPU: a software rasterizer (llvmpipe, SwiftShader).
 pub const DEVICE_TYPE_CPU: u32 = 4;
+/// VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU: a GPU on the processor die (Intel UHD, AMD Radeon graphics).
+pub const DEVICE_TYPE_INTEGRATED: u32 = 1;
 
 /// True for a GPU with its own Vulkan driver: not a software rasterizer and not the D3D12 translation layer.
 pub fn is_gpu_driver(device: &VulkanDevice) -> bool {
     device.vendor_id != MICROSOFT_VENDOR_ID && device.device_type != DEVICE_TYPE_CPU
+}
+
+/// The name of the integrated GPU the game will render on, or `None` when the lighter default does not apply (issue
+/// #89). The game's GSdx picks its adapter itself and the launcher cannot tell which one it takes, so the rule is
+/// conservative: the integrated default applies only when every GPU with its own driver is integrated. With a discrete
+/// card in the machine (or none at all) the answer is `None`, which keeps today's default. The first integrated
+/// device's name is returned for the log.
+pub fn integrated_gpu_name(devices: &[VulkanDevice]) -> Option<String> {
+    let drivers: Vec<&VulkanDevice> = devices.iter().filter(|device| is_gpu_driver(device)).collect();
+    if drivers.is_empty() || drivers.iter().any(|device| device.device_type != DEVICE_TYPE_INTEGRATED) {
+        return None;
+    }
+    drivers.first().map(|device| device.name.clone())
 }
 
 /// What the Vulkan probe found.
@@ -282,5 +297,38 @@ mod tests {
         assert_eq!(block.matches("\"VK_").count(), GAME_INSTANCE_EXTENSIONS.len());
         let vulkan = include_str!("../../../../native/native_vulkan.cpp");
         assert!(vulkan.contains("properties.apiVersion < VK_API_VERSION_1_2"), "the game's minimum is Vulkan 1.2");
+    }
+
+    fn integrated(name: &str) -> VulkanDevice {
+        VulkanDevice { name: name.into(), api_major: 1, api_minor: 3, vendor_id: 0x8086, device_type: 1 }
+    }
+
+    #[test]
+    fn an_integrated_only_machine_is_integrated_with_its_first_name() {
+        let devices = vec![integrated("Intel(R) UHD Graphics (Ice Lake)")];
+        assert_eq!(integrated_gpu_name(&devices).as_deref(), Some("Intel(R) UHD Graphics (Ice Lake)"));
+    }
+
+    #[test]
+    fn a_discrete_card_among_integrated_ones_keeps_the_discrete_default() {
+        let laptop = vec![integrated("Intel UHD"), device("NVIDIA RTX", 1, 3)];
+        assert_eq!(integrated_gpu_name(&laptop), None);
+        let reversed = vec![device("AMD Radeon RX 9060 XT", 1, 4), integrated("Intel UHD")];
+        assert_eq!(integrated_gpu_name(&reversed), None);
+    }
+
+    #[test]
+    fn no_driver_gpu_is_not_integrated() {
+        assert_eq!(integrated_gpu_name(&[]), None);
+        let dozen = VulkanDevice {
+            name: "Microsoft Direct3D12 (Intel UHD)".into(),
+            api_major: 1,
+            api_minor: 2,
+            vendor_id: MICROSOFT_VENDOR_ID,
+            device_type: 1,
+        };
+        let llvmpipe =
+            VulkanDevice { name: "llvmpipe".into(), api_major: 1, api_minor: 3, vendor_id: 0x10005, device_type: 4 };
+        assert_eq!(integrated_gpu_name(&[dozen, llvmpipe]), None);
     }
 }

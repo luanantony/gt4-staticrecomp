@@ -1808,3 +1808,21 @@ Acceptance: target isolation, account/logout/HTTP cancellation regressions, cont
 preview consistency, full native/Python/Rust and en-US/pt-BR checks, both target builds/pins,
 installer+portable verification. New builds go to draft; owner gameplay/review before merge or
 publication. No code, builds, running agents or public rc7 authorized by this mapping step.
+
+
+### TASK-105 — Integrated GPU 1x resolution default and GPU-lost diagnostics (Issue #89)
+
+State: implemented, verified (2026-10-31).
+Scope: Root-cause triage and resolution for crash on first-boot save creation on integrated Intel UHD Graphics (Issue #89).
+Root Cause: Intel UHD Graphics (i3-1005G1) suffers TDR / VK_ERROR_DEVICE_LOST ("Host GPU lost too many times")
+when GSdx renders at 3x/2x internal resolutions during rapid render target transitions at memory card save creation.
+Mitigation:
+1. `gt4l-core::display`: integrated GPUs on untouched default scale (100%) start at native 1x resolution (640x448),
+   reducing pixel throughput by ~90% and avoiding TDR timeouts. Changed render scales remain honored.
+2. `gt4l-core::system_check`: added `integrated_gpu_name` to reliably detect integrated-only environments.
+3. `gt4l-core::exit`: added `gpu_lost_line` detecting GSdx driver loss assertions, surfacing actionable guidance
+   ("Your graphics card stopped responding. Try a lower resolution or switch Graphics API to Direct3D 11.")
+   instead of generic "GS process exited".
+4. Documented findings and driver recommendations in `docs/INTEGRATED-GPU-ISSUE89-STUDY.md`.
+Checks: 117/117 gt4l-core library unit tests pass, 17/17 launch contract tests pass.
+Branch: `task/105-integrated-gpu-crash-issue89`.

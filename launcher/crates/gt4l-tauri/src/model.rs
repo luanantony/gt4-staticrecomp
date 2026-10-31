@@ -26,7 +26,7 @@ pub fn pcsx2_table_rows() -> Vec<&'static gs_table::Row> {
 /// The payload of `get_settings_table`: `{max_upscale, rows}`. Launcher rows come from `SETTINGS`, PCSX2 GS rows from
 /// the table file; both use the row shape of ui/dev/README.md. GSdx is the only renderer (TASK-096), so no row depends on it.
 pub fn settings_table(settings: &Settings, controls: &Controls) -> Value {
-    settings_table_with_monitors(settings, controls, &[])
+    settings_table_with_monitors(settings, controls, &[], false)
 }
 
 /// The Monitor row's choices: one per connected monitor, labelled by its name ("DELL U3419W"; a second one with the same
@@ -82,13 +82,13 @@ fn fill_resolution_row(row: &mut Value, settings: &Settings, monitors: &[Monitor
 
 /// The Render scale slider's readout per step: "100% · 4x · 2560x1792" for the output size the game would use now
 /// (1920 x 1080 when no monitor is known).
-fn fill_render_scale_row(row: &mut Value, settings: &Settings, monitors: &[Monitor]) {
+fn fill_render_scale_row(row: &mut Value, settings: &Settings, monitors: &[Monitor], integrated_gpu: bool) {
     let output = display::resolve_target(monitors, settings.get("monitor"), settings.get("resolution"))
         .map(|target| target.output)
         .unwrap_or(display::FALLBACK_OUTPUT);
     let mut labels = serde_json::Map::new();
     for step in display::render_scale_steps() {
-        if let Ok(plan) = display::display_plan(output.width, output.height, step, display::PCSX2_GS_CAPS) {
+        if let Ok(plan) = display::display_plan_on(output.width, output.height, step, display::PCSX2_GS_CAPS, integrated_gpu) {
             labels.insert(step.to_string(), json!(format!("{step}% \u{00B7} {}", display::describe_plan(&plan))));
         }
     }
@@ -97,14 +97,16 @@ fn fill_render_scale_row(row: &mut Value, settings: &Settings, monitors: &[Monit
 }
 
 /// The settings table with the connected monitors (TASK-080 addendum: Monitor, Resolution and Render scale).
-pub fn settings_table_with_monitors(settings: &Settings, controls: &Controls, monitors: &[Monitor]) -> Value {
+/// `integrated_gpu` is true when the game renders on an integrated GPU (issue #89): the Render scale readout then shows
+/// the untouched default at 1x.
+pub fn settings_table_with_monitors(settings: &Settings, controls: &Controls, monitors: &[Monitor], integrated_gpu: bool) -> Value {
     let mut rows: Vec<Value> = Vec::new();
     for definition in SETTINGS {
         let mut row = launcher_row(definition, settings);
         match definition.id {
             "monitor" => fill_monitor_row(&mut row, settings, monitors),
             "resolution" => fill_resolution_row(&mut row, settings, monitors),
-            "render_scale" => fill_render_scale_row(&mut row, settings, monitors),
+            "render_scale" => fill_render_scale_row(&mut row, settings, monitors, integrated_gpu),
             _ => {}
         }
         rows.push(row);
@@ -682,7 +684,7 @@ mod table_tests {
     fn monitor_and_resolution_list_the_connected_monitors_and_their_modes() {
         let monitors = two_monitors();
         let mut settings = Settings::default();
-        let table = settings_table_with_monitors(&settings, &Controls::default(), &monitors);
+        let table = settings_table_with_monitors(&settings, &Controls::default(), &monitors, false);
         let monitor_row = row(&table, "monitor");
         assert_eq!(monitor_row["group"], "display");
         assert_eq!(monitor_row["control"], "dropdown");
@@ -699,7 +701,7 @@ mod table_tests {
 
         settings.set("monitor", r"\\.\DISPLAY2@3440x1440").unwrap();
         settings.set("resolution", "2560x1080").unwrap();
-        let table = settings_table_with_monitors(&settings, &Controls::default(), &monitors);
+        let table = settings_table_with_monitors(&settings, &Controls::default(), &monitors, false);
         assert_eq!(row(&table, "monitor")["current"], r"\\.\DISPLAY2@3440x1440");
         let resolution = row(&table, "resolution");
         assert_eq!(resolution["current"], "2560x1080");
@@ -842,5 +844,14 @@ mod table_tests {
         assert_eq!(value_text(&json!(true), false).as_deref(), Some("true"));
         assert_eq!(value_text(&json!(12), false).as_deref(), Some("12"));
         assert_eq!(value_text(&json!(["x"]), false), None);
+    }
+
+    #[test]
+    fn an_integrated_gpu_reads_the_default_render_scale_at_1x() {
+        // Issue #89: the readout shows the plan the game gets; a changed scale keeps its multiplier (150% of k 3 is 5x).
+        let table = settings_table_with_monitors(&Settings::default(), &Controls::default(), &[], true);
+        let scale = row(&table, "render_scale");
+        assert_eq!(scale["values"]["labels"]["100"], "100% \u{00B7} 1x \u{00B7} 640x448");
+        assert_eq!(scale["values"]["labels"]["150"], "150% \u{00B7} 5x \u{00B7} 3200x2240");
     }
 }

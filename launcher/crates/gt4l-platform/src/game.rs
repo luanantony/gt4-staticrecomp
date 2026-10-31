@@ -69,7 +69,7 @@ pub fn start(
         session_dir: &session_dir,
     };
     let paths = Pcsx2Paths::for_session(pcsx2, &dirs.root().join("gs"), &session_dir, textures);
-    let text = launch::gs_config_text(settings, &paths, display)?;
+    let text = launch::gs_config_text(settings, &paths, display, crate::system::integrated_gpu_name().is_some())?;
     gs_table::write_ini_atomic(&paths.config, &text).map_err(|error| format!("gt4-gs.ini: {error}"))?;
     let mut plan = launch::plan_pcsx2_launch(&inputs, settings, &paths, display, &inherited);
     plan.environment.extend(extra_environment.iter().cloned());

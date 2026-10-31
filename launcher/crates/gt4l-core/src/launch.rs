@@ -168,19 +168,21 @@ pub fn display_environment(display: Option<&DisplayTarget>) -> Vec<(String, Stri
 
 /// The render plan of a session (TASK-080 addendum): the output size of the display target (1920 x 1080 when none is
 /// known) and the Render scale, for the PCSX2 GS. Never fails: an output the plan refuses falls back to 1920 x 1080.
-pub fn session_plan(settings: &Settings, display: Option<&DisplayTarget>) -> display::DisplayPlan {
+pub fn session_plan(settings: &Settings, display: Option<&DisplayTarget>, integrated_gpu: bool) -> display::DisplayPlan {
     let scale = settings.get("render_scale").parse::<u32>().unwrap_or(display::RENDER_SCALE_DEFAULT);
     let output = display.map(|target| target.output).unwrap_or(display::FALLBACK_OUTPUT);
     let fallback = || {
-        display::display_plan(
+        display::display_plan_on(
             display::FALLBACK_OUTPUT.width,
             display::FALLBACK_OUTPUT.height,
             display::RENDER_SCALE_DEFAULT,
             display::PCSX2_GS_CAPS,
+            integrated_gpu,
         )
         .expect("1920x1080 at 100% is a valid plan")
     };
-    display::display_plan(output.width, output.height, scale, display::PCSX2_GS_CAPS).unwrap_or_else(|_| fallback())
+    display::display_plan_on(output.width, output.height, scale, display::PCSX2_GS_CAPS, integrated_gpu)
+        .unwrap_or_else(|_| fallback())
 }
 
 /// The gt4-gs.ini text of a session, rendered from the table (`gs_table::render_ini`, same rules as
@@ -188,9 +190,14 @@ pub fn session_plan(settings: &Settings, display: Option<&DisplayTarget>) -> dis
 /// fifo writes both true, mailbox writes mailbox false, immediate writes vsync false. `upscale_multiplier` comes from
 /// the session plan ([`session_plan`]); a stored `upscale` value is never used (there is no such setting). With no
 /// display known and Render scale 100% the plan gives 3x, the table default, so that INI is unchanged.
-pub fn gs_config_text(settings: &Settings, paths: &Pcsx2Paths, display: Option<&DisplayTarget>) -> Result<String, String> {
+pub fn gs_config_text(
+    settings: &Settings,
+    paths: &Pcsx2Paths,
+    display: Option<&DisplayTarget>,
+    integrated_gpu: bool,
+) -> Result<String, String> {
     let mut user: BTreeMap<String, String> = settings.gs_overrides().clone();
-    user.insert("upscale".to_string(), session_plan(settings, display).multiplier.to_string());
+    user.insert("upscale".to_string(), session_plan(settings, display, integrated_gpu).multiplier.to_string());
     let present = match settings.get("vsync") {
         "fast" => "mailbox",
         "off" => "immediate",

@@ -1,5 +1,14 @@
 # Current Status
 
+## TASK-025 / TASK-058: save deletion and runtime persistence study (2026-10-31)
+
+Forensic investigation into Issue #98 (deleted save reappearing upon next game start).
+Confirmed dual-layer persistence model between high-level user library (%APPDATA%\GT4Recomp\Saves)
+and emulated hardware memory card image (%LOCALAPPDATA%\GT4Recomp\runtime\card.ps2).
+In v1.2.3, prepare_card unconditionally harvested the emulated card back into the active library
+directory when Saves was manually removed. Documented full analysis, manual recovery steps,
+and proposed architectural reset solutions in docs/SAVE-DELETION-PERSISTENCE-ISSUE98-STUDY.md.
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

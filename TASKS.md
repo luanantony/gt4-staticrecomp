@@ -949,6 +949,10 @@ saves) and from PCSX2 folder cards; import always creates a new slot and never
 overwrites one. Export, delete to Recycle Bin, backups. Optional slot summary
 (day, credits) from Nenkai's PDTools save format. Atomic card writes in the
 runtime. Design: `docs/launcher/LAUNCHER-PLAN.md` on branch `task/019-launcher`.
+Follow-up (Issue #98 / TASK-058): forensic study of dual-layer save persistence
+(unpacked %APPDATA%\GT4Recomp\Saves vs raw %LOCALAPPDATA%\GT4Recomp\runtime\card.ps2),
+identifying the pre-launch harvest resurrection loop when deleting library folders manually,
+and proposed reset/wipe enhancements in docs/SAVE-DELETION-PERSISTENCE-ISSUE98-STUDY.md.
 
 ### TASK-028 — CoreGS 1.1
 Our current Vulkan compute GS renderer (CoreGS 1.x, donor lineage, MIT) gains:
@@ -1667,7 +1671,7 @@ Complete issue coverage: [issue triage](docs/ISSUE-TRIAGE.md).
 Existing tasks reused; do not allocate replacements:
 - #86 -> TASK-104 on the 1.3.0 line: the new chain-entry-7937 import failure needs follow-up.
 - #89 -> TASK-105 on the 1.3.0 line: existing integrated-GPU/startup work, reporter validation pending.
-- #98 -> TASK-025: deleted save returns; related to card persistence TASK-058.
+- #98 -> TASK-025: deleted save returns; related to card persistence TASK-058; analyzed in docs/SAVE-DELETION-PERSISTENCE-ISSUE98-STUDY.md.
 - #88 -> TASK-018 and research TASK-123: native DFP/FFB remains planned for 1.3.1.
 - #97 and #112 -> existing performance backlog TASK-041, related TASK-082/105/116/117/118
   and the CPU-parity TASK-119 on task/116-117-flare-perf. Retain both hardware reports.

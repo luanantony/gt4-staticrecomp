@@ -44,7 +44,7 @@ Sources: live open issues/comments; main fa92d05; modern TASKS at frozen rc6 com
 | [#104](https://github.com/moesuito/gt4-staticrecomp/issues/104) | Service sound continues | TASK-125 | New; normal, release unassigned |
 | [#102](https://github.com/moesuito/gt4-staticrecomp/issues/102) | Home key unavailable to ReShade | TASK-126 | New; normal, release unassigned |
 | [#99](https://github.com/moesuito/gt4-staticrecomp/issues/99) | Window flashes and game crashes | TASK-127 | New; high, candidate rc; not a proven duplicate of #89/#107 |
-| [#98](https://github.com/moesuito/gt4-staticrecomp/issues/98) | Deleted save returns | Existing TASK-025, related 058 | Save-manager follow-up; high, candidate rc; no new duplicate task |
+| [#98](https://github.com/moesuito/gt4-staticrecomp/issues/98) | Deleted save returns | Existing TASK-025, related 058 | Save-manager follow-up; high, candidate rc; analyzed in docs/SAVE-DELETION-PERSISTENCE-ISSUE98-STUDY.md |
 | [#97](https://github.com/moesuito/gt4-staticrecomp/issues/97) | Low-end hardware performance | Existing TASK-041 and modern performance work | Group with #112 under existing backlog; retain separate reports |
 | [#95](https://github.com/moesuito/gt4-staticrecomp/issues/95) | Reuse texture and ISO paths | Existing TASK-053 (textures), TASK-128 (ISO) | No duplicate texture task; ISO request remains under consideration |
 | [#93](https://github.com/moesuito/gt4-staticrecomp/issues/93) | No audio device causes exit | TASK-129 | New number for Claude's existing note; high, candidate rc; closed #94 is duplicate |

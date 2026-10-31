@@ -1808,3 +1808,14 @@ Acceptance: target isolation, account/logout/HTTP cancellation regressions, cont
 preview consistency, full native/Python/Rust and en-US/pt-BR checks, both target builds/pins,
 installer+portable verification. New builds go to draft; owner gameplay/review before merge or
 publication. No code, builds, running agents or public rc7 authorized by this mapping step.
+
+
+### TASK-104 — Save import boundary fix for PCSX2 cards (issue #86)
+
+State: study completed, fix in PR #120 (2026-10-31).
+Issue: https://github.com/moesuito/gt4-staticrecomp/issues/86
+Report: Importing PCSX2 memory card `Mcd001.ps2` fails with `"The memory card is damaged (chain entry 7937 outside the allocation area)"`, while PCSX2 reads the same card without issue.
+Root cause: In `gt4saves::card::Layout`, usable allocation clusters were computed as `alloc_end - alloc_offset`. In Sony PS2 MCFS, `alloc_end` is already relative to `alloc_offset`. Subtracting `alloc_offset` again discarded valid clusters, and on cards where `alloc_end = 7978`, computing `7978 - 41 = 7937` caused the `< usable` check to reject valid relative cluster 7937 (41 + 7937 = 7978 < 8192).
+Solution: Define `Layout::usable()` as `self.clusters.saturating_sub(self.alloc_offset)`. All clusters physically fitting on the flash card are safely read while strictly preventing out-of-bounds reads and loops.
+Document: docs/PCSX2-CARD-IMPORT-CHAIN-STUDY.md.
+PR: https://github.com/moesuito/gt4-staticrecomp/pull/120.

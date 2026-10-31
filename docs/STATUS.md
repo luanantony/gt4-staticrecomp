@@ -1,5 +1,20 @@
 # Current Status
 
+## TASK-142: Portable & standalone distribution triage (Issue #132, 2026-10-31)
+
+Triaged community Issue #132 regarding request for standalone/portable distribution without Edge WebView2
+or Windows installer dependencies.
+- Technical assessment ([PORTABLE-STANDALONE-STUDY](docs/PORTABLE-STANDALONE-STUDY.md)):
+  Clarified that the game engine (`gt4vulkan.exe`) is already 100% native C++20 and Vulkan, with zero
+  dependency on Edge WebView2. Running it without the launcher is currently blocked only by launcher-supplied
+  command-line and environment arguments (the exact scope of planned TASK-097).
+- Launcher & WebView2: The launcher (`GT4Recomp.exe`) relies on Tauri/Edge WebView2. Embedding a Fixed Version
+  WebView2 runtime would add ~180 MB compressed, contradicting the lightweight goal.
+- Roadmap: Mapped to TASK-098 (portable zip package with `<install>\user` and `<install>\data` for zero-registry,
+  zero-install execution) and TASK-097 (self-sufficient `gt4vulkan.exe` defaults for launcher-free play).
+  Documented direct batch execution workarounds for players running without WebView2 today.
+
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

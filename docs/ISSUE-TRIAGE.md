@@ -39,6 +39,7 @@ Sources: live open issues/comments; main fa92d05; modern TASKS at frozen rc6 com
 
 | Issue | Report | Owning task(s) | Intake and priority |
 | --- | --- | --- | --- |
+| [#132](https://github.com/moesuito/gt4-staticrecomp/issues/132) | Portable & standalone version | TASK-142, related 097, 098 | Studied in PORTABLE-STANDALONE-STUDY.md; game is already standalone & WebView2-free |
 | [#112](https://github.com/moesuito/gt4-staticrecomp/issues/112) | Integrated-graphics slowdown | Existing TASK-041; related 082/105/116/117/118 and CPU-parity119@rc6 | Same performance backlog as #97, separate hardware evidence; candidate rc follow-up |
 | [#107](https://github.com/moesuito/gt4-staticrecomp/issues/107) | Cannot start the game | TASK-124 | New; high, candidate rc; cause unknown |
 | [#104](https://github.com/moesuito/gt4-staticrecomp/issues/104) | Service sound continues | TASK-125 | New; normal, release unassigned |

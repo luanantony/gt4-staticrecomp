@@ -1808,3 +1808,24 @@ Acceptance: target isolation, account/logout/HTTP cancellation regressions, cont
 preview consistency, full native/Python/Rust and en-US/pt-BR checks, both target builds/pins,
 installer+portable verification. New builds go to draft; owner gameplay/review before merge or
 publication. No code, builds, running agents or public rc7 authorized by this mapping step.
+
+
+### TASK-142 — Portable & standalone distribution triage (issue #132)
+
+State: ✅ Done (2026-10-31), branch `task/142-portable-standalone-triage`.
+Issue: https://github.com/moesuito/gt4-staticrecomp/issues/132
+Study: [PORTABLE-STANDALONE-STUDY](docs/PORTABLE-STANDALONE-STUDY.md).
+Related: [TASK-097](#task-097--self-sufficient-game-executable) (Self-sufficient game executable),
+[TASK-098](#task-098--portable-build-zip-beside-the-installer) (Portable build zip).
+
+- Technical investigation & triage: Addressed user feedback in Issue #132 requesting a standalone, lightweight
+  package without Edge WebView2 or Windows installer dependencies.
+- Key architectural findings:
+  * The game engine (`gt4vulkan.exe`) is 100% native C++20 and Vulkan, with zero dependency on Edge WebView2.
+    Its only external dependencies are Vulkan, SDL3, and bundled MSVC runtime DLLs.
+  * Direct double-click execution is currently blocked only by launcher-supplied command-line parameters and
+    environment flags, which is the exact scope of planned TASK-097.
+  * The graphical launcher (`GT4Recomp.exe`) uses Tauri v2, relying on Edge WebView2 for UI rendering. Shipping
+    an embedded Fixed Version WebView2 runtime would bloat the distribution by ~180 MB, contradicting the lightweight goal.
+  * Documented existing portable capabilities (`<install>\data`, `<install>\user`, `GT4RECOMP_USER_DIR`), direct
+    batch execution workarounds, and the implementation roadmap for TASK-097 and TASK-098.

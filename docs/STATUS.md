@@ -1,5 +1,15 @@
 # Current Status
 
+## TASK-041: Low-end hardware and integrated graphics performance study (2026-10-31)
+
+Forensic analysis and optimization study authored in docs/LOW-END-HARDWARE-PERF-STUDY.md covering
+upstream Issues #112 (i3-1005G1 / Intel UHD), #97 (i5-3337U / Intel HD 4000), #126, and owner report on
+i5-7200U (HD 620).
+Identified root causes of menu car-preview drops (turntable multi-pass reflections, cubemap updates,
+continuous render target switches) and race-start drops (6-car primitive density). Evaluated TASK-105
+1x native resolution clamping, Performance Mode (HWDownloadMode = 2 no-readbacks), and Direct3D 11 API
+selection. Formulated recommendations for low-end profiles and audio buffer latency elasticity under load.
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

@@ -39,13 +39,13 @@ Sources: live open issues/comments; main fa92d05; modern TASKS at frozen rc6 com
 
 | Issue | Report | Owning task(s) | Intake and priority |
 | --- | --- | --- | --- |
-| [#112](https://github.com/moesuito/gt4-staticrecomp/issues/112) | Integrated-graphics slowdown | Existing TASK-041; related 082/105/116/117/118 and CPU-parity119@rc6 | Same performance backlog as #97, separate hardware evidence; candidate rc follow-up |
+| [#112](https://github.com/moesuito/gt4-staticrecomp/issues/112) | Integrated-graphics slowdown | Existing TASK-041; related 082/105/116/117/118 and CPU-parity119@rc6 | Same performance backlog as #97; study authored in [LOW-END-HARDWARE-PERF-STUDY](LOW-END-HARDWARE-PERF-STUDY.md) |
 | [#107](https://github.com/moesuito/gt4-staticrecomp/issues/107) | Cannot start the game | TASK-124 | New; high, candidate rc; cause unknown |
 | [#104](https://github.com/moesuito/gt4-staticrecomp/issues/104) | Service sound continues | TASK-125 | New; normal, release unassigned |
 | [#102](https://github.com/moesuito/gt4-staticrecomp/issues/102) | Home key unavailable to ReShade | TASK-126 | New; normal, release unassigned |
 | [#99](https://github.com/moesuito/gt4-staticrecomp/issues/99) | Window flashes and game crashes | TASK-127 | New; high, candidate rc; not a proven duplicate of #89/#107 |
 | [#98](https://github.com/moesuito/gt4-staticrecomp/issues/98) | Deleted save returns | Existing TASK-025, related 058 | Save-manager follow-up; high, candidate rc; no new duplicate task |
-| [#97](https://github.com/moesuito/gt4-staticrecomp/issues/97) | Low-end hardware performance | Existing TASK-041 and modern performance work | Group with #112 under existing backlog; retain separate reports |
+| [#97](https://github.com/moesuito/gt4-staticrecomp/issues/97) | Low-end hardware performance | Existing TASK-041 and modern performance work | Group with #112 under existing backlog; study authored in [LOW-END-HARDWARE-PERF-STUDY](LOW-END-HARDWARE-PERF-STUDY.md) |
 | [#95](https://github.com/moesuito/gt4-staticrecomp/issues/95) | Reuse texture and ISO paths | Existing TASK-053 (textures), TASK-128 (ISO) | No duplicate texture task; ISO request remains under consideration |
 | [#93](https://github.com/moesuito/gt4-staticrecomp/issues/93) | No audio device causes exit | TASK-129 | New number for Claude's existing note; high, candidate rc; closed #94 is duplicate |
 | [#92](https://github.com/moesuito/gt4-staticrecomp/issues/92) | Split-screen display and 4:3 | Existing TASK-080/079 (4:3), TASK-130 (split display) | Existing aspect scope reused; split concern newly numbered, no release assigned |
@@ -63,7 +63,7 @@ Sources: live open issues/comments; main fa92d05; modern TASKS at frozen rc6 com
 - TASK-119 has three historical branch meanings: main RetroAchievements, rc6 CPU parity and
   task/101 player-one controller selection. Qualify the CPU task by branch until integration
   resolves numbering; no task is renumbered or lost here. New IDs 124..130 are reserved.
-- Issues #97/#112 share a performance backlog; this does not prove identical bottlenecks.
+- Issues #97/#112 (and #126) share a performance backlog; forensic study completed in [LOW-END-HARDWARE-PERF-STUDY](LOW-END-HARDWARE-PERF-STUDY.md).
 - Issues #107/#99/#93 remain separate until evidence establishes a shared cause. Consolidate
   references later if confirmed, rather than losing a report based on similar symptoms.
 - High candidates are 124, 127, 129 and existing save/import/GPU work 025/104/105, alongside

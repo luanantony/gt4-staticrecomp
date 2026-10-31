@@ -1217,6 +1217,9 @@ owner night-race A/B pending, no PR.
   critical path summary against the 16.68 ms budget.
 - Menus, same build: EE CPU donor 7.6 vs pcsx2 7.2 ms/frame. CTest 29/29, Python 416 OK, donor 42/42, pcsx2 41/41.
   Details: [GS-LIVE](docs/GS-LIVE.md) section 9.
+- Low-end hardware and integrated graphics performance study (2026-10-31, branch task/041-low-end-hardware-perf):
+  analyzed upstream reports #112 (i3-1005G1 / Intel UHD), #97 (i5-3337U / Intel HD 4000), #126, and owner report on i5-7200U (HD 620).
+  Identified bottleneck factors: shared 15W TDP / DDR memory bus bandwidth, turntable car reflection passes, 6-car grid start drawcall density, and audio buffer exhaustion during frametime dips. Evaluated TASK-105 1x native default, Performance Mode (HWDownloadMode=2), and Direct3D 11. Details: [LOW-END-HARDWARE-PERF-STUDY](docs/LOW-END-HARDWARE-PERF-STUDY.md).
 
 ### TASK-042 — JIT-free `gt4-gs.exe`
 Repos: both, branches `gt4gs/nojit` (fork, from `gt4gs/main` `660017bb1`) and `task/042-gs-nojit` (main, from `a1a06a4`).
@@ -1671,6 +1674,7 @@ Existing tasks reused; do not allocate replacements:
 - #88 -> TASK-018 and research TASK-123: native DFP/FFB remains planned for 1.3.1.
 - #97 and #112 -> existing performance backlog TASK-041, related TASK-082/105/116/117/118
   and the CPU-parity TASK-119 on task/116-117-flare-perf. Retain both hardware reports.
+  Study documented in [LOW-END-HARDWARE-PERF-STUDY](docs/LOW-END-HARDWARE-PERF-STUDY.md).
 - #95 -> TASK-053 for reuse of an existing texture directory, TASK-128 for optional external ISO.
 - #92 -> TASK-080/TASK-079 for 4:3, TASK-130 for split-screen display.
 - #87 -> existing TASK-057 mod-scope disposition and the owner's not-planned cheat policy.

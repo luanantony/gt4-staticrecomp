@@ -441,15 +441,9 @@ body.input-pad .info:focus .tip { display: block; }
 .cx-status-sub { color: var(--dim); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cx-locked { flex: none; margin-top: 10px; padding: 10px 14px; border-left: 2px solid #e3b341; background: rgba(227, 179, 65, 0.08); color: var(--silver); font-size: 13px; }
 
-.cx-body,
-.cx-wheel-body {
+.cx-body {
   flex: 1; min-height: 0; margin-top: 6px;
-  display: grid; grid-template-columns: minmax(0, 1fr) clamp(320px, 28vw, 440px); gap: 24px;
-}
-[hidden],
-.cx-body[hidden],
-.cx-wheel-body[hidden] {
-  display: none !important;
+  display: grid; grid-template-columns: minmax(0, 1fr) clamp(268px, 23vw, 360px); gap: 24px;
 }
 .cx-stage { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .cx-pad { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
@@ -781,53 +775,6 @@ body.input-pad .info:focus .tip { display: block; }
 .release-notes ul { margin: 0 0 8px; padding-left: 20px; }
 .release-notes li { margin: 2px 0; line-height: 1.4; }
 
-/* ---- Racing Wheel Configurator (TASK-018) ---- */
-.wh-root { display: flex; flex-direction: column; gap: 14px; padding: 4px 0 18px; }
-.wh-header-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px 16px; }
-.wh-status { display: flex; align-items: center; gap: 12px; }
-.wh-status-text { display: flex; flex-direction: column; gap: 2px; }
-.wh-header-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.wh-toggle-wrap { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--fg); cursor: pointer; }
-.wh-preset-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 10px 16px; }
-.wh-preset-label { display: flex; flex-direction: column; gap: 2px; }
-.wh-preset-title { font-size: 13px; font-weight: 600; color: var(--fg); }
-.wh-preset-sub { font-size: 12px; color: var(--muted); }
-.wh-select { background: rgba(15,18,24,0.9); color: var(--fg); border: 1px solid rgba(255,255,255,0.16); border-radius: 6px; padding: 6px 10px; font-size: 13px; min-width: 260px; }
-.wh-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
-.wh-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
-.wh-card-title { font-size: 14px; font-weight: 600; color: var(--fg); margin: 0; }
-.wh-card-sub { font-size: 12px; color: var(--muted); margin: -4px 0 4px; line-height: 1.4; }
-.wh-telemetry { display: flex; align-items: center; gap: 18px; padding: 6px 0; }
-.wh-wheel-visual { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 110px; }
-.wh-wheel-svg { width: 88px; height: 88px; color: var(--accent, #58a6ff); transition: transform 40ms linear; }
-.wh-wheel-angle { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--muted); }
-.wh-pedals-bars { flex: 1; display: flex; flex-direction: column; gap: 8px; }
-.wh-bar-row { display: grid; grid-template-columns: 78px 1fr 44px; align-items: center; gap: 8px; font-size: 12px; }
-.wh-bar-label { color: var(--muted); }
-.wh-bar-track { height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; }
-.wh-bar-fill { height: 100%; width: 0%; border-radius: 4px; transition: width 40ms linear; }
-.wh-bar-throttle { background: #3fb950; }
-.wh-bar-brake { background: #f85149; }
-.wh-bar-clutch { background: #58a6ff; }
-.wh-bar-handbrake { background: #d29922; }
-.wh-bar-pct { text-align: right; font-variant-numeric: tabular-nums; color: var(--fg); }
-.wh-Section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-top: 4px; }
-.wh-slider-list { display: flex; flex-direction: column; gap: 8px; }
-.wh-setting-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0; }
-.wh-setting-info { display: flex; flex-direction: column; gap: 1px; }
-.wh-setting-label { font-size: 13px; color: var(--fg); }
-.wh-setting-help { font-size: 11px; color: var(--muted); }
-.wh-slider-ctrl { display: flex; align-items: center; gap: 8px; min-width: 175px; }
-.wh-slider { flex: 1; }
-.wh-slider-val { font-size: 12px; font-variant-numeric: tabular-nums; min-width: 48px; text-align: right; color: var(--fg); }
-.wh-bindings-list { display: flex; flex-direction: column; gap: 6px; max-height: 430px; overflow-y: auto; padding-right: 4px; }
-.wh-bind-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 8px; border-radius: 6px; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.05); }
-.wh-bind-row.is-capturing { border-color: var(--accent, #58a6ff); background: rgba(88,166,255,0.1); }
-.wh-bind-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.wh-bind-name { font-size: 12.5px; font-weight: 500; color: var(--fg); }
-.wh-bind-source { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wh-bind-btns { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-
 /* ---------- achievements page (js/pages/achievements.js) ---------- */
 .ra-user-badge { color: var(--white); font-weight: 500; }
 .ra-form { display: flex; flex-direction: column; gap: 14px; margin-top: 8px; }
@@ -868,72 +815,3 @@ body.input-pad .info:focus .tip { display: block; }
 .ra-pill.is-unlocked { background: rgba(47, 168, 102, 0.16); border-color: var(--ok); color: #7ee2a8; }
 .ra-pill.is-locked { color: var(--faint); }
 
-
-/* Racing Wheel Button Remapping List */
-.cx-remap-section {
-  margin-top: 14px;
-}
-.cx-remap-list {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  margin-top: 8px;
-  max-height: 360px;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-.cx-remap-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 7px 10px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease;
-}
-.cx-remap-row:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.16);
-}
-.cx-remap-row.is-selected {
-  background: rgba(44, 107, 237, 0.14);
-  border-color: rgba(44, 107, 237, 0.55);
-}
-.cx-remap-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-.cx-remap-glyph {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-}
-.cx-remap-info {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-.cx-remap-name {
-  color: var(--white);
-  font: 500 12.5px var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.cx-remap-role {
-  color: var(--dim);
-  font-size: 11px;
-}
-.cx-remap-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}

@@ -44,12 +44,8 @@ public:
   ControllerInput &operator=(const ControllerInput &) = delete;
   PadState poll(bool focused, std::uint16_t keyboard_buttons);
   void rumble(std::uint16_t value);
-  // Instance IDs owned by the enabled wheel subsystem must not be read twice as gamepads.
-  void set_excluded_devices(std::vector<std::uint32_t> ids);
   void stop();
-  gt4::pad::Backend backend() const {
-    return excluded_devices_.empty() ? backend_ : gt4::pad::Backend::sdl;
-  }
+  gt4::pad::Backend backend() const { return backend_; }
 
 private:
   PadState poll_xinput(bool focused);
@@ -57,8 +53,6 @@ private:
   void rumble_xinput(std::uint16_t value);
   void rumble_sdl(std::uint16_t value);
   void close_sdl_pad();
-  void ensure_sdl();
-  std::vector<std::uint32_t> excluded_devices_;
 
   gt4::controls::ControlMap map_;
   gt4::pad::Backend backend_;

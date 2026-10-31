@@ -24,15 +24,6 @@ cancel_capture
 reset_binding
 assign_binding
 reset_all_bindings
-get_wheel_config
-set_wheel_setting
-apply_wheel_preset
-assign_wheel_binding
-reset_wheel_binding
-reset_wheel_config
-capture_wheel_binding
-cancel_wheel_capture
-test_wheel_ffb
 about_info
 open_log_folder
 open_game_files_folder

@@ -21,7 +21,6 @@ pub mod textures;
 pub mod update;
 pub mod version;
 pub mod versions;
-pub mod wheel;
 
 pub use config::ConfigFile;
 pub use settings::{SettingDef, Settings, SETTINGS};

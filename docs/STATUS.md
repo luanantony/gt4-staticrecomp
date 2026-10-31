@@ -1,5 +1,62 @@
 # Current Status
 
+## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
+
+Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements
+from1.2.4 and controller-only changes from1.2.5. Frame skipping is excluded, preserved remotely
+at15b7bf3 in task/082-render-skip (PR113 draft, report committed) for future CoreGS2.0 resumption.
+
+Prepared task/133-rc7-ra-controls in C:/Antigravity/gt4-wt-133-rc7-ra-controls from exact tag
+v1.3.0-rc6/5832222. Integration map: docs/tasks/TASK-133-RC7-RA-CONTROLS-INTEGRATION.md.
+Main's1.2.5 program is the source reference, not a launcher/base replacement. RA is originalGT4-only
+with a native and launcher SpecII guard; controller curves are shared by both games. Preserve modern
+multi-game/portable paths, localization, channels and rc6 performance behavior. No wheel code.
+
+Mapping/preparation only, no implementation/build/test run or agent dispatch. Installer and portable
+rc7 will require new target builds/pins, both languages and draft checks. No public rc7 yet.
+
+
+## TASK-132: controller-only 1.2.5 published as Latest (2026-10-26)
+
+Owner authorized replacing the private wheel draft and publishing a final1.2.5 after checks.
+Branch task/132-release-125-controls reapplies exact reviewed controller integration8b73fa0
+(PR #100/#106) over main749af82, with only version/packaging changes beyond that program code.
+Wheel source, commands and UI are absent. RetroAchievements from1.2.4 remains unchanged.
+Native pin slice1200 reused; fresh distribution slice1320-controls125-dist. Legacy English UI
+exception retained; matching en-US/pt-BR short notes were written before the launcher build.
+
+Repeated checks: CTest43/43, Python641 tests/24skipped, Rust381 passed/4ignored, UI focus114/114
+and navigation154/154 with no JS errors. Official release build/path scan passed. Installer
+extraction matched all24 staged program files plus WebView2 (the signed bootstrapper was verified too).
+Installer29,041,073bytes, SHA256556e7725d11146f1f79613814fbf961e1299000bd56df7c8831a324213003a74.
+Launcher SHA2563a2044c63e2a245e62c212232cee6d88b567b1cd8c84a994f7983e51101fb8c6;
+game SHA2566ea86e695d058bf954292d2967be42d5d3e0b85d4aa25c0cabfcf98b38a47116.
+Published stable Latest v1.2.5 after draft upload/digest verification, PR #125 / merge5d7a669.
+The old private wheel draft was deleted. Tag v1.2.5 points at5d7a669; public API confirms
+Latest=v1.2.5 and isDraft=false/isPrerelease=false. No new physical controller,
+real-account unlock or installer execution is claimed. CoreGS/modern worktrees remain untouched.
+
+
+## TASK-131: restore the 1.2.4 program baseline (2026-10-26)
+
+Owner requested shelving the existing private 1.2.5 wheel build, returning main's program
+sources to published v1.2.4, and later preparing a new 1.2.5 with controller improvements only.
+All tracked files outside docs/, TASKS.md and README.md are restored directly from tag v1.2.4
+(ad46df65c03894ed204beafbd02819a11e4037bc). Git blob identity is the validation for this mechanical
+restoration; no code is authored, rebuilt or newly hardware-tested. Existing RetroAchievements
+fixes stay exactly as released in 1.2.4. Documentation and historical manifests remain available.
+
+The original contributions and reviewed integrations remain in history: controller PR #100 via
+#106 (8b73fa0), wheel PR #101/#109 via #111 (cbfd8b8). Reintroduce only the reviewed controller
+changes in a separate future task, with a fresh build/pins and acceptance. Do not assume a merged
+PR can simply be merged again after restoration. No current wheel bridge enters that release.
+The existing v1.2.5 stays an unpublished, superseded draft; v1.2.4 remains public Latest.
+
+Native DFP is still planned under TASK-018, with TASK-123 research; no native protocol backend
+exists yet. Owner-authorized reply to JulioHeroZ: PR #101 comment 6422692723, requesting native
+DFP recognition / game-generated FFB through SDL3 and linking both tasks verified on main.
+This entry supersedes earlier descriptions of the controller/wheel integrations as current code.
+
 ## Open issue task intake registered (2026-10-26)
 
 All 14 open issues map to existing tasks or newly recorded TASK-124..130; see ISSUE-TRIAGE.md.

@@ -107,7 +107,7 @@ See [GS renderer options](docs/GS-RENDERER-OPTIONS.md) and [GSDX-PLAN](docs/GSDX
 | TASK‑079 | Force 16:9 at boot: `GT4_FORCE_WIDESCREEN` holds the game's own Wide flag at 16:9 (slice211); launcher setting "Widescreen 16:9", default on | ✅ Done (2026-10-21) · slice211, GT4_FORCE_WIDESCREEN default on, launcher "Widescreen 16:9"; owner tested (boots 16:9 and 480p; the 100% save loads). The "Load failed!" seen on the way was the launcher card bug, fixed in TASK-019 |
 | TASK‑080 | Native ultrawide and other aspect ratios (16:10, phones, 21:9, 32:9): screen-ratio detection, automatic Width/Aspect for the 3D, HUD/UI fix, renderer stretch | ✅ Done 2026-10-21 (P0, P1, P2 and the seamless-display addendum, owner approved; release 1.1.0) · P3 progressive menus open with TASK-078 |
 | TASK‑081 | Release 1.0.0 hardening and installer: release game build without build paths (slice213), launcher without user paths, CPU (SSE4.1) and Vulkan checks before setup and Play, game Vulkan baseline path for older drivers (slice214), WebView2 bootstrapper in the installer, installer asset name `GT4Recomp-Setup-X.Y.Z.exe`, release notes and draft release | ✅ Done (2026-10-21) · owner tested and approved the installer; released as v1.0.0 |
-| TASK‑082 | Native variable frame rate: fixed 60 Hz simulation, render at any rate (render skip below 60, extra render-only passes above 60 with the game's own render time t) | 📋 Planned (after 1.0.0) · study done (docs/NATIVE-VARIABLE-FPS-STUDY.md) |
+| TASK‑082 | Native variable frame rate: fixed 60 Hz simulation, render at any rate (render skip below 60, extra render-only passes above 60 with the game's own render time t) | Deferred by owner (2026-10-26); preserved at task/082-render-skip15b7bf3 for CoreGS2.0; excluded from rc7 (TASK-133) |
 | TASK‑083 | Faster loading and saves: instant disc reads (deeper than PCSX2 Fast CDVD) and loading/save speed-ups in our runtime and game code; gameplay untouched | 📋 Future study (owner, 2026-10-21) |
 | TASK‑084 | Frame cost optimisation: cut the emulation-side EE overhead (VIF1 chain jobs, GIF fast path, VBlank journal) | ✅ Done (2026-10-22) · owner test approved, night race critical path 11.8 → 10.0 ms; release 1.2.2 (PR #82); flare readback moved to CoreGS 2.0 (TASK-087) |
 | TASK‑085 | Launcher self-update: the setup starts outside the launcher's kill-on-close job | ✅ Done (2026-10-21) · PR #67; v1.1.0 republished with the fix; launchers 1.0.0 update by running the setup |
@@ -446,6 +446,8 @@ Release audit 2026-10-21. Branch `task/081-release-1-0-0` (from main 26f83b8). N
 State (2026-10-21): ✅ Done. The owner tested the installer end to end and approved it; merged into main and published as release v1.0.0.
 
 ### TASK-082 — Native variable frame rate
+
+Owner update2026-10-26: experimental branch preserved at15b7bf3, deferred for CoreGS2.0; excluded from rc7. See TASK-133 and the remote resumption report.
 Owner request 2026-10-21: 30, 45, 120, 144 or unlocked FPS with game speed unchanged, real frames from the game rather
 than image interpolation (TASK-045 stays the fallback and runs its race oracle in parallel). Study:
 docs/NATIVE-VARIABLE-FPS-STUDY.md. GT4's main loop (`func_001016E8`) updates every object with dt 1/60, renders every
@@ -1698,9 +1700,10 @@ Related: distinct from missing-output-device startup behavior in TASK-129; no sh
 ### TASK-126 — Home key unavailable to ReShade (issue #102)
 
 State: done (2026-10-26).
+Branch: `task/126-reshade-home-key`
 Issue: https://github.com/moesuito/gt4-staticrecomp/issues/102
 Report: Home/Pos1 does not open the ReShade options while the game is active.
-Fix: In `native/window.cpp`, forward unhandled keyboard messages (`WM_KEYFIRST`..`WM_KEYLAST`) to the PCSX2 GS child window via `PostMessageW`. When using `GT4_RENDERER=pcsx2`, `game_window` retains keyboard focus so driving and controller input remain uninterrupted, but third-party overlays (like ReShade hooked into `gt4-gs.exe`) now receive overlay toggle hotkeys (such as `VK_HOME` / Pos1) and keyboard text input.
+Fix: In `native/window.cpp`, forward unhandled keyboard messages (`WM_KEYFIRST`..`WM_KEYLAST`) to the PCSX2 GS child window via `PostMessageW`. When using `GT4_RENDERER=pcsx2`, `game_window` retains keyboard focus so driving and controller input remain uninterrupted, but third-party overlays (like ReShade hooked into `gt4-gs.exe`) now receive overlay toggle hotkeys (such as `VK_HOME` / Pos1) and keyboard text input. Details: [RESHADE-HOME-KEY-ISSUE102-STUDY](docs/RESHADE-HOME-KEY-ISSUE102-STUDY.md).
 Priority: normal backlog, release unassigned.
 Related: existing window/input tasks TASK-038 and TASK-076.
 
@@ -1736,3 +1739,74 @@ Report: split-screen resolution/quality concern; the reporter supplied the reque
 Priority: backlog, owner to select release priority. The old split-screen concern had no task number.
 Related: 4:3 stays with TASK-080/TASK-079. Broader two-controller support remains the existing future
 idea; this display intake does not silently schedule it.
+
+
+### TASK-131 — Restore main to the released 1.2.4 program baseline
+
+State: completed source restoration, owner-directed (2026-10-26).
+Branch: task/131-restore-124. Restores program files directly from v1.2.4 / ad46df6;
+preserves documentation and historical input pins. Git blob identity against that tag is
+the validation; no build, hardware test, release or owner-data modification is performed.
+
+Owner shelves the existing private 1.2.5 wheel draft. Public Latest stays 1.2.4. A future
+1.2.5 will reintroduce only reviewed controller improvements from PR #100/#106 (8b73fa0),
+with fresh packaging and acceptance; do not reintroduce the current wheel bridge.
+This supersedes TASK-120/121 entries describing those changes as active on main and the
+TASK-122 draft as a publication candidate. All contribution commits/authorship remain in
+history (wheel integration cbfd8b8); native DFP remains TASK-018 with research TASK-123.
+
+Contributor reply: https://github.com/moesuito/gt4-staticrecomp/pull/101#issuecomment-6422692723
+TASK-018 and the TASK-123 brief were verified on main before linking. Requested native DFP
+recognition (900 degrees) and original wheel FFB through SDL3, not pad-state/rumble adaptation.
+No native wheel backend is claimed to exist, no new feature implementation dispatched.
+
+
+### TASK-132 — Publish controller-only 1.2.5 from the reviewed PR #100 integration
+
+Owner request 2026-10-26: replace the private wheel-containing 1.2.5 draft with a final
+controller-only 1.2.5, after review and checks. Branch task/132-release-125-controls starts
+from main749af82 and reapplies exact program blobs from reviewed integration8b73fa0
+(PR #100 via #106), before wheel integration. No Git history is rewritten.
+
+State: done, published stable Latest v1.2.5 (2026-10-26), PR #125 / merge5d7a669. Only launcher,
+workspace lockfile, Tauri metadata and installer version change beyond that reviewed code.
+Native game reuses immutable slice1200-pcsx2.json; fresh distribution slice1320-controls125-dist.
+No wheel implementation or wheel UI is included; native DFP remains TASK-018 / research123.
+RetroAchievements1.2.4 is retained. Legacy English UI exception remains owner-authorized;
+matching en-US/pt-BR short notes precede the launcher build. Installer-only legacy release.
+
+Observed checks: CTest43/43, Python641 tests/24 skipped, Rust381 passed/4 ignored, UI focus114/114
+and navigation154/154 with no script errors. Official launcher build/path scan and installer
+extraction/hash comparison passed. Publication follows the owner-authorized final release step.
+No new physical controller, account-unlock or installer execution validation is claimed.
+This supersedes the held TASK-122 wheel release candidate; keep its historical branch intact.
+
+TASK-132 publication receipt: old private wheel draft deleted; new controller-only draft asset
+sizes/SHA256 digests verified before owner-authorized final publication. Release v1.2.5 is
+public, not a pre-release, Latest; tag points at5d7a669bdecf5e60c0782ca449f48aacac3c7a32.
+https://github.com/moesuito/gt4-staticrecomp/releases/tag/v1.2.5
+Installer SHA256556e7725d11146f1f79613814fbf961e1299000bd56df7c8831a324213003a74.
+No new wheel support, Spec II, frame skipping or CoreGS changes are included.
+
+
+### TASK-133 — Integrate RetroAchievements and controller-only 1.2.5 into rc7
+
+State: mapped/prepared, not implemented or dispatched (owner decision, 2026-10-26).
+New rc7 scope: published rc6 + stable1.2.4 RetroAchievements + stable1.2.5 controller improvements.
+OriginalGT4 v2.00 achievements only; Spec II stays disabled at both launcher and native boundaries.
+All7 controller curves apply to both targets. No wheel bridge, native DFP or frame skipping.
+
+Frozen base: v1.3.0-rc6 /58322229c0bd63a0652b0550c5ad2154bd907039.
+References: v1.2.4/ad46df6; reviewed controller integration8b73fa0; finalv1.2.5/5d7a669.
+Branch task/133-rc7-ra-controls, worktree C:/Antigravity/gt4-wt-133-rc7-ra-controls,
+created directly from published rc6. Brief: docs/tasks/TASK-133-RC7-RA-CONTROLS-INTEGRATION.md.
+Do not merge legacy main or the frame-skip branch wholesale into this candidate.
+
+Preserve TASK082 on task/082-render-skip at15b7bf3971f4046faabc2d0cbd08768ae4883374,
+PR113 OPEN/DRAFT, unmerged, report docs/TASK-082-RESUMPTION-REPORT.md. Resume later with
+CoreGS2.0, without a version assignment. The former test082 kit is not the new rc7 candidate.
+
+Acceptance: target isolation, account/logout/HTTP cancellation regressions, control persistence/
+preview consistency, full native/Python/Rust and en-US/pt-BR checks, both target builds/pins,
+installer+portable verification. New builds go to draft; owner gameplay/review before merge or
+publication. No code, builds, running agents or public rc7 authorized by this mapping step.

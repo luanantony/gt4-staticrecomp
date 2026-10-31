@@ -31,7 +31,7 @@
 ; appends one line to data\logs\setup.log.
 
 !ifndef VERSION
-  !define VERSION "1.2.4"
+  !define VERSION "1.2.5"
 !endif
 ; /DLABEL=rc1 labels this test build. VERSION and version.json stay numeric for the legacy stable-only updater.
 !ifdef LABEL

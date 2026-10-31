@@ -8,7 +8,7 @@ No JIT, no emulator window, full speed.
 ![60 FPS](https://img.shields.io/badge/60%20FPS-100%25%20game%20speed-2ea44f?style=for-the-badge)
 ![Windows](https://img.shields.io/badge/Windows%20x64-Vulkan-2ea44f?style=for-the-badge)
 ![MIT](https://img.shields.io/badge/license-MIT-1f6feb?style=for-the-badge)
-![Release](https://img.shields.io/badge/release-1.2.4-2ea44f?style=for-the-badge)
+![Release](https://img.shields.io/badge/release-1.2.5-2ea44f?style=for-the-badge)
 ![Ultrawide](https://img.shields.io/badge/ultrawide-any%20aspect%20ratio-2ea44f?style=for-the-badge)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-support%20the%20project-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/moesuito)
 [![Discord](https://img.shields.io/badge/Discord-join%20the%20server-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/kHfGk4qJt)
@@ -109,7 +109,7 @@ The launcher checks the processor and Vulkan before setup and before Play, and s
 
 ## Install
 
-1. Download **`GT4Recomp-Setup-1.2.4.exe`** from [Releases](https://github.com/moesuito/gt4-staticrecomp/releases)
+1. Download **`GT4Recomp-Setup-1.2.5.exe`** from [Releases](https://github.com/moesuito/gt4-staticrecomp/releases)
    and run it. It installs to `C:\Program Files\GT4Recomp` by default (Windows asks for administrator approval), or to
    any folder or drive you choose. If the Microsoft Edge WebView2 Runtime is missing (Windows 10), the installer
    downloads it from Microsoft.

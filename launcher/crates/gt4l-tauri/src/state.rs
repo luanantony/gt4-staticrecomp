@@ -13,7 +13,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use gt4controls::{self as controls_file, Controls, CONTROLS_FILE_NAME};
 use gt4l_core::config::{self, ConfigFile};
 use gt4l_core::paths::{self, DataDirs, UserDirs};
-use gt4l_core::wheel::WheelConfig;
 use gt4l_disc::setup as disc_setup;
 use gt4l_disc::Pins;
 use gt4saves::library::Library;
@@ -25,8 +24,6 @@ pub struct AppState {
     pub pins: Pins,
     pub config: ConfigFile,
     pub controls: Controls,
-    pub wheel: WheelConfig,
-    pub wheel_status_line: String,
     /// The user data in use: `%APPDATA%\GT4Recomp`, or the 1.2.0 places until their move has happened.
     pub user_dirs: UserDirs,
     /// The folder of `GT4Recomp.exe`: stored paths inside it are kept relative (portable copies).
@@ -160,14 +157,6 @@ impl AppState {
             }
         };
         let opened = saves::open(&dirs, &user, pre_1_0_root.as_deref())?;
-        let wheel_path = opened.user.wheel_file();
-        let wheel = match WheelConfig::load_or_default(&wheel_path) {
-            Ok(w) => w,
-            Err(message) => {
-                log(&dirs, &format!("wheel: {message}; default wheel config used"));
-                WheelConfig::default()
-            }
-        };
         for line in &opened.log {
             log(&dirs, line);
         }
@@ -176,8 +165,6 @@ impl AppState {
             pins,
             config,
             controls,
-            wheel,
-            wheel_status_line: String::new(),
             user_dirs: opened.user,
             install_dir,
             migration: MigrationRun::default(),
@@ -222,10 +209,6 @@ impl AppState {
     /// `controls_locked` is set and keeps the change only when the write succeeded.
     pub fn controls_path(&self) -> PathBuf {
         self.user_dirs.controls_file()
-    }
-
-    pub fn wheel_path(&self) -> PathBuf {
-        self.user_dirs.wheel_file()
     }
 
     pub fn disc_path(&self) -> Option<&Path> {

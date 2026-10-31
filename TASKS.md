@@ -1363,17 +1363,18 @@ tampered view detected and rebuilt; copy fallback on a non-NTFS temp volume (or 
 path covered by a fake platform layer. Manual: 10,000-file view build time recorded.
 Risks: hardlink limits (1,023 links per file, irrelevant here); antivirus scanning many new links.
 
-### TASK-053 — GS settings and dev launcher wiring for mods
-Repo: main, branch `task/053-mods-gs-wiring` (from `main`). Haiku, 1 session.
-Goal: in `docs/launcher/gs-settings.toml` move `texture_load`, `texture_load_async`, `texture_precache` off the
-Graphics page (`page = "Mods"`, `visibility = "hidden"`, `written = "launcher"`), move the dump rows to a creator
-group, add `textures_folder` (`[Folders] Textures`, `path`, launcher, absolute); `scripts/gs_settings.py`
-accepts the new page; `external_runtime_probe.py` / `play_performance.py --textures-root <dir>` writes the
-folder and `LoadTextureReplacements = true` when the folder has files; `result.json` records the folder digest.
-Acceptance: Python tests: golden INI unchanged without the option; with the option, the three keys and the
-folder appear; relative paths refused; UTF-8 path with non-ASCII characters round trips; allow-list regenerated;
-pins regenerated where the probe changes. Owner: one in-game run with a synthetic or community pack.
-Risks: gt4-gs pin and allow-list drift (TASK-037/038 enforcement).
+### TASK-053 — Custom texture paths and directory reuse (Issue #95)
+State: ✅ Done (2026-10-31), branch `task/053-custom-texture-paths`.
+Goal: Support custom texture paths so players can reuse an existing PCSX2 texture folder (e.g. `C:\PCSX2\textures`
+or `C:\PCSX2\textures\SCUS-97328\replacements`) instead of duplicating 10–30 GiB of texture assets into `<install>\data\Textures`.
+- `DataDirs` in `gt4l_core::paths` accepts an explicit custom textures folder via `set_custom_textures` and environment
+  variable `GT4_TEXTURES_DIR`. When configured, `dirs.textures()` returns this path, overriding the default data directory.
+- `ConfigFile` in `gt4l_core::config` parses `textures_path` under `[install]`, `[folders]` or `[paths]`, renders it
+  back in `render`, and `state.rs` resolves portable relative paths within the install directory while preserving external
+  absolute paths.
+- `open_textures_folder` opens the configured folder in Explorer, and `game::start` passes it to `gt4-gs.exe` via `[Folders] Textures`.
+- Windows NTFS directory junctions (`mklink /J`) are documented as the zero-copy transparent alternative.
+Acceptance: `cargo test -p gt4l-core` passes (105 unit tests, 10 settings_config tests, 8 textures tests with custom path overrides).
 
 ### TASK-054 — Launcher Mods page
 Repo: launcher branch after TASK-019 resumes (Tauri 2). Haiku, 2-3 sessions.

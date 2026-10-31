@@ -67,13 +67,15 @@ pub const CONTROLS_FILE: &str = "controls.toml";
 pub struct DataDirs {
     root: PathBuf,
     read_layers: Vec<PathBuf>,
+    /// An explicitly configured custom textures directory (Issue #95, TASK-053).
+    custom_textures: Option<PathBuf>,
     /// The custom textures folder when it could not be moved yet (it stays in use where it is).
     textures_in_place: Option<PathBuf>,
 }
 
 impl DataDirs {
     pub fn new(root: impl Into<PathBuf>) -> Self {
-        DataDirs { root: root.into(), read_layers: Vec::new(), textures_in_place: None }
+        DataDirs { root: root.into(), read_layers: Vec::new(), custom_textures: None, textures_in_place: None }
     }
 
     /// A data folder with read layers after it. Layers equal to the root (or to each other) are dropped.
@@ -94,6 +96,16 @@ impl DataDirs {
     /// Uses `folder` for the custom textures (a folder whose move has not happened yet).
     pub fn set_textures_in_place(&mut self, folder: Option<PathBuf>) {
         self.textures_in_place = folder;
+    }
+
+    /// Sets an explicit custom textures directory (e.g. sharing an existing PCSX2 textures path, Issue #95).
+    pub fn set_custom_textures(&mut self, folder: Option<PathBuf>) {
+        self.custom_textures = folder;
+    }
+
+    /// The custom textures folder explicitly configured, if any.
+    pub fn custom_textures(&self) -> Option<&Path> {
+        self.custom_textures.as_deref()
     }
 
     /// The folder every write goes to.
@@ -183,8 +195,18 @@ impl DataDirs {
     }
 
     /// The custom texture folder (TASK-088): one not moved yet, else the first folder that has `Textures`, else the
-    /// root's. The texture pack goes straight in this folder (gt4-gs 1.2.1, TASK-093).
+    /// root's. An explicitly configured custom directory takes precedence (Issue #95, TASK-053).
+    /// The texture pack goes straight in this folder (gt4-gs 1.2.1, TASK-093).
     pub fn textures(&self) -> PathBuf {
+        if let Some(var) = std::env::var_os("GT4_TEXTURES_DIR") {
+            let path = PathBuf::from(var);
+            if !path.as_os_str().is_empty() {
+                return path;
+            }
+        }
+        if let Some(folder) = &self.custom_textures {
+            return folder.clone();
+        }
         if let Some(folder) = &self.textures_in_place {
             return folder.clone();
         }

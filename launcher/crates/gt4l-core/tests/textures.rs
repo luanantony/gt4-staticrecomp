@@ -81,3 +81,21 @@ fn the_textures_folder_is_written_only_when_the_launcher_supplies_it() {
     let text = gs_table::render_ini(&BTreeMap::new(), &launcher).unwrap();
     assert!(text.contains("[Folders]\nTextures = C:/Users/x/Documents/Gran Turismo 4/Textures\n"), "{text}");
 }
+
+#[test]
+fn custom_textures_directory_overrides_default_data_folder() {
+    let install = scratch("custom-root");
+    let mut dirs = DataDirs::new(install.join("data"));
+    assert_eq!(dirs.textures(), install.join("data").join("Textures"));
+    assert_eq!(dirs.custom_textures(), None);
+
+    let custom = scratch("pcsx2-textures");
+    dirs.set_custom_textures(Some(custom.clone()));
+    assert_eq!(dirs.textures(), custom);
+    assert_eq!(dirs.custom_textures(), Some(custom.as_path()));
+
+    // Resetting custom textures falls back to default data folder
+    dirs.set_custom_textures(None);
+    assert_eq!(dirs.textures(), install.join("data").join("Textures"));
+    assert_eq!(dirs.custom_textures(), None);
+}

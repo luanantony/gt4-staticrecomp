@@ -20,6 +20,8 @@ pub struct ConfigFile {
     pub settings: Settings,
     pub disc_path: Option<PathBuf>,
     pub dev_game_dir: Option<PathBuf>,
+    /// Optional custom texture directory (Issue #95, TASK-053).
+    pub textures_path: Option<PathBuf>,
     /// "Skip this version" choices of the update popup: no offer again for exactly this version.
     pub skipped_launcher: Option<Version>,
     pub skipped_renderer: Option<Version>,
@@ -31,6 +33,7 @@ impl Default for ConfigFile {
             settings: Settings::default(),
             disc_path: None,
             dev_game_dir: None,
+            textures_path: None,
             skipped_launcher: None,
             skipped_renderer: None,
         }
@@ -128,6 +131,25 @@ pub fn parse(text: &str) -> Result<(ConfigFile, Vec<String>), ConfigError> {
         .and_then(|section| section.get("game_dir"))
         .and_then(|value| value.as_str())
         .map(PathBuf::from);
+    config.textures_path = table
+        .get("install")
+        .and_then(|value| value.as_table())
+        .and_then(|section| section.get("textures_path"))
+        .or_else(|| {
+            table
+                .get("folders")
+                .and_then(|value| value.as_table())
+                .and_then(|section| section.get("textures"))
+        })
+        .or_else(|| {
+            table
+                .get("paths")
+                .and_then(|value| value.as_table())
+                .and_then(|section| section.get("textures"))
+        })
+        .and_then(|value| value.as_str())
+        .filter(|text| !text.is_empty())
+        .map(PathBuf::from);
     if let Some(section) = table.get("updates").and_then(|value| value.as_table()) {
         let skipped = |key: &str| section.get(key).and_then(|value| value.as_str()).and_then(Version::parse);
         config.skipped_launcher = skipped("skip_launcher");
@@ -173,6 +195,9 @@ pub fn render(config: &ConfigFile) -> String {
     text.push_str("\n[install]\n");
     if let Some(path) = &config.disc_path {
         text.push_str(&format!("disc_path = {}\n", quote(&path.to_string_lossy())));
+    }
+    if let Some(path) = &config.textures_path {
+        text.push_str(&format!("textures_path = {}\n", quote(&path.to_string_lossy())));
     }
     if let Some(path) = &config.dev_game_dir {
         text.push_str("\n[dev]\n");

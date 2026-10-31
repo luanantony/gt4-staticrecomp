@@ -134,6 +134,11 @@ impl AppState {
         // Stored paths inside the install folder are relative (see `save_config`); resolve them here.
         config.disc_path = config.disc_path.map(|path| paths::resolve_portable(&path, &install_dir));
         config.dev_game_dir = config.dev_game_dir.map(|path| paths::resolve_portable(&path, &install_dir));
+        config.textures_path = config.textures_path.map(|path| paths::resolve_portable(&path, &install_dir));
+        if let Some(custom) = &config.textures_path {
+            dirs.set_custom_textures(Some(custom.clone()));
+            log(&dirs, &format!("textures: custom directory configured at {}", custom.display()));
+        }
         let controls_path = user.controls_file();
         let mut controls_locked = false;
         let controls = match controls_file::load(&controls_path) {
@@ -200,6 +205,7 @@ impl AppState {
         let mut stored = self.config.clone();
         stored.disc_path = stored.disc_path.map(|path| paths::portable_path(&path, &self.install_dir));
         stored.dev_game_dir = stored.dev_game_dir.map(|path| paths::portable_path(&path, &self.install_dir));
+        stored.textures_path = stored.textures_path.map(|path| paths::portable_path(&path, &self.install_dir));
         if let Err(error) = config::save(&self.user_dirs.config_file(), &stored) {
             log(&self.dirs, &format!("settings not saved: {error}"));
         }

@@ -46,7 +46,7 @@ Sources: live open issues/comments; main fa92d05; modern TASKS at frozen rc6 com
 | [#99](https://github.com/moesuito/gt4-staticrecomp/issues/99) | Window flashes and game crashes | TASK-127 | New; high, candidate rc; not a proven duplicate of #89/#107 |
 | [#98](https://github.com/moesuito/gt4-staticrecomp/issues/98) | Deleted save returns | Existing TASK-025, related 058 | Save-manager follow-up; high, candidate rc; no new duplicate task |
 | [#97](https://github.com/moesuito/gt4-staticrecomp/issues/97) | Low-end hardware performance | Existing TASK-041 and modern performance work | Group with #112 under existing backlog; retain separate reports |
-| [#95](https://github.com/moesuito/gt4-staticrecomp/issues/95) | Reuse texture and ISO paths | Existing TASK-053 (textures), TASK-128 (ISO) | No duplicate texture task; ISO request remains under consideration |
+| [#95](https://github.com/moesuito/gt4-staticrecomp/issues/95) | Reuse texture and ISO paths | TASK-053 (textures), TASK-128 (ISO) | Implemented in TASK-053: custom textures directory support in settings.toml & DataDirs |
 | [#93](https://github.com/moesuito/gt4-staticrecomp/issues/93) | No audio device causes exit | TASK-129 | New number for Claude's existing note; high, candidate rc; closed #94 is duplicate |
 | [#92](https://github.com/moesuito/gt4-staticrecomp/issues/92) | Split-screen display and 4:3 | Existing TASK-080/079 (4:3), TASK-130 (split display) | Existing aspect scope reused; split concern newly numbered, no release assigned |
 | [#89](https://github.com/moesuito/gt4-staticrecomp/issues/89) | Crash on integrated graphics | Existing TASK-105 on 1.3.0 line | Reporter validation/follow-up still needed; no replacement task |

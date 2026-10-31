@@ -1,5 +1,20 @@
 # Current Status
 
+## TASK-053: Custom texture paths and directory reuse (Issue #95, 2026-10-31)
+
+Implemented custom textures directory support in the launcher to enable zero-copy reuse of
+existing PCSX2 texture packs (e.g. `C:\PCSX2\textures` or `C:\PCSX2\textures\SCUS-97328\replacements`),
+addressing community request in Issue #95 without duplicating 10–30 GiB of texture assets.
+
+- Launcher configuration: added `textures_path` under `[install]`, `[folders]`, or `[paths]` in `settings.toml`.
+- Environment variable: added support for `GT4_TEXTURES_DIR` taking precedence when specified.
+- Core path management: updated `DataDirs` in `gt4l-core::paths` with `set_custom_textures` and `custom_textures()`.
+  When configured, `dirs.textures()` resolves to the custom path; otherwise it falls back to the default `<data>/Textures`.
+- The resolved path is passed down to `gt4-gs.ini` under `[Folders] Textures`, seamlessly integrating with the GSdx
+  texture loader and replacement packs.
+- Tests: added test coverage in `gt4l-core` (`tests/textures.rs` and `tests/settings_config.rs`). All 123 tests passing.
+
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

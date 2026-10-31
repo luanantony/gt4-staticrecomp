@@ -130,3 +130,19 @@ fn load_of_a_damaged_file_moves_it_aside() {
     assert!(!path.exists());
     std::fs::remove_dir_all(&directory).unwrap();
 }
+
+#[test]
+fn config_parses_and_renders_custom_textures_path() {
+    let text = "schema_version = 7\n[install]\ndisc_path = \"C:/game.iso\"\ntextures_path = \"D:/PCSX2/textures\"\n";
+    let (config, warnings) = config::parse(text).unwrap();
+    assert!(warnings.is_empty(), "{warnings:?}");
+    assert_eq!(config.textures_path.as_deref(), Some(std::path::Path::new("D:/PCSX2/textures")));
+    let rendered = config::render(&config);
+    assert!(rendered.contains("textures_path = \"D:/PCSX2/textures\"\n"), "{rendered}");
+
+    // Also supports [folders] section
+    let folders_text = "schema_version = 7\n[folders]\ntextures = \"E:/CustomTextures\"\n";
+    let (config2, warnings2) = config::parse(folders_text).unwrap();
+    assert!(warnings2.is_empty(), "{warnings2:?}");
+    assert_eq!(config2.textures_path.as_deref(), Some(std::path::Path::new("E:/CustomTextures")));
+}

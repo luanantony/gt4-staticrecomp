@@ -5,25 +5,33 @@
 
 const STOP_PREFIX: &str = "[ee] stopped after ";
 const CYCLES_MARKER: &str = " cycles: ";
+const HOST_FAILURE_PREFIX: &str = "[host] audio/input/window failure: ";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Outcome {
     /// The player closed the window (exit code 0, `window closed`).
     NormalClose,
-    /// Anything else. `reason` is the text of the last `[ee] stopped` line, when there was one.
+    /// Anything else. `reason` is the text of the last `[ee] stopped` line or host failure line.
     Crashed { reason: Option<String>, exit_code: Option<i32> },
 }
 
 /// Classifies a finished session from its full log text and exit code (`None` = killed by us).
 pub fn classify(log_text: &str, exit_code: Option<i32>) -> Outcome {
-    let reason = log_text
+    let ee_reason = log_text
         .lines()
         .filter_map(stop_reason)
         .last()
         .map(str::to_string);
-    if exit_code == Some(0) && reason.as_deref() == Some("window closed") {
+    if exit_code == Some(0) && ee_reason.as_deref() == Some("window closed") {
         Outcome::NormalClose
     } else {
+        let reason = ee_reason.or_else(|| {
+            log_text
+                .lines()
+                .filter_map(host_failure_reason)
+                .last()
+                .map(str::to_string)
+        });
         Outcome::Crashed { reason, exit_code }
     }
 }
@@ -35,12 +43,21 @@ fn stop_reason(line: &str) -> Option<&str> {
     Some(rest[index + CYCLES_MARKER.len()..].trim())
 }
 
+/// `[host] audio/input/window failure: <reason>` -> `<reason>`.
+fn host_failure_reason(line: &str) -> Option<&str> {
+    line.trim().strip_prefix(HOST_FAILURE_PREFIX).map(str::trim)
+}
+
 /// One plain sentence for the crash dialog. Technical detail stays in the log.
 pub fn user_message(outcome: &Outcome) -> String {
     match outcome {
         Outcome::NormalClose => String::new(),
         Outcome::Crashed { reason: Some(reason), .. } => {
-            format!("Gran Turismo 4 stopped unexpectedly ({reason}). The session folder has the details.")
+            if reason.contains("waveOutOpen") || reason.contains("A device ID has been used that is out of range") {
+                "Gran Turismo 4 could not start because no audio output device was found. Connect headphones or speakers, or enable an audio output device in Windows.".to_string()
+            } else {
+                format!("Gran Turismo 4 stopped unexpectedly ({reason}). The session folder has the details.")
+            }
         }
         Outcome::Crashed { reason: None, exit_code: Some(code) } => {
             format!("Gran Turismo 4 stopped unexpectedly (exit code {code}). The session folder has the details.")
@@ -86,5 +103,40 @@ mod tests {
     fn user_message_names_the_reason_in_one_sentence() {
         let outcome = Outcome::Crashed { reason: Some("no translated code".into()), exit_code: Some(1) };
         assert!(user_message(&outcome).starts_with("Gran Turismo 4 stopped unexpectedly (no translated code)"));
+    }
+
+    #[test]
+    fn host_audio_failure_is_classified_with_actionable_user_message() {
+        let log = "[perf] session end: partial interval omitted; use F8 before closing\n\
+                   [host] audio/input/window failure: waveOutOpen stereo16/48000: A device ID has been used that is out of range for your system. (2)\n";
+        let outcome = classify(log, Some(1));
+        assert_eq!(
+            outcome,
+            Outcome::Crashed {
+                reason: Some("waveOutOpen stereo16/48000: A device ID has been used that is out of range for your system. (2)".into()),
+                exit_code: Some(1),
+            }
+        );
+        assert_eq!(
+            user_message(&outcome),
+            "Gran Turismo 4 could not start because no audio output device was found. Connect headphones or speakers, or enable an audio output device in Windows."
+        );
+    }
+
+    #[test]
+    fn other_host_failure_is_classified() {
+        let log = "[host] audio/input/window failure: Native Vulkan presentation refused window\n";
+        let outcome = classify(log, Some(1));
+        assert_eq!(
+            outcome,
+            Outcome::Crashed {
+                reason: Some("Native Vulkan presentation refused window".into()),
+                exit_code: Some(1),
+            }
+        );
+        assert_eq!(
+            user_message(&outcome),
+            "Gran Turismo 4 stopped unexpectedly (Native Vulkan presentation refused window). The session folder has the details."
+        );
     }
 }

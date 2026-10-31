@@ -1,5 +1,16 @@
 # Current Status
 
+## TASK-143: Startup crash triage & actionable failure diagnosis from Issue #115 logs (2026-10-31)
+
+Diagnosed root cause of upstream Issue #115 ("game won't start", exit code 1) from real user crash bundle
+`GT4Recomp-logs-20261026-134521.zip` (i5-14600KF, RX 7800 XT, ASUS ROG Strix OLED 1440p monitor).
+Isolated failure to `native/window.cpp` audio initialization: `waveOutOpen(&device_, WAVE_MAPPER, ...)`
+throws `MMSYSERR_BADDEVICEID (2)` when the host has no active audio output devices (`waveOutGetNumDevs() == 0`).
+Enhanced `gt4l-core::exit` to parse `[host] audio/input/window failure:` lines and surface an actionable user
+message ("Gran Turismo 4 could not start because no audio output device was found...") instead of an opaque
+crash dialog. Documented forensic findings and Phase 2 dummy sink recommendations in `docs/STARTUP-CRASH-ISSUE115-STUDY.md`.
+All 107 gt4l-core library tests and 16 launch contract tests passed.
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

@@ -1808,3 +1808,17 @@ Acceptance: target isolation, account/logout/HTTP cancellation regressions, cont
 preview consistency, full native/Python/Rust and en-US/pt-BR checks, both target builds/pins,
 installer+portable verification. New builds go to draft; owner gameplay/review before merge or
 publication. No code, builds, running agents or public rc7 authorized by this mapping step.
+
+
+### TASK-143 — Diagnose startup crash on launch from Issue #115 logs (audio endpoint absence)
+
+State: implemented, verified (2026-10-31).
+Scope: Upstream Issue #115 forensic triage, root-cause isolation, and actionable launcher error classification.
+Root Cause: Host machine has no active audio output devices (`waveOutGetNumDevs() == 0`). During host startup,
+`native/window.cpp` initializes `AudioOutput audio(...)`, where `waveOutOpen(&device_, WAVE_MAPPER, ...)` fails
+with `MMSYSERR_BADDEVICEID` (code 2), throwing `[host] audio/input/window failure: waveOutOpen stereo16/48000: A device ID has been used that is out of range for your system. (2)`.
+Mitigation: Updated `gt4l-core::exit::classify` to parse `[host] audio/input/window failure: <reason>` lines when
+no EE stop reason is found, and updated `user_message` to provide clear, actionable guidance ("Gran Turismo 4 could not start because no audio output device was found..."). Documented findings and Phase 2 silent dummy sink recommendations in `docs/STARTUP-CRASH-ISSUE115-STUDY.md`.
+Related to Issue #93 / TASK-129.
+Checks: 107/107 gt4l-core library unit tests pass, 16/16 launch contract tests pass, 20/20 relocate tests pass.
+Branch: `task/143-startup-crash-issue115`.

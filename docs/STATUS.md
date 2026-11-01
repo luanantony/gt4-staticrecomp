@@ -1,5 +1,15 @@
 # Current Status
 
+## TASK-082: native variable frame rate & CoreGS 2.0 resumption roadmap (2026-11-01)
+
+Documented CoreGS 2.0 resumption architecture in `docs/TASK-082-COREGS2-RESUMPTION-ROADMAP.md`.
+Analyzes root cause of stale frame flashing defect observed during experimental testing of `rc7-test082` on an
+i5-7200U laptop: the guest main loop (`func_001016E8`) unconditionally flips double-buffer pointers (`func_00107878`,
+`DISPFB2`) on skipped frames, directing external GSdx to display stale, unrendered VRAM pages.
+Establishes the in-process CoreGS 2.0 solution: direct host swapchain gating (`vkQueuePresentKHR` suppression and
+present hold), `DISPFB2` page pinning, and flare readback decoupling. Experimental work remains safely preserved
+at commit `15b7bf3` on `task/082-render-skip` (PR #113 Draft) for Phase 2 resumption.
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

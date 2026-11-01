@@ -1,5 +1,18 @@
 # Current Status
 
+## TASK-146: Memory card save creation and first-boot halt diagnosis (2026-11-01)
+
+Completed diagnostic study for Issue #160 (player report from *rinegan33* describing inability to start
+the game when greeted by "No Gran Turismo 4 data found on MEMORY CARD slot 1. Do you want to create game data?").
+Documented in `docs/TASK-146-MEMORY-CARD-SAVE-ISSUE-STUDY.md`.
+Diagnosed root causes: (1) PC keyboard/controller input mapping friction, where GT4's creation modal listens
+exclusively for Cross (`Z` key) and ignores PC convention keys (Enter/Start, Space, A/Square), misleading players
+into concluding the emulator has frozen; (2) `gt4saves` constructs an unpopulated 8 MB card image (`Card::build(&[])`)
+when no active save exists, forcing every fresh install through the 5-step in-game creation sequence; (3) SIO2
+atomic write / `.lock` collision potential in restricted or synchronized environments.
+Roadmap established: launcher first-boot input reminder banner, pre-seeded default profile option in `gt4saves`,
+and enhanced lock diagnostic reporting. All unit and launch contract tests passed.
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

@@ -1808,3 +1808,14 @@ Acceptance: target isolation, account/logout/HTTP cancellation regressions, cont
 preview consistency, full native/Python/Rust and en-US/pt-BR checks, both target builds/pins,
 installer+portable verification. New builds go to draft; owner gameplay/review before merge or
 publication. No code, builds, running agents or public rc7 authorized by this mapping step.
+
+### TASK-146 — Memory card save creation and first-boot halt diagnosis (issue #160)
+
+State: study completed, candidate roadmap documented (2026-11-01).
+Branch: `task/146-memory-card-save-issue`.
+Report: `docs/TASK-146-MEMORY-CARD-SAVE-ISSUE-STUDY.md`.
+Issue: https://github.com/moesuito/gt4-staticrecomp/issues/160
+Reported symptom: player *rinegan33* reports inability to start the game on first boot; game halts at the initial prompt: "No Gran Turismo 4 data found on MEMORY CARD slot 1. Do you want to create game data? Yes / No".
+Root causes: (1) Keyboard/controller input mismatch: game modal exclusively listens for Cross (`Z` on default keyboard mapping) and ignores PC convention keys (Enter/Start, Space, A/Square), leading players to believe the game is frozen; (2) `gt4saves` builds a blank card (`Card::build(&[])`) when no save is active, exposing 100% of new players to the 5-screen interactive creation wizard; (3) Potential filesystem and lock collisions on `runtime\card.ps2` and `.lock`.
+Remediation roadmap: (a) Launcher first-boot input reminder banner for keyboard players; (b) Pre-seeded minimal save profile option in `gt4saves` to boot directly into main menu; (c) Robust lock detection and clear error reporting.
+Verification: launcher core unit tests (105 passed), launch contract tests (16 passed), and Python shape/cost tests passed without regression.

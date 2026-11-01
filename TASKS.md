@@ -1808,3 +1808,25 @@ Acceptance: target isolation, account/logout/HTTP cancellation regressions, cont
 preview consistency, full native/Python/Rust and en-US/pt-BR checks, both target builds/pins,
 installer+portable verification. New builds go to draft; owner gameplay/review before merge or
 publication. No code, builds, running agents or public rc7 authorized by this mapping step.
+
+### TASK-138 — Audio crackling and underruns on Proton / SteamOS (issue #129)
+
+State: study complete ([docs/TASK-138-PROTON-AUDIO-CRACKLING-STUDY.md](docs/TASK-138-PROTON-AUDIO-CRACKLING-STUDY.md)); implementation in PR #141 on `task/138-proton-audio-crackling`.
+Issue: https://github.com/moesuito/gt4-staticrecomp/issues/129
+Report: Continuous engine sounds crackle, pop, and skip when playing on SteamOS / Proton GE.
+Root cause:
+1. `native/host_io.cpp` used a fixed 60 ms target latency (`target_latency_frames = 2880`), sixteen 256-frame buffers
+   (5.33 ms each), and a strict 58.6 ms device cap.
+2. Under Proton/Wine, `waveOut` is emulated via `winepulse.drv` on top of PipeWire, which consumes audio in 1024-frame
+   quanta (21.33 ms).
+3. The inharmonic relationship between the 16.67 ms VBlank tick (800 frames), 256-frame submission blocks, and 1024-frame
+   PipeWire pulls caused the intermediate device queue to periodically deplete to zero, triggering PipeWire XRuns
+   (buffer underruns) heard as clicks/pops on continuous harmonic waveforms.
+4. `launcher/crates/gt4l-core/src/launch.rs` scrubbed all `GT4_*` variables, preventing users from passing `GT4_PACING=audio`
+   or custom audio knobs in Steam Launch Options.
+Fix:
+1. Dynamic Wine/Proton detection via `wine_get_version` in `ntdll.dll`.
+2. Under Wine/Proton, target latency auto-tunes to 100 ms (4800 frames) with twenty-four 512-frame buffers (10.67 ms),
+   providing ample headroom across PipeWire 1024-frame pulls while native Windows retains the exact 60 ms / 256-frame baseline.
+3. User override supported via `GT4_AUDIO_LATENCY_MS` (20..500 ms).
+4. `GT4_PACING` and `GT4_AUDIO_LATENCY_MS` added to `PASSED_THROUGH` in launcher `launch.rs`.

@@ -1,5 +1,16 @@
 # Current Status
 
+## TASK-138: prevent audio crackling and underruns on Proton and SteamOS (2026-11-01)
+
+Documented architectural study in `docs/TASK-138-PROTON-AUDIO-CRACKLING-STUDY.md` (Issue #129, PR #141).
+Addresses periodic audio pops and crackles on continuous engine sounds when running under Proton/SteamOS.
+Diagnosed phase alignment mismatch between GT4Recomp's 16.67 ms (800-frame) VBlank audio generation, 256-frame
+waveOut blocks, and Linux PipeWire's 1024-frame (21.33 ms) pull quanta under a tight 58.6 ms queue cap,
+causing periodic buffer starvation (PipeWire XRuns).
+Implemented auto-tuning under Wine/Proton to 100 ms target latency with 512-frame buffers (providing > 4.6
+quanta cushion) while retaining exact 60 ms / 256-frame baseline on native Windows. Added user override
+`GT4_AUDIO_LATENCY_MS` (20..500 ms) and passed both `GT4_PACING` and `GT4_AUDIO_LATENCY_MS` through the launcher.
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

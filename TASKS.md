@@ -1020,6 +1020,14 @@ Label comments in generated units with identical object code.
 [docs/EE-NAMES.md](docs/EE-NAMES.md). No generated EE file, pin or runtime code changed. Still open: labelling `unit_XXXX.cpp`
 needs the new producer contract described under "Level 1" in [docs/DECOMP-INTEGRATION.md](docs/DECOMP-INTEGRATION.md).
 
+**Level 1 annotation contract and symbol resolver completed (2026-11-01, branch `task/020-decomp-names-integration`).**
+Added `scripts/ee_annotate.py` and `tests/python/test_ee_annotate.py`:
+- Deterministic scoring preferring `named` over `placeholder` and `decomp`/`adhoc` over `gthd`.
+- Label annotation for `case Nu: goto L_XXXXXXXX;` and `L_XXXXXXXX:`.
+- Strict byte-level round-trip comment stripping invariance (`strip_annotations(annotated) == original`).
+- CLI symbol lookup and runtime diagnostic integration contract (`docs/TASK-020-DECOMP-NAMES-INTEGRATION.md`).
+- Unit tests: 8 passed; pure Python and Rust tests green.
+
 Common rules for TASK-032..045: agents that open PCSX2 sources or the fork are PCSX2-tainted and never
 work on TASK-027. MIT files in this repository never contain PCSX2 code. The fork's own rules: one writer at
 a time, commits as `moesuito`, every release built by CI from a tag.

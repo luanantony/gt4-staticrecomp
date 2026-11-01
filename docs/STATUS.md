@@ -1,5 +1,18 @@
 # Current Status
 
+## TASK-020: Decompilation names integration and annotation contract (2026-11-01)
+
+Completed Level 1 source annotation contract and symbol resolver tooling for Gran Turismo 4 decompilation
+function names (`gt4-decomp`), documented in `docs/TASK-020-DECOMP-NAMES-INTEGRATION.md`.
+Implemented `scripts/ee_annotate.py` and test suite `tests/python/test_ee_annotate.py`:
+- Deterministic symbol resolution over `docs/data/ee-names.csv` (11,481 entries, 8,402 unique addresses),
+  preferring named quality over placeholders and decomp/adhoc over GTHD heuristics.
+- Label annotation for dispatch cases and jump targets (`case Nu: goto L_XXXXXXXX; // Name` and `L_XXXXXXXX: // Name`).
+- Mathematically verified round-trip invariance: stripping annotations reproduces the original unannotated source
+  byte-for-byte, guaranteeing identical compilation semantics and COFF machine code in `ps2game.lib`.
+- Address-to-symbol CLI lookup for crash logs (`no translated code at 0xXXXXXXXX`) and profiling probes.
+All 8 unit tests, Python suite, and Rust core tests passed.
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

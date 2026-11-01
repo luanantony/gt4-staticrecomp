@@ -94,7 +94,7 @@ See [GS renderer options](docs/GS-RENDERER-OPTIONS.md) and [GSDX-PLAN](docs/GSDX
 | TASK‑054 | Launcher Mods page (mockup, then Tauri) | 📋 Planned for 1.1.0 |
 | TASK‑055 | Mod creator tools: dump workspace, package as mod | 📋 Planned for 1.1.0 |
 | TASK‑056 | Live texture reload in gt4-gs | 📋 Planned for 1.1.0 |
-| TASK‑057 | Study: other mod kinds (GS presets, VOL overlay, data patches) | 📋 Planned for 1.1.0 |
+| TASK‑057 | Study: other mod kinds (GS presets, VOL overlay, data patches) | 📋 Roadmap ready (docs/TASK-057-MOD-SCOPE-STUDY.md) |
 | TASK‑058 | Crash-safe memory card in the real build: atomic writer, dirty retry, exit flush (GS-loss path too) | ✅ Done · owner test 2026-10-16; kill test 25/25; card flush on exit and after a GS loss (slice200; in slice202) |
 | TASK‑059 | Distribution executable: installed-folder shaders and GS package, no repo paths, `--portable-check`, `scripts/make_distribution.py` | ✅ Done · owner test 2026-10-16; distribution folder smoke 42/42 and 41/41 (slice200; slice202: also from `private/slice202-dist`) |
 | TASK‑060 | Mouse cursor auto-hide over the picture (fullscreen and windowed, game and gt4-gs agree) | ✅ Done · owner test 2026-10-16 (fullscreen and windowed); slice201, in slice202 |
@@ -1407,7 +1407,11 @@ Risks: protocol version bump; reload stalls (sync worker thread wait).
 Repo: main docs only. Opus, 1 session.
 Goal: decide on `gs-preset` mods (bundles of `gs-settings.toml` rows), a read-only `GT4.VOL` overlay for data mods
 (cars, tracks, menus; Spec II idea), and RAM data patches; code patches stay out (AOT EE).
+Roadmap: [docs/TASK-057-MOD-SCOPE-STUDY.md](docs/TASK-057-MOD-SCOPE-STUDY.md), decision [0073](docs/decisions/0073-mod-scope-and-vol-overlay.md).
 Acceptance: a decision record with risks and effort; no code.
+Result (2026-11-01): decision 0073 and study complete. `gs-preset` accepted for 1.1.0; read-only `GT4.VOL`
+virtual sector overlay (disc.cpp:86 reader seam) accepted in principle for Phase 2 / Spec II / 1.1.0+;
+unrestricted RAM data patchers and .pnach cheats (Issue #87) rejected as silent no-ops on AOT EE and not planned.
 
 Release: 1.1.0. Owner decisions (2026-10-16)
 

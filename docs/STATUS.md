@@ -1,5 +1,18 @@
 # Current Status
 
+## TASK-057: modding scope, data patches, and GT4.VOL overlay architecture (2026-11-01)
+
+Documented modding scope study in `docs/TASK-057-MOD-SCOPE-STUDY.md` and ratified Decision 0073
+(`docs/decisions/0073-mod-scope-and-vol-overlay.md`).
+- Issue #87 (cheats / .pnach code writes): formally closed as not planned. EE MIPS assembly writes are silent
+  no-ops on our AOT C++ executable (`unit_XXXX.cpp`); dynamic retranslation violates the core no-JIT rule
+  (AGENTS.md) and pre-built distribution model (Decision 0069); memory freezes corrupt saves and desynchronize 60 Hz physics.
+- `gs-preset` visual profiles: accepted for Release 1.1.0, validated against the 58-row GS settings schema.
+- Read-only `GT4.VOL` virtual sector overlay: accepted in principle for Phase 2 / Spec II / 1.1.0+ via the host
+  `disc::read` hook (`disc.cpp:86`), enabling community translations (pt-BR `rtext.rt2`), car physics (`.cdat`),
+  and custom HUD assets (`.gpb`) without mutating the user's ISO image.
+- RAM data patches: restricted to audited, typed native runtime hooks (Decision 0071 model).
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

@@ -1,5 +1,15 @@
 # Current Status
 
+## TASK-046: launcher "Prepare shaders" and pipeline cache warming roadmap (2026-11-01)
+
+Documented architectural design and execution roadmap in `docs/TASK-046-PREPARE-SHADERS-STUDY.md`.
+Addresses measured host GPU driver pipeline compilation stutters (cold-cache readback wait spikes up to 58.0 ms,
+FRAME-COST 4.2 / GS-LIVE 9.3) during night flare readbacks and race starts. Defines the headless invocation
+protocol (`gt4-gs.exe --warm-selectors <selectors.bin>`), pre-extracted Gran Turismo 4 selector corpus (~750
+unique drawing states), driver fingerprint detection (`driver_fingerprint.json`), and non-blocking launcher
+integration complying with Decision 0070 clean-room isolation. Acceptance gates: 0 readback waits >= 8 ms,
+headless warming < 4 seconds.
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

@@ -83,7 +83,7 @@ See [GS renderer options](docs/GS-RENDERER-OPTIONS.md) and [GSDX-PLAN](docs/GSDX
 | TASK‑076 | Modern fixed keyboard layout (several keys per DS2 button, table in docs/CONTROLS.md `keyboard-default`) | ✅ Done (2026-10-21) · fixed keyboard layout in game and launcher, P = Start (owner choice); owner tested |
 | TASK‑044 | Packaging, release notes and the release 1.0.0 plan update | ✅ Done (2026-10-17) · release 1.0.0 ships gt4-gs 1.0.1; fork release notes, README, THIRD_PARTY and RELEASE-1.0.0-PLAN updated (docs only) |
 | TASK‑045 | High frame rate on the PCSX2 GS (TASK-031 redone) | 📋 Planned (after 1.0.0) |
-| TASK‑046 | Launcher "Prepare shaders": compile GT4's PCSX2 GS pipeline list headless (gt4-gs --warm-selectors) and keep the cache warm | 📋 Planned (study done, 2026-10-16) |
+| TASK‑046 | Launcher "Prepare shaders": compile GT4's PCSX2 GS pipeline list headless (gt4-gs --warm-selectors) and keep the cache warm | 📋 Roadmap ready (docs/TASK-046-PREPARE-SHADERS-STUDY.md) |
 | TASK‑047 | PCSX2 GS deinterlacing in the 480i menus (field and interlace state in the stream) | ✅ Done · owner test 2026-10-16: 480i menus clean on Automatic; root cause missing SYNCV and a one-field-early VSYNC field (protocol 1.1, gt4-gs 0.3.2) |
 | TASK‑048 | Mod manager in the launcher (umbrella): texture packs first, Content Manager style | 📋 Planned for 1.1.0 (umbrella; owner decisions 2026-10-16) |
 | TASK‑049 | GS settings curation for the launcher: Graphics and Advanced pages, reset to defaults, 12x, widescreen finding | ✅ Done · decisions 2026-10-16; default gt4-gs.ini unchanged; 58-row table ([settings](docs/GS-SETTINGS.md)) |
@@ -1279,6 +1279,21 @@ race PSNR < 32 dB) (2-3 sessions). (3) In engine: the game holds frame N+1, gene
 side effects (readbacks and signals stripped; targets overwritten by N+1); present scheduler for 120/144 Hz;
 +1 frame latency measured (6-10 sessions).
 Risks: texture-cache pollution by auxiliary frames, page alternation (HIGH-FPS 9.3), HUD.
+
+### TASK-046 — Launcher "Prepare shaders" and pipeline cache warming
+Repos: both (main and fork `moesuito/gt4recomp-gs`). Opus / Haiku.
+Goal: eliminate mid-race host GPU driver shader compilation stutters (cold cache readback waits up to 58 ms,
+FRAME-COST 4.2 / GS-LIVE 9.3) by precompiling GT4's recorded GS pipeline selector corpus headless into
+`vulkan_pipelines.bin` via `gt4-gs.exe --warm-selectors`.
+Roadmap: [docs/TASK-046-PREPARE-SHADERS-STUDY.md](docs/TASK-046-PREPARE-SHADERS-STUDY.md).
+- Selector corpus: pre-extracted database of GT4's ~750 drawing context signatures (topology, texture formats,
+  blending equations, alpha test, CLUT, framebuffer formats).
+- Headless warming: `gt4-gs.exe --warm-selectors <selectors.bin>` running surfaceless in `<install>\data\gs\cache`
+  or `%LOCALAPPDATA%\GT4Recomp\gs\cache`, calling `vkCreateGraphicsPipelines` backed by `VkPipelineCache`.
+- Launcher integration: driver fingerprint check (`driver_fingerprint.json`) detects driver updates; UI button
+  in Settings > Graphics and automatic non-blocking warming on first setup; clean room isolation (decision 0070).
+Acceptance: 0 readback waits >= 8 ms on cold schedule runs (El Capitan / SSR5 night race); warming finishes in
+under 4 seconds on desktop GPUs; idempotency under 300 ms.
 
 ### TASK-058 — Crash-safe memory card in the real build
 Repo: worktree `C:\Antigravity\gt4-wt-058-harden`, branch `task/058-059-release-hardening` (from main `3b5334d`). Release 1.0.0 hardening, game side. One writer.

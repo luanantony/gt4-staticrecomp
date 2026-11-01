@@ -1808,3 +1808,17 @@ Acceptance: target isolation, account/logout/HTTP cancellation regressions, cont
 preview consistency, full native/Python/Rust and en-US/pt-BR checks, both target builds/pins,
 installer+portable verification. New builds go to draft; owner gameplay/review before merge or
 publication. No code, builds, running agents or public rc7 authorized by this mapping step.
+
+### TASK-145 — In-game Xbox / PC button prompt option (issue #161)
+
+State: study and architecture complete ([docs/TASK-145-XBOX-BUTTON-PROMPTS-STUDY.md](docs/TASK-145-XBOX-BUTTON-PROMPTS-STUDY.md)).
+Issue: https://github.com/moesuito/gt4-staticrecomp/issues/161
+Report: Request for an in-game controller button prompt setting in launcher (Xbox A/B/X/Y, Switch B/A/Y/X, or PlayStation),
+referencing the OCTR-NitroFueled-PC recompilation feature.
+Architecture:
+- Utilizes the established GSdx texture replacement pipeline (`LoadTextureReplacements = true`, `[Folders] Textures`).
+- Bundles CC0 public domain vectorized replacement prompt textures mapped to the constant VRAM texture hashes of GT4's
+  navigation bar, license test action guides, and in-race HUD button glyphs.
+- Introduces `button_prompts = "playstation" | "xbox" | "switch"` setting in `gt4l-core::settings` and exposes a
+  dedicated dropdown under Launcher Settings > Controls.
+- Zero changes to the game executable or AOT translation; 100% clean-room and Decision 0070 compliant.

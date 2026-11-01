@@ -1,5 +1,14 @@
 # Current Status
 
+## TASK-145: in-game Xbox and custom button prompts architecture (2026-11-01)
+
+Documented architectural study in `docs/TASK-145-XBOX-BUTTON-PROMPTS-STUDY.md` for Issue #161.
+Establishes a clean, non-invasive button prompt replacement pipeline leveraging the existing GSdx texture replacement
+seam (`[Folders] Textures`) to swap PS2 DualShock 2 button glyphs (Cross, Circle, Square, Triangle) for modern Xbox
+(A/B/X/Y) or Nintendo Switch (B/A/Y/X) prompts in navigation bars, license tests, and in-race HUD.
+Adds `button_prompts` setting to launcher schema under Settings > Controls with dynamic texture profile activation.
+Preserves 100% clean-room boundary with zero modifications to the game executable or AOT code.
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

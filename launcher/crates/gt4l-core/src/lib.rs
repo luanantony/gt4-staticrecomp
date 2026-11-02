@@ -11,6 +11,7 @@ pub mod gs_table;
 pub mod launch;
 pub mod lock;
 pub mod migrate;
+pub mod mods;
 pub mod paths;
 pub mod releases;
 pub mod relocate;

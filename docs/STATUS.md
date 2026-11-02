@@ -1,5 +1,19 @@
 # Current Status
 
+## TASK-052: Texture pack importer, mod store, and active view manager (2026-11-01)
+
+Completed texture pack importer, mod store, and active view manager in `launcher/crates/gt4l-core/src/mods.rs`,
+documented in `docs/TASK-052-MOD-IMPORTER-ACTIVE-VIEW.md`:
+- Implemented safe extraction from `.zip` archives and loose folders with comprehensive defenses against
+  Zip-Slip (parent traversal, ADS colons, drive letters, Windows device names `CON`, `NUL`, etc.) and Zip-Bombs
+  (entry cap 200,000, max 256 MiB per file, max 20 GiB total, 200:1 ratio limit).
+- Automatic PCSX2 folder hierarchy normalization (`SCUS-97328/replacements`, `textures/SCUS-97328`, `replacements`).
+- Generates `gt4mod.toml` (schema 1) and SHA-256 verification hash table (`files.lock.json`).
+- Staging and atomic commit into `mods/store/<id>/` with registry management (`mods.toml`).
+- Active view generation (`mods/active/textures/SCUS-97328/`) using zero-copy NTFS hardlinks with copy fallback.
+- Priority-based conflict resolution and collision reporting across multiple active mods.
+All 109 unit tests in `gt4l-core` and 16 launch contract tests passed.
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

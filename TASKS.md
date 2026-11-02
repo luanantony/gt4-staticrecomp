@@ -1351,12 +1351,22 @@ between steps leaves a recoverable state; update of an installed id keeps enable
 Risks: very large packs (streaming hash and extraction, progress and cancel); non-ASCII and long paths.
 
 ### TASK-052 — Active view, priority, conflicts, uninstall, CLI
-Repo: main, branch `task/052-mods-view` (after TASK-051, same base). Haiku, 2 sessions.
-Goal: build `mods\active\textures\SCUS-97328\replacements\` with one hardlink per winning texture key (top of
-the list wins), copy fallback when hardlinks fail; view digest; atomic swap (`active.new` → `active`); conflict
-report per mod; enable/disable/move without reinstall; uninstall to the Recycle Bin with the quota check; a
-`gt4mods` CLI (`list`, `import`, `enable`, `disable`, `move`, `remove`, `build-view`, `report`) for tests and
-the dev launcher.
+State: completed in `gt4l-core::mods` (2026-11-01).
+Branch: `task/052-mod-importer-active-view`.
+Report: `docs/TASK-052-MOD-IMPORTER-ACTIVE-VIEW.md`.
+Repo: main, branch `task/052-mod-importer-active-view` (integrated into `gt4l-core::mods`).
+Goal: build `mods\active\textures\SCUS-97328\` with one hardlink per winning texture key (top of
+the list wins), copy fallback when hardlinks fail; view digest; atomic swap; conflict
+report per mod; enable/disable/move without reinstall; full zip and folder importer with Zip-Slip defenses.
+Results:
+- Implemented `launcher/crates/gt4l-core/src/mods.rs`:
+  - Full zip archive and loose folder import with Zip-Slip, Zip-Bomb, ADS, and Windows reserved device name defenses.
+  - Automatic PCSX2 layout normalization (`SCUS-97328/replacements`, `textures/SCUS-97328`, `replacements`).
+  - Staging and atomic commit into `mods/store/<id>/` with `gt4mod.toml` and `files.lock.json`.
+  - Registry management in `mods.toml` with enable/disable toggling and priority reordering.
+  - Active view generation (`mods/active/textures/SCUS-97328/`) via zero-copy NTFS hardlinks with copy fallback.
+  - Conflict resolution and reporting based on registry priority.
+- Automated Rust unit tests (109 passed in `gt4l-core`).
 Acceptance: Rust tests: each key exactly once in the view; priority changes switch the winner; identical-content
 collisions not reported; view rebuilt only when the digest changes; refused while the game lock is held;
 tampered view detected and rebuilt; copy fallback on a non-NTFS temp volume (or simulated failure); Recycle Bin

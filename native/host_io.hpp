@@ -48,6 +48,8 @@ public:
   // lists as a gamepad is not read twice.
   void set_excluded_devices(std::vector<std::uint32_t> ids);
   void stop();
+  void set_map(const gt4::controls::ControlMap &map) { map_ = map; }
+  const gt4::controls::ControlMap &map() const { return map_; }
   gt4::pad::Backend backend() const { return backend_; }
 
 private:

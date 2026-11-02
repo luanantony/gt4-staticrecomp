@@ -357,15 +357,16 @@ target_compile_options(gt4_pacing PRIVATE /W4)
 # TASK-080: display aspect (GT4_DISPLAY_ASPECT parse, Hor+/Vert+ matrix scale, scene policy, runtime glue).
 # TASK-159: the 360-degree chase camera switch, stick table and per-target addresses (camera_360.cpp; the guest hook itself is
 # camera_360_hook.cpp in gt4vulkan).
+# TASK-077: context-aware input mapping (context_probe.cpp, context_input.cpp).
 add_library(gt4_quickfix STATIC frame_skip.cpp window_mode.cpp race_display.cpp race_widescreen.cpp cursor_autohide.cpp display_aspect.cpp
-    flare_limits.cpp camera_360.cpp fov_adjust.cpp trigger_range.cpp)
+    flare_limits.cpp camera_360.cpp fov_adjust.cpp trigger_range.cpp context_probe.cpp context_input.cpp)
 target_compile_options(gt4_quickfix PRIVATE /W4)
 # TASK-100 S7b: the v2.00 hook fixtures assert the v2.00 guest chains, but gt4_quickfix carries the active target's table
 # (Spec II in a Spec II build). A Spec II build therefore compiles a second copy of the three hook modules pinned to
 # v2.00 for the fixtures only; the game keeps the target table.
 if(GT4_TARGET STREQUAL "spec2")
     add_library(gt4_quickfix_v200_fixture STATIC race_display.cpp race_widescreen.cpp display_aspect.cpp flare_limits.cpp camera_360.cpp
-        fov_adjust.cpp trigger_range.cpp)
+        fov_adjust.cpp trigger_range.cpp context_probe.cpp context_input.cpp)
     target_compile_definitions(gt4_quickfix_v200_fixture PUBLIC GT4_TARGET_FIXTURE_V200)
     target_compile_options(gt4_quickfix_v200_fixture PRIVATE /W4)
     set(GT4_HOOK_FIXTURE_LIB gt4_quickfix_v200_fixture)
@@ -1062,6 +1063,9 @@ add_executable(perf_accounting_fixture perf_accounting_fixture.cpp)
 target_compile_options(perf_accounting_fixture PRIVATE /W4)
 add_executable(fpu_chop_fixture fpu_chop_fixture.cpp)
 target_compile_options(fpu_chop_fixture PRIVATE /W4)
+add_executable(context_probe_fixture context_probe_fixture.cpp context_probe.cpp context_input.cpp controls.cpp)
+target_compile_options(context_probe_fixture PRIVATE /W4)
+add_test(NAME native_context_probe COMMAND $<TARGET_FILE:context_probe_fixture>)
 add_executable(quickfix_fixture quickfix_fixture.cpp)
 add_executable(race_display_fixture race_display_fixture.cpp)
 add_executable(race_widescreen_fixture race_widescreen_fixture.cpp)

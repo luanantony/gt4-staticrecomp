@@ -123,7 +123,7 @@ See [GS renderer options](docs/GS-RENDERER-OPTIONS.md) and [GSDX-PLAN](docs/GSDX
 | TASK‑099 | Launcher home: patch notes panel on the right (glassmorphism card), Markdown release notes of the installed version embedded in the build | 📋 Planned (owner, 2026-10-22) · release 1.2.4 |
 | TASK‑100 | Spec II support: SCUS-97436 as a second target (decision 0072), plugin injector mapped, hooks remapped | 📋 Planned (owner, 2026-10-22) · release 1.3.0 |
 | TASK‑101 | Multi-game launcher: Gran Turismo 4 and Spec II side by side (game selector, Play/Install, per-game disc, card and saves, shared settings, Spec II logo) | 📋 Planned (owner, 2026-10-23) · release 1.3.0 with TASK-100; plan docs/MULTI-GAME-LAUNCHER-PLAN.md |
-| TASK‑103 | Launcher: Graphics API choice for GSdx (Vulkan default, Direct3D 12 and Direct3D 11 for older PCs; OpenGL later), hardware backends only | 📋 Planned (owner, 2026-10-23) · after TASK-102 (i18n) |
+| TASK‑103 | Launcher: Graphics API choice for GSdx (Vulkan default, Direct3D 12 and Direct3D 11 for older PCs; OpenGL later), hardware backends only | ✅ Done (2026-11-01) · branch task/103-gsdx-graphics-api (docs/tasks/TASK-103-GRAPHICS-API-SELECTOR.md) |
 | TASK‑093 | Custom textures straight in the Textures folder: gt4-gs 1.2.1 reads the folder itself; the launcher stops creating `replacements` and moves an old `replacements` folder's contents up once gt4-gs 1.2.1 is in use | ✅ Done (2026-10-22) · release 1.2.3 (owner tested) |
 | TASK‑096 | Remove CoreGS 1.1 from the launcher (owner, 2026-10-22): GSdx only, CoreGS 2.0 shown as "Coming soon" (disabled), a stored CoreGS 1.1 choice migrates to GSdx, a GSdx failure shows a clear error instead of falling back; CoreGS 1.1 stays in the game executable, unused by the launcher. For launcher release 1.2.3 | ✅ Done (2026-10-22) · release 1.2.3 (owner tested) |
 | TASK‑092 | MTVU test switches after TASK-084: `GT4_MTVU=0` and `GT4_MTVU_VERIFY=1` in pcsx2 mode, portable doorbell ordering | ✅ Done (2026-10-22) · release 1.2.3 (owner tested) |
@@ -606,11 +606,16 @@ the new pins (a slice264 pin set) need an owner decision on the release path. CT
   1.2.3 (TASK-096); the fix stays as protection for runs without the launcher and the built-in restart path.
 
 ### TASK-103 — Graphics API choice for GSdx (Vulkan, Direct3D 12, Direct3D 11)
-Planned (owner, 2026-10-23), after TASK-102 (the i18n work touches the same Settings pages). Some players ask for other
-graphics APIs, mostly for older PCs. A new option in the launcher's graphics settings, "Graphics API", default Vulkan,
-with the other hardware backends of the GSdx build; software rendering is never offered.
-Labels (owner, 2026-10-23): Vulkan and Direct3D 12 are the recommended choices; OpenGL and Direct3D 11 are marked
-for older PCs. The UI shows that grouping (for example "Recommended" / "Older PCs").
+Done (2026-11-01) on branch `task/103-gsdx-graphics-api`. Exposes Graphics API selection in Launcher Settings:
+Vulkan (default/recommended), Direct3D 12 (recommended), and Direct3D 11 (older PCs). Software rendering (`SW = 13`)
+and OpenGL (`GL = 12`) are strictly excluded.
+UI setting uses `id = "graphics_api"` to avoid collision with engine renderer `id = "renderer"`.
+In `gt4-gs.ini`, maps to `[EmuCore/GS] Renderer` (`ini = "14"` for Vulkan, `"15"` for D3D12, `"3"` for D3D11).
+Persisted under `[gs]` as `graphics_api = "vulkan" | "d3d12" | "d3d11"`, with transparent migration from legacy configs.
+Localized labels:
+- en-US: `Vulkan (Recommended)`, `Direct3D 12 (Recommended)`, `Direct3D 11 (Older PCs)`
+- pt-BR: `Vulkan (Recomendado)`, `Direct3D 12 (Recomendado)`, `Direct3D 11 (PCs antigos)`
+Documented in [docs/tasks/TASK-103-GRAPHICS-API-SELECTOR.md](docs/tasks/TASK-103-GRAPHICS-API-SELECTOR.md).
 
 Research (2026-10-23, read-only, PCSX2-tainted Haiku; gt4recomp-gs at 1.2.1, binary 1.2.0):
 - Confirmed: the release gt4-gs.exe already contains Direct3D 11, Direct3D 12 and OpenGL (imports d3d11, d3d12,

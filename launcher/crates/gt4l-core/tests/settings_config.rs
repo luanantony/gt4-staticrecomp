@@ -130,3 +130,78 @@ fn load_of_a_damaged_file_moves_it_aside() {
     assert!(!path.exists());
     std::fs::remove_dir_all(&directory).unwrap();
 }
+
+
+#[test]
+fn graphics_api_accepts_vulkan_d3d12_and_d3d11_and_refuses_opengl_and_software() {
+    let mut settings = Settings::default();
+    assert_eq!(settings.gs_value("graphics_api"), "vulkan");
+    assert_eq!(settings.gs_value("renderer"), "vulkan");
+
+    // Setting graphics_api to d3d12
+    assert!(settings.set_gs("graphics_api", "d3d12").is_ok());
+    assert_eq!(settings.gs_value("graphics_api"), "d3d12");
+    assert_eq!(settings.gs_value("renderer"), "d3d12");
+    assert_eq!(settings.gs_overrides().get("graphics_api").map(|s| s.as_str()), Some("d3d12"));
+
+    // Setting graphics_api to d3d11
+    assert!(settings.set_gs("graphics_api", "d3d11").is_ok());
+    assert_eq!(settings.gs_value("graphics_api"), "d3d11");
+
+    // Setting graphics_api to vulkan
+    assert!(settings.set_gs("graphics_api", "vulkan").is_ok());
+    assert_eq!(settings.gs_value("graphics_api"), "vulkan");
+
+    // Legacy key "renderer" normalizes to graphics_api
+    assert!(settings.set_gs("renderer", "d3d12").is_ok());
+    assert_eq!(settings.gs_value("graphics_api"), "d3d12");
+    assert_eq!(settings.gs_overrides().get("graphics_api").map(|s| s.as_str()), Some("d3d12"));
+    assert!(!settings.gs_overrides().contains_key("renderer"));
+
+    // Software and OpenGL are refused
+    assert!(settings.set_gs("graphics_api", "opengl").is_err());
+    assert!(settings.set_gs("graphics_api", "software").is_err());
+    assert!(settings.set_gs("graphics_api", "13").is_err());
+}
+
+#[test]
+fn graphics_api_in_config_round_trips_and_legacy_renderer_migrates() {
+    let text = "schema_version = 7\n\n[settings]\nrenderer = \"pcsx2\"\nvsync = \"fast\"\n\n[gs]\ngraphics_api = \"d3d12\"\n";
+    let (config, _warnings) = config::parse(text).expect("parse");
+    assert_eq!(config.settings.gs_value("graphics_api"), "d3d12");
+    let written = config::render(&config);
+    assert!(written.contains("graphics_api = \"d3d12\""), "{written}");
+
+    // Legacy renderer under [gs]
+    let legacy = "schema_version = 7\n\n[settings]\nrenderer = \"pcsx2\"\nvsync = \"fast\"\n\n[gs]\nrenderer = \"d3d11\"\n";
+    let (legacy_config, _warnings) = config::parse(legacy).expect("parse legacy");
+    assert_eq!(legacy_config.settings.gs_value("graphics_api"), "d3d11");
+    let legacy_written = config::render(&legacy_config);
+    assert!(legacy_written.contains("graphics_api = \"d3d11\""), "{legacy_written}");
+    assert!(!legacy_written.contains("renderer = \"d3d11\""), "legacy renderer under [gs] is migrated to graphics_api: {legacy_written}");
+}
+
+#[test]
+fn graphics_api_renders_correct_ini_backend() {
+    use std::collections::BTreeMap;
+    use gt4l_core::gs_table;
+
+    // Default renders Vulkan (14)
+    let default_ini = gs_table::render_ini(&BTreeMap::new(), &BTreeMap::new()).unwrap();
+    assert!(default_ini.contains("Renderer = 14"), "{default_ini}");
+
+    // graphics_api = d3d12 renders DX12 (15)
+    let d3d12_map = BTreeMap::from([("graphics_api".to_string(), "d3d12".to_string())]);
+    let d3d12_ini = gs_table::render_ini(&d3d12_map, &BTreeMap::new()).unwrap();
+    assert!(d3d12_ini.contains("Renderer = 15"), "{d3d12_ini}");
+
+    // graphics_api = d3d11 renders DX11 (3)
+    let d3d11_map = BTreeMap::from([("graphics_api".to_string(), "d3d11".to_string())]);
+    let d3d11_ini = gs_table::render_ini(&d3d11_map, &BTreeMap::new()).unwrap();
+    assert!(d3d11_ini.contains("Renderer = 3"), "{d3d11_ini}");
+
+    // Legacy key renderer = d3d12 also renders DX12 (15)
+    let legacy_map = BTreeMap::from([("renderer".to_string(), "d3d12".to_string())]);
+    let legacy_ini = gs_table::render_ini(&legacy_map, &BTreeMap::new()).unwrap();
+    assert!(legacy_ini.contains("Renderer = 15"), "{legacy_ini}");
+}

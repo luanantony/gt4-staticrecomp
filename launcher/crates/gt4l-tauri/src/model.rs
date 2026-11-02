@@ -23,6 +23,40 @@ pub fn pcsx2_table_rows() -> Vec<&'static gs_table::Row> {
     gs_table::offered().into_iter().filter(|row| !DERIVED_TABLE_IDS.contains(&row.id.as_str())).collect()
 }
 
+/// The Graphics API options for GSdx (TASK-103), with localized labels.
+pub fn graphics_api_choices(lang: Option<&str>) -> Vec<Value> {
+    let is_pt = lang.map(|l| l.starts_with("pt")).unwrap_or(false);
+    if is_pt {
+        vec![
+            json!({ "value": "vulkan", "label": "Vulkan (Recomendado)" }),
+            json!({ "value": "d3d12", "label": "Direct3D 12 (Recomendado)" }),
+            json!({ "value": "d3d11", "label": "Direct3D 11 (PCs antigos)" }),
+        ]
+    } else {
+        vec![
+            json!({ "value": "vulkan", "label": "Vulkan (Recommended)" }),
+            json!({ "value": "d3d12", "label": "Direct3D 12 (Recommended)" }),
+            json!({ "value": "d3d11", "label": "Direct3D 11 (Older PCs)" }),
+        ]
+    }
+}
+
+/// The Graphics API row for GSdx in the settings table.
+pub fn graphics_api_row(settings: &Settings) -> Value {
+    json!({
+        "id": "graphics_api",
+        "label": "Graphics API",
+        "help": "The graphics API GSdx uses to draw on your GPU. Vulkan and Direct3D 12 are recommended; Direct3D 11 is available for older PCs.",
+        "page": "basic",
+        "group": "graphics",
+        "control": "dropdown",
+        "values": graphics_api_choices(None),
+        "default": "vulkan",
+        "current": settings.gs_value("graphics_api"),
+        "disabled": false,
+    })
+}
+
 /// The payload of `get_settings_table`: `{max_upscale, rows}`. Launcher rows come from `SETTINGS`, PCSX2 GS rows from
 /// the table file; both use the row shape of ui/dev/README.md. GSdx is the only renderer (TASK-096), so no row depends on it.
 pub fn settings_table(settings: &Settings, controls: &Controls) -> Value {
@@ -108,6 +142,9 @@ pub fn settings_table_with_monitors(settings: &Settings, controls: &Controls, mo
             _ => {}
         }
         rows.push(row);
+        if definition.id == "renderer" {
+            rows.push(graphics_api_row(settings));
+        }
     }
     for row in pcsx2_table_rows() {
         rows.push(gs_row(row, settings));
@@ -756,6 +793,42 @@ mod table_tests {
         assert_eq!(gs_value_text(row, &json!("accurate")), None, "a toggle takes true or false");
         let other = pcsx2_table_rows().into_iter().find(|row| row.id == "fxaa").unwrap();
         assert_eq!(toggle_choices(other), None);
+    }
+
+    #[test]
+    fn graphics_api_row_is_offered_with_three_choices_and_vulkan_default() {
+        let table = settings_table(&Settings::default(), &Controls::default());
+        let api = row(&table, "graphics_api");
+        assert_eq!(api["control"], "dropdown");
+        assert_eq!(api["page"], "basic");
+        assert_eq!(api["group"], "graphics");
+        assert_eq!(api["default"], "vulkan");
+        assert_eq!(api["current"], "vulkan");
+        assert_eq!(api["disabled"], false);
+
+        let values = api["values"].as_array().unwrap();
+        assert_eq!(values.len(), 3);
+        assert_eq!(values[0]["value"], "vulkan");
+        assert_eq!(values[0]["label"], "Vulkan (Recommended)");
+        assert_eq!(values[1]["value"], "d3d12");
+        assert_eq!(values[1]["label"], "Direct3D 12 (Recommended)");
+        assert_eq!(values[2]["value"], "d3d11");
+        assert_eq!(values[2]["label"], "Direct3D 11 (Older PCs)");
+
+        // Localized labels for pt-BR
+        let pt_values = graphics_api_choices(Some("pt-BR"));
+        assert_eq!(pt_values[0]["label"], "Vulkan (Recomendado)");
+        assert_eq!(pt_values[1]["label"], "Direct3D 12 (Recomendado)");
+        assert_eq!(pt_values[2]["label"], "Direct3D 11 (PCs antigos)");
+    }
+
+    #[test]
+    fn graphics_api_row_reflects_current_setting() {
+        let mut settings = Settings::default();
+        settings.set_gs("graphics_api", "d3d12").unwrap();
+        let table = settings_table(&settings, &Controls::default());
+        let api = row(&table, "graphics_api");
+        assert_eq!(api["current"], "d3d12");
     }
 
     #[test]

@@ -189,8 +189,14 @@ pub fn rows() -> &'static [Row] {
     ROWS.get_or_init(|| parse_table(TABLE_TEXT).expect("docs/launcher/gs-settings.toml is valid"))
 }
 
+/// The canonical identifier of a GS setting (TASK-103: aliasing "graphics_api" to "renderer").
+pub fn canonical_id(id: &str) -> &str {
+    if id == "graphics_api" { "renderer" } else { id }
+}
+
 /// The row with this id.
 pub fn row(id: &str) -> Option<&'static Row> {
+    let id = canonical_id(id);
     rows().iter().find(|row| row.id == id)
 }
 
@@ -363,7 +369,7 @@ pub fn render_ini(settings: &BTreeMap<String, String>, launcher: &BTreeMap<Strin
         if matches!(row.written.as_str(), "never" | "launcher") || row.kind == "path" {
             return refuse(format!("{identifier} is set by the launcher, not by a user setting"));
         }
-        checked_settings.insert(identifier.clone(), parse_value(row, value)?);
+        checked_settings.insert(row.id.clone(), parse_value(row, value)?);
     }
     let mut checked_launcher: BTreeMap<String, String> = BTreeMap::new();
     for (identifier, value) in launcher {
@@ -471,6 +477,11 @@ mod tests {
         // TASK-088 (1.2.0): every gt4-gs value the binary accepts is settable (the resolved ones were enabled).
         assert!(check_user_value("renderer", "d3d12").is_ok());
         assert!(check_user_value("renderer", "vulkan").is_ok());
+        // TASK-103: graphics_api alias
+        assert!(check_user_value("graphics_api", "d3d12").is_ok());
+        assert!(check_user_value("graphics_api", "d3d11").is_ok());
+        assert!(check_user_value("graphics_api", "vulkan").is_ok());
+        assert!(check_user_value("graphics_api", "opengl").is_err());
         assert!(check_user_value("filter", "nearest").is_ok());
         assert!(check_user_value("renderer", "opengl").is_err(), "not a value of the table");
         assert!(check_user_value("cache_folder", "C:/x").is_err(), "launcher rows are not user settings");

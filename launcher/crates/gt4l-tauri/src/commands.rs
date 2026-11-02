@@ -169,7 +169,10 @@ pub fn set_setting_of(id: String, value: Value, shared: &Shared) -> Result<(), S
         let now = webview_guard::unix_seconds();
         return webview_guard::set_gpu_acceleration(state.user_dirs.root(), on, now);
     }
-    if let Some(definition) = settings::definition(&id) {
+    if id == "graphics_api" {
+        let text = model::value_text(&value, false).ok_or_else(|| format!("'{id}' needs a plain value"))?;
+        state.config.settings.set_gs("graphics_api", &text).map_err(|error| error.to_string())?;
+    } else if let Some(definition) = settings::definition(&id) {
         let text = model::value_text(&value, definition.kind == settings::Kind::Toggle)
             .ok_or_else(|| format!("'{id}' needs a plain value"))?;
         state.config.settings.set_by_user(&id, &text).map_err(|error| error.to_string())?;

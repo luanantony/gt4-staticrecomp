@@ -242,6 +242,16 @@ class ValueTests(unittest.TestCase):
         self.assertEqual(gs_settings.parse_value(by_id()['filter'], 'bilinear-ps2'), 'bilinear-ps2')
         self.assertEqual(gs_settings.parse_value(by_id()['performance_mode'], 'no-readbacks'), 'no-readbacks')
 
+    def test_graphics_api_alias_for_renderer(self):
+        # TASK-103: graphics_api is an alias for the GSdx renderer backend row
+        self.assertEqual(gs_settings._lookup(rows(), 'graphics_api')['id'], 'renderer')
+        rendered = gs_settings.render_ini(rows(), {'graphics_api': 'd3d12'})
+        self.assertIn('Renderer = 15', rendered)
+        rendered_dx11 = gs_settings.render_ini(rows(), {'graphics_api': 'd3d11'})
+        self.assertIn('Renderer = 3', rendered_dx11)
+        rendered_vk = gs_settings.render_ini(rows(), {'graphics_api': 'vulkan'})
+        self.assertIn('Renderer = 14', rendered_vk)
+
     def test_path_values_are_single_line(self):
         self.assertEqual(gs_settings.parse_value(by_id()['cache_folder'], 'C:/cache'), 'C:/cache')
         with self.assertRaises(gs_settings.SettingsError):

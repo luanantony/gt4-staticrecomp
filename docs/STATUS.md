@@ -1,5 +1,16 @@
 # Current Status
 
+## TASK-103: Graphics API choice for GSdx in Launcher Settings (2026-11-01)
+
+Implemented graphics backend selection for GSdx in Launcher Settings (branch `task/103-gsdx-graphics-api`).
+- Hardware renderers: Vulkan (`Renderer = 14`, recommended/default), Direct3D 12 (`Renderer = 15`, recommended), Direct3D 11 (`Renderer = 3`, older PCs). Software and OpenGL backends excluded.
+- UI separation: Launcher engine setting retains `id = "renderer"`; GSdx backend row uses `id = "graphics_api"`.
+- Clean INI rendering: `canonical_id` alias maps `graphics_api` to `[EmuCore/GS] Renderer`.
+- Configuration: Persists under `[gs]` as `graphics_api = ...`, with backwards compatibility for legacy `renderer = ...`.
+- Localized option labels: en-US (`Vulkan (Recommended)`, `Direct3D 12 (Recommended)`, `Direct3D 11 (Older PCs)`) and pt-BR (`Vulkan (Recomendado)`, `Direct3D 12 (Recomendado)`, `Direct3D 11 (PCs antigos)`).
+- Verification: Crate tests `gt4l-core` (105 unit + 12 config), `gt4controls` (17 unit + 4 docs), Python `test_gs_settings.py` (73 tests) all passing.
+
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

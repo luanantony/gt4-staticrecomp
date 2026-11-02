@@ -196,6 +196,9 @@ def rows_by_id(rows):
 
 def _lookup(rows, identifier):
     index = rows_by_id(rows)
+    # TASK-103: graphics_api is an alias for the GSdx renderer backend row
+    if identifier == 'graphics_api':
+        identifier = 'renderer'
     if identifier not in index:
         raise SettingsError(f"unknown GS setting '{identifier}' (ids are in docs/launcher/gs-settings.toml)")
     return index[identifier]
@@ -332,11 +335,14 @@ def render_ini(rows, settings=None, launcher=None, header=INI_HEADER):
     settings = dict(settings or {})
     launcher = dict(launcher or {})
     index = rows_by_id(rows)
-    for identifier, value in settings.items():
+    for identifier, value in list(settings.items()):
         row = _lookup(rows, identifier)
         if row['written'] in ('never', 'launcher') or row['type'] == 'path':
             raise SettingsError(f'{identifier} is set by the launcher, not by a user setting')
-        settings[identifier] = parse_value(row, value)
+        val = parse_value(row, value)
+        if identifier != row['id']:
+            del settings[identifier]
+        settings[row['id']] = val
     for identifier, value in launcher.items():
         row = _lookup(rows, identifier)
         if row['written'] != 'launcher':

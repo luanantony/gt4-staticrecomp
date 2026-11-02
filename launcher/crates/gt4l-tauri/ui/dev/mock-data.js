@@ -91,6 +91,14 @@
         { value: "coregs-2.0", label: "CoreGS 2.0 (coming soon)", disabled: true }
       ],
       default: "pcsx2", current: "pcsx2" },
+    { id: "graphics_api", label: "Graphics API", help: "The graphics API GSdx uses to draw on your GPU. Vulkan and Direct3D 12 are recommended; Direct3D 11 is available for older PCs.",
+      page: "basic", group: "graphics", control: "dropdown",
+      values: [
+        { value: "vulkan", label: "Vulkan (Recommended)" },
+        { value: "d3d12", label: "Direct3D 12 (Recommended)" },
+        { value: "d3d11", label: "Direct3D 11 (Older PCs)" }
+      ],
+      default: "vulkan", current: "vulkan" },
     // TASK-080 addendum: no Aspect ratio and no Internal resolution row. Render scale (50% to 200%) with the
     // resulting internal resolution as its readout (labels are filled by tableView from the chosen resolution).
     { id: "render_scale", label: "Render scale", help: "How sharp the picture is drawn. 100% draws it at least at your resolution; 50% is faster and softer, 200% is sharper and needs a much faster GPU.",

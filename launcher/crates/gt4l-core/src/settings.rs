@@ -366,7 +366,12 @@ impl Settings {
 
     /// A PCSX2 GS table value (`gs_table`), or its table default when the user has not set it.
     pub fn gs_value(&self, id: &str) -> String {
-        match self.gs.get(id) {
+        let key = if id == "renderer" || id == "graphics_api" {
+            self.gs.get("graphics_api").or_else(|| self.gs.get("renderer"))
+        } else {
+            self.gs.get(id)
+        };
+        match key {
             Some(value) => value.clone(),
             None => crate::gs_table::default_value(id).unwrap_or_default(),
         }
@@ -378,7 +383,12 @@ impl Settings {
             return Err(format!("{id} is set by the launcher: {reason}"));
         }
         let normalized = crate::gs_table::check_user_value(id, value)?;
-        self.gs.insert(id.to_string(), normalized);
+        if id == "renderer" || id == "graphics_api" {
+            self.gs.remove("renderer");
+            self.gs.insert("graphics_api".to_string(), normalized);
+        } else {
+            self.gs.insert(id.to_string(), normalized);
+        }
         Ok(())
     }
 

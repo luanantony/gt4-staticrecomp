@@ -391,6 +391,121 @@ bool output_refused(const char *value) {
 }
 
 // TASK-080 addendum: GT4_OUTPUT_SIZE and auto from the output size.
+// TASK-095: Menu overlay canvas and MenuCanvasHook checks
+void put_test_ortho_matrix(std::vector<std::uint8_t> &ram, std::uint32_t at, float left, float right, float top,
+                           float bottom) {
+  for (std::uint32_t i = 0; i < 16; ++i)
+    put_le32(ram, at + 4 * i, 0);
+  put_le32(ram, at + 0, bits_of(2.0f / (right - left)));
+  put_le32(ram, at + 20, bits_of(2.0f / (bottom - top)));
+  put_le32(ram, at + 40, bits_of(-1.0f));
+  put_le32(ram, at + 48, bits_of((left + right) / (left - right)));
+  put_le32(ram, at + 52, bits_of((top + bottom) / (top - bottom)));
+  put_le32(ram, at + 60, bits_of(1.0f));
+}
+
+double ortho_ndc_x(const std::vector<std::uint8_t> &ram, std::uint32_t at, double x) {
+  return x * float_of(get_le32(ram, at + 0)) + float_of(get_le32(ram, at + 48));
+}
+
+double ortho_ndc_y(const std::vector<std::uint8_t> &ram, std::uint32_t at, double y) {
+  return y * float_of(get_le32(ram, at + 20)) + float_of(get_le32(ram, at + 52));
+}
+
+void test_menu_canvas() {
+  const HudCanvas menu169 = menu_canvas(kGameRatio);
+  require(menu169.left == 0.0 && menu169.right == 640.0 && menu169.top == 480.0 && menu169.bottom == 0.0,
+          "16:9 menu canvas = 0..640 x 0..480");
+  const HudCanvas menu448 = menu_canvas(kGameRatio, 448.0);
+  require(menu448.left == 0.0 && menu448.right == 640.0 && menu448.top == 448.0 && menu448.bottom == 0.0,
+          "16:9 448-line menu canvas = 0..640 x 0..448");
+
+  // 21:9: width is 640 x (21/16) = 840, centered on 320 -> -100 .. 740
+  const HudCanvas menu219 = menu_canvas(21.0 / 9.0);
+  require(near(menu219.left, -100.0) && near(menu219.right, 740.0) && menu219.top == 480.0,
+          "21:9 menu canvas = -100 .. 740");
+
+  // 32:9: width is 640 x 2 = 1280, centered on 320 -> -320 .. 960
+  const HudCanvas menu329 = menu_canvas(32.0 / 9.0);
+  require(near(menu329.left, -320.0) && near(menu329.right, 960.0) && near(menu329.right - menu329.left, 1280.0),
+          "32:9 menu canvas = -320 .. 960 (twice width, centered on 320)");
+
+  // 16:10 (Vert+): left 0, right 640, taller height centered on 240
+  const HudCanvas menu1610 = menu_canvas(1.6);
+  require(menu1610.left == 0.0 && menu1610.right == 640.0 &&
+          near(menu1610.top - menu1610.bottom, 480.0 * kGameRatio / 1.6) &&
+          near(menu1610.top + menu1610.bottom, 480.0),
+          "16:10 menu canvas taller, centered on 240");
+
+  constexpr std::uint32_t ram_size = 1u << 20;
+  constexpr std::uint32_t menu_addr = 0x000B0000u;
+  constexpr std::uint32_t hud_addr = 0x000C0000u;
+  constexpr std::uint32_t split_addr = 0x000D0000u;
+  std::vector<std::uint8_t> ram(ram_size, 0xAA);
+
+  put_test_ortho_matrix(ram, menu_addr, 0.0f, 640.0f, 480.0f, 0.0f);
+  put_test_ortho_matrix(ram, hud_addr, -106.666664f, 746.666687f, 480.0f, 0.0f);
+  put_test_ortho_matrix(ram, split_addr, 0.0f, 640.0f, 230.0f, -10.0f);
+
+  std::uint32_t words[16];
+  for (std::uint32_t i = 0; i < 16; ++i)
+    words[i] = get_le32(ram, menu_addr + 4 * i);
+  require(is_game_menu_canvas(words), "standard 4:3 menu canvas recognised");
+  require(!is_game_hud_canvas(words), "menu canvas is not HUD canvas");
+
+  for (std::uint32_t i = 0; i < 16; ++i)
+    words[i] = get_le32(ram, hud_addr + 4 * i);
+  require(!is_game_menu_canvas(words), "HUD canvas is not menu canvas");
+
+  for (std::uint32_t i = 0; i < 16; ++i)
+    words[i] = get_le32(ram, split_addr + 4 * i);
+  require(!is_game_menu_canvas(words), "split-screen canvas is not menu canvas");
+
+  // Test MenuCanvasHook
+  const std::vector<std::uint8_t> original = ram;
+  MenuCanvasHook hook;
+  require(!hook.apply(ram.data(), ram_size, menu_addr, kGameRatio) && ram == original, "16:9 writes nothing");
+  require(!hook.apply(ram.data(), ram_size, hud_addr, 21.0 / 9.0), "HUD matrix left alone");
+  require(!hook.apply(ram.data(), ram_size, split_addr, 21.0 / 9.0), "split-screen matrix left alone");
+  require(hook.foreign() == 2, "foreign matrices counted");
+
+  // 21:9 rewrite:
+  const double s = (21.0 / 9.0) / kGameRatio;
+  require(hook.apply(ram.data(), ram_size, menu_addr, 21.0 / 9.0), "21:9 rewrites menu canvas");
+  for (std::uint32_t at = 0; at < ram_size; ++at) {
+    const std::uint32_t index = (at - menu_addr) / 4;
+    const bool changed_word = at >= menu_addr && at < menu_addr + 64 && (index == 0 || index == 5 || index == 12 || index == 13);
+    if (!changed_word)
+      require(ram[at] == original[at], "only modified matrix entries change");
+  }
+
+  // Centering and proportion checks:
+  require(std::fabs(ortho_ndc_x(ram, menu_addr, 320.0)) < 1e-6, "menu center 320 stays at NDC center");
+  const double width_ndc = ortho_ndc_x(ram, menu_addr, 640.0) - ortho_ndc_x(ram, menu_addr, 0.0);
+  require(near(width_ndc * s, 2.0, 1e-5), "0..640 spans 1/s in NDC, undistorted on 21:9 presentation");
+  require(near(ortho_ndc_y(ram, menu_addr, 480.0), -1.0, 1e-6) && near(ortho_ndc_y(ram, menu_addr, 0.0), 1.0, 1e-6),
+          "vertical mapping unchanged for 21:9");
+
+  // Re-applying same ratio does not write again:
+  require(!hook.apply(ram.data(), ram_size, menu_addr, 21.0 / 9.0), "same ratio again writes nothing");
+
+  // 32:9 rewrite:
+  require(hook.apply(ram.data(), ram_size, menu_addr, 32.0 / 9.0), "32:9 rewrites");
+  const double width_329_ndc = ortho_ndc_x(ram, menu_addr, 640.0) - ortho_ndc_x(ram, menu_addr, 0.0);
+  require(near(width_329_ndc * 2.0, 2.0, 1e-5), "32:9 spans half NDC width");
+
+  // 16:9 restores exact original words:
+  require(hook.apply(ram.data(), ram_size, menu_addr, kGameRatio) && ram == original, "16:9 restores exact words");
+
+  // Reused address with fresh matrix is recognised:
+  put_test_ortho_matrix(ram, menu_addr, 0.0f, 640.0f, 480.0f, 0.0f);
+  require(hook.apply(ram.data(), ram_size, menu_addr, 21.0 / 9.0), "fresh matrix at reused address rewritten");
+
+  // Boundaries and alignment:
+  require(!hook.apply(ram.data(), ram_size, ram_size - 16, 21.0 / 9.0), "outside RAM refused");
+  require(!hook.apply(ram.data(), ram_size, menu_addr + 2, 21.0 / 9.0), "unaligned address refused");
+}
+
 void test_output_size() {
   require(!parse_output_size(nullptr).known(), "unset output size is not known");
   const OutputSize full_hd = parse_output_size("1920x1080");
@@ -432,6 +547,7 @@ int main() {
   test_scene_policy();
   test_hud_canvas();
   test_hud_parameters();
+  test_menu_canvas();
   std::puts("display_aspect fixture: all checks passed");
   return 0;
 }

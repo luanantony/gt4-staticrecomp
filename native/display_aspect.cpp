@@ -248,6 +248,18 @@ HudCanvas hud_canvas(double ratio) {
   return {kGameCanvasLeft, kGameCanvasRight, 240.0 + half_height, 240.0 - half_height};
 }
 
+HudCanvas menu_canvas(double ratio, double base_height) {
+  const double r = snap_ratio(ratio);
+  if (r == kGameRatio)
+    return {0.0, 640.0, base_height, 0.0};
+  if (r > kGameRatio) {
+    const double width = 640.0 * (r / kGameRatio);
+    return {320.0 - width / 2.0, 320.0 + width / 2.0, base_height, 0.0};
+  }
+  const double height = base_height * (kGameRatio / r);
+  return {0.0, 640.0, base_height / 2.0 + height / 2.0, base_height / 2.0 - height / 2.0};
+}
+
 HudMatrixWords hud_matrix_words(const HudCanvas &canvas) {
   const float left = static_cast<float>(canvas.left), right = static_cast<float>(canvas.right);
   const float top = static_cast<float>(canvas.top), bottom = static_cast<float>(canvas.bottom);
@@ -300,6 +312,15 @@ bool is_split_screen_hud_canvas(const std::uint32_t words[16]) {
   return wide_half || narrow_half;
 }
 
+bool is_game_menu_canvas(const std::uint32_t words[16]) {
+  HudCanvas c{};
+  if (!decode_hud_canvas(words, c))
+    return false;
+  const bool standard_edges = same_edge(c.left, 0.0) && same_edge(c.right, 640.0) && same_edge(c.bottom, 0.0);
+  const bool valid_height = same_edge(c.top, 480.0) || same_edge(c.top, 448.0);
+  return standard_edges && valid_height;
+}
+
 bool HudCanvasHook::apply(std::uint8_t *ram, std::uint32_t ram_size, std::uint32_t self, double ratio) {
   last_split_ = false;
   const std::uint64_t address = static_cast<std::uint64_t>(self) + kHudMatrixOffset;
@@ -338,6 +359,49 @@ bool HudCanvasHook::apply(std::uint8_t *ram, std::uint32_t ram_size, std::uint32
   write_le32(ram + address + 20u, target.m5);
   write_le32(ram + address + 48u, target.m12);
   write_le32(ram + address + 52u, target.m13);
+  slot->written = target;
+  ++writes_;
+  return true;
+}
+
+bool MenuCanvasHook::apply(std::uint8_t *ram, std::uint32_t ram_size, std::uint32_t matrix_address, double ratio) {
+  if ((matrix_address & 3u) != 0 || static_cast<std::uint64_t>(matrix_address) + kMatrixBytes > ram_size)
+    return false;
+  std::uint32_t words[16];
+  for (std::uint32_t i = 0; i < 16; ++i)
+    words[i] = read_le32(ram + matrix_address + 4u * i);
+  const HudMatrixWords current{words[0], words[5], words[12], words[13]};
+  Slot *slot = nullptr;
+  for (Slot &candidate : slots_)
+    if (candidate.used && candidate.address == matrix_address)
+      slot = &candidate;
+  const bool ours = slot != nullptr && current == slot->written && words[10] == float_bits(-1.0f) &&
+                    words[15] == float_bits(1.0f);
+  if (!ours) {
+    if (!is_game_menu_canvas(words)) {
+      ++foreign_;
+      return false;
+    }
+    HudCanvas c{};
+    decode_hud_canvas(words, c);
+    if (slot == nullptr) {
+      slot = &slots_[next_];
+      next_ = (next_ + 1) % kSlots;
+    }
+    slot->used = true;
+    slot->address = matrix_address;
+    slot->base_height = same_edge(c.top, 448.0) ? 448.0 : 480.0;
+    slot->original = current;
+    slot->written = current;
+  }
+  const HudMatrixWords target =
+      is_game_ratio(snap_ratio(ratio)) ? slot->original : hud_matrix_words(menu_canvas(ratio, slot->base_height));
+  if (target == current)
+    return false;
+  write_le32(ram + matrix_address + 0u, target.m0);
+  write_le32(ram + matrix_address + 20u, target.m5);
+  write_le32(ram + matrix_address + 48u, target.m12);
+  write_le32(ram + matrix_address + 52u, target.m13);
   slot->written = target;
   ++writes_;
   return true;
@@ -392,6 +456,9 @@ struct Runtime {
   HudParameters block{};
   std::uint32_t block_refills_logged = 0;
   std::uint64_t split_renders = 0;
+  // TASK-095: Menu canvas hook.
+  MenuCanvasHook menu;
+  double menu_logged_ratio = kGameRatio;
 };
 
 Runtime &runtime() {
@@ -504,6 +571,20 @@ void on_race_display_render(std::uint8_t *ram, std::uint32_t ram_size, std::uint
   if (r.hud.foreign() != foreign_before && r.hud.foreign() == 1)
     std::fprintf(stderr, "[aspect] RaceDisplay 0x%08X: HUD matrix is not the full-screen 16:9 canvas (4:3 game or "
                  "unknown); left unchanged\n", self);
+}
+
+bool on_menu_overlay_matrix(std::uint8_t *ram, std::uint32_t ram_size, std::uint32_t matrix_address) {
+  Runtime &r = runtime();
+  const double ratio = r.projection_ratio;
+  const bool written = r.menu.apply(ram, ram_size, matrix_address, ratio);
+  if (written && ratio != r.menu_logged_ratio) {
+    r.menu_logged_ratio = ratio;
+    const HudCanvas canvas = menu_canvas(ratio);
+    std::fprintf(stderr, "[aspect] menu overlay canvas at 0x%08X at vblank %llu: R %s, left %.3f right %.3f top %.3f "
+                 "bottom %.3f\n", matrix_address, static_cast<unsigned long long>(r.vblank),
+                 describe_ratio(ratio).c_str(), canvas.left, canvas.right, canvas.top, canvas.bottom);
+  }
+  return written;
 }
 
 void set_presentation_sink(PresentationSink sink) { runtime().sink = sink; }

@@ -744,16 +744,17 @@ GT4_DISPLAY_ASPECT; GT4_FULLSCREEN, GT4_PRESENT_MODE, GT4_MONITOR, GT4_OUTPUT_SI
 - New game slice with the frame identity checks, launcher changes, tests.
 
 ### TASK-095 — Ultrawide: undistorted pre-race menu overlay
-Planned (owner, 2026-10-22), idea to study later. At ratios wider than 16:9 (owner screenshot at 3440x1440, Time Trial
-on Trial Mountain) the pre-race menu (race lobby: car name, CV/kg/tires table, Session Record, the icon row, the
-car spec line) is a 2D overlay drawn over the live 3D track. The 3D background is already correct (the TASK-080
-race camera hook widens the projection), but the overlay is stretched horizontally with the screen. In the race
-itself the HUD is right, because TASK-080 P2 draws it as an undistorted, centred layer (RaceDisplay canvas, ELF
-constants). Idea: apply the same inverse horizontal scale to the pre-race menu overlay, centred, keeping the 3D
-stretched. Study first: which code draws this overlay (it is not the race HUD path), whether the P2 canvas hook or
-a per-scene display control covers it, and how the other race menus (pause, results, replay menu) behave. Same
-guard rails as TASK-080 (decision 0071): 16:9 frames stay byte-identical, no save-data writes, hooks listed with
-tests.
+✅ **Done (2026-11-01).** Branch 	ask/095-pre-race-ultrawide. Plan and study: docs/tasks/TASK-095-PRE-RACE-ULTRAWIDE.md.
+- Analyzed 2D orthographic canvas mechanics for the pre-race lobby (QuickMenu), pause (RacePause, SimplePause),
+  results (RaceDisplay::put_aspec_race_result), and replay menu overlays over live 3D scenes.
+- Formulated inverse horizontal scaling for R >= 16:9: canvas width W = 640 x (R / (16/9)) = 360 x R,
+  left = 320 - 180 x R, right = 320 + 180 x R; and Vert+ height scaling for R < 16:9.
+- Implemented menu_canvas, is_game_menu_canvas, MenuCanvasHook, and on_menu_overlay_matrix in
+  
+ative/display_aspect.{hpp,cpp}.
+- Decision 0071 guard rails enforced: 16:9 frames stay bit-for-bit identical (0 writes), no save-data writes, and full
+  automated test coverage in 
+ative/display_aspect_fixture.cpp (	est_menu_canvas) and Python test suites.
 
 ### TASK-091 — Release 1.2.1: per-machine install, data beside the program, user data in AppData
 ✅ **Done (2026-10-22): owner tested and approved; released as v1.2.1.** Branch `task/091-install-layout-121`. Owner decisions 2026-10-22:

@@ -1,5 +1,15 @@
 # Current Status
 
+## TASK-095: Ultrawide undistorted pre-race menu overlay (2026-11-01)
+
+Completed implementation and design for undistorted 2D menu overlay canvases under ultrawide aspect ratios (R > 16:9), covering the pre-race lobby (QuickMenu), pause (RacePause, SimplePause), race results, and replay overlays.
+- Pure functions menu_canvas, is_game_menu_canvas, MenuCanvasHook, and on_menu_overlay_matrix added to 
+ative/display_aspect.{hpp,cpp}.
+- Decision 0071 guard rails preserved: 16:9 stays bit-for-bit identical (0 writes), no save data touched, matrix memory bounds checked.
+- All tests passing: 
+ative_display_aspect (	est_menu_canvas), Python test suites (	est_display_aspect.py, 	est_aspect_elf_patch.py), and gt4l-core Rust test suite.
+- Branch 	ask/095-pre-race-ultrawide. Documented in docs/tasks/TASK-095-PRE-RACE-ULTRAWIDE.md.
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

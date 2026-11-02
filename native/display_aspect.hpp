@@ -193,6 +193,10 @@ struct HudCanvas {
 
 // The canvas for a snapped ratio R (16:9 = the game's canvas -320/3, 2240/3, 480, 0). Pure.
 HudCanvas hud_canvas(double ratio);
+// TASK-095: The 2D menu overlay canvas for a snapped ratio R (16:9 = the game's menu canvas 0, 640, base_height, 0).
+// base_height defaults to 480.0 (or 448.0 for 448-line displays). Centred on 320. Pure.
+HudCanvas menu_canvas(double ratio, double base_height = 480.0);
+
 
 // The four words of the HUD matrix a canvas sets, in single precision like RaceDisplay::setProjectionMatrix:
 // m[0] = 2 / (right - left), m[5] = 2 / (bottom - top), m[12] = (left + right) / (left - right),
@@ -208,6 +212,9 @@ HudMatrixWords hud_matrix_words(const HudCanvas &canvas);
 // Whether 16 matrix words are an orthographic HUD matrix of the game's full-screen 16:9 canvas (decoded edges within
 // 0.05; the other words 0 except m[10] = -1 and m[15] = 1).
 bool is_game_hud_canvas(const std::uint32_t words[16]);
+// TASK-095: Whether 16 matrix words are an orthographic menu overlay canvas (0..640 x 0..480 or 0..448).
+bool is_game_menu_canvas(const std::uint32_t words[16]);
+
 
 // Whether 16 matrix words are one of the split-screen HUD canvases of RaceSplitDisplayBase::initialize: wide
 // (left -106.667, right 320, 480 high) or 4:3 (0..640, 240 high). A RaceDisplay::render with such a canvas is not
@@ -236,6 +243,27 @@ class HudCanvasHook {
   int next_ = 0;
   std::uint64_t writes_ = 0, foreign_ = 0;
   bool last_split_ = false;
+};
+
+// TASK-095: Per-matrix hook for 2D menu overlays (pre-race lobby, pause, results, replay menu).
+class MenuCanvasHook {
+ public:
+  static constexpr int kSlots = 8;
+  // Rewrites the matrix at `matrix_address` for the ratio. Returns true when words were written.
+  bool apply(std::uint8_t *ram, std::uint32_t ram_size, std::uint32_t matrix_address, double ratio);
+  std::uint64_t writes() const { return writes_; }
+  std::uint64_t foreign() const { return foreign_; }
+
+ private:
+  struct Slot {
+    std::uint32_t address = 0;
+    bool used = false;
+    double base_height = 480.0;
+    HudMatrixWords original{}, written{};
+  };
+  Slot slots_[kSlots]{};
+  int next_ = 0;
+  std::uint64_t writes_ = 0, foreign_ = 0;
 };
 
 // HUD parameter block in guest kernel RAM that neither the game nor our HLE kernel uses (the kernel uses 0x800-0x848,
@@ -298,6 +326,9 @@ void on_race_display_render();
 // P2 (slice217 capsule): the same marker plus the HUD canvas hook on `self` = a0 (RaceDisplay or a subclass such as
 // RaceLicenseDisplay, vtable 0x680D00). Uses the ratio of the last race camera hook, the ratio the presentation fills.
 void on_race_display_render(std::uint8_t *ram, std::uint32_t ram_size, std::uint32_t self);
+
+// TASK-095: Called when a 2D menu overlay projection matrix is loaded or bound.
+bool on_menu_overlay_matrix(std::uint8_t *ram, std::uint32_t ram_size, std::uint32_t matrix_address);
 
 // Presentation sink: race_view = fill the screen at `ratio`; otherwise pillarbox 16:9. Called on the EE thread only
 // when the presented state or ratio changes (never while R stays 16:9).

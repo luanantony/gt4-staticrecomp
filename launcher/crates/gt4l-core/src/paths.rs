@@ -313,6 +313,11 @@ impl UserDirs {
         self.config_dir.join("settings.toml")
     }
 
+    /// Feedback file written by the game when graphics settings change in-game (TASK-078).
+    pub fn game_changes_file(&self) -> PathBuf {
+        self.config_dir.join("game-changes.toml")
+    }
+
     pub fn retroachievements_file(&self) -> PathBuf {
         self.config_dir.join("retroachievements.toml")
     }

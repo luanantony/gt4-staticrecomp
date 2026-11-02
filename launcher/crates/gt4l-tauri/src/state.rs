@@ -131,6 +131,16 @@ impl AppState {
         for warning in &warnings {
             log(&dirs, &format!("settings: {warning}"));
         }
+        // TASK-078: In-game settings changes feedback merge on startup
+        let changes_file = user.game_changes_file();
+        if changes_file.exists() {
+            if let Ok(changed) = config::merge_game_changes(&mut config, &changes_file) {
+                if changed {
+                    let _ = config::save(&user.config_file(), &config);
+                    log(&dirs, "in-game settings changes merged into settings.toml at startup");
+                }
+            }
+        }
         // Stored paths inside the install folder are relative (see `save_config`); resolve them here.
         config.disc_path = config.disc_path.map(|path| paths::resolve_portable(&path, &install_dir));
         config.dev_game_dir = config.dev_game_dir.map(|path| paths::resolve_portable(&path, &install_dir));

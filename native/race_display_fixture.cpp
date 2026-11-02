@@ -70,7 +70,8 @@ void test_address_chain() {
 void test_write_decision() {
   require(should_force_480p_index(race_display_index_normal), "normal index is forced");
   require(!should_force_480p_index(race_display_index_480p), "480p index is kept");
-  require(!should_force_480p_index(race_display_index_1080i), "1080i index is kept");
+  require(should_force_480p_index(race_display_index_1080i), "1080i index is forced (TASK-078)");
+  require(should_force_480p_index(999u), "arbitrary non-480p index is forced");
 }
 
 void test_vblank_write() {
@@ -84,11 +85,12 @@ void test_vblank_write() {
 }
 
 void test_user_choice_is_kept() {
+  // TASK-078: 1080i is now also forced to 480p progressive so saves holding 1080i race progressive.
   Force480pState state;
   auto ram = make_ram(owner, race_display_index_1080i);
-  require(!force_race_480p_at_vblank(ram.data(), ram_size, state), "1080i index is not touched");
-  require(load(ram, index_address) == race_display_index_1080i, "1080i value is unchanged");
-  require(state.writes == 0, "no write counted for 1080i");
+  require(force_race_480p_at_vblank(ram.data(), ram_size, state), "1080i index is forced to 480p at VBlank");
+  require(load(ram, index_address) == race_display_index_480p, "1080i value becomes 480p");
+  require(state.writes == 1, "one write counted for 1080i override");
 }
 
 void test_invalid_owner_is_ignored() {

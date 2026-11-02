@@ -368,6 +368,7 @@ void on_vblank() {
 } // namespace
 
 bool open_window(bool fullscreen) {
+  gt4::settings::InGameSettingsManager::instance().init_from_env();
   // The launcher passes GT4_FULLSCREEN (its Display setting, on by default). An invalid value stops the start.
   bool start_fullscreen = fullscreen;
   try {

@@ -130,3 +130,39 @@ fn load_of_a_damaged_file_moves_it_aside() {
     assert!(!path.exists());
     std::fs::remove_dir_all(&directory).unwrap();
 }
+
+#[test]
+fn in_game_settings_feedback_merges_and_removes_file() {
+    let directory = std::env::temp_dir().join(format!("gt4l-feedback-{}", std::process::id()));
+    std::fs::create_dir_all(&directory).unwrap();
+    let changes_path = directory.join("game-changes.toml");
+
+    let feedback_text = r#"# In-game settings changes written by GT4Recomp
+[settings]
+fullscreen = "off"
+resolution = "1440p"
+
+[gs]
+upscale = "4k"
+fxaa = "true"
+"#;
+    std::fs::write(&changes_path, feedback_text).unwrap();
+
+    let mut config = ConfigFile::default();
+    assert_eq!(config.settings.get("fullscreen"), "on");
+    assert_eq!(config.settings.get("resolution"), "desktop");
+    assert_ne!(config.settings.gs_value("fxaa"), "true");
+
+    let changed = config::merge_game_changes(&mut config, &changes_path).expect("merge");
+    assert!(changed, "changes were applied");
+    assert_eq!(config.settings.get("fullscreen"), "off");
+    assert_eq!(config.settings.get("resolution"), "3840x2160", "upscale 4k mapped to resolution");
+    assert_eq!(config.settings.gs_value("fxaa"), "true");
+    assert!(!changes_path.exists(), "feedback file was removed after merge");
+
+    // Second merge with absent file returns Ok(false)
+    let second = config::merge_game_changes(&mut config, &changes_path).expect("merge absent");
+    assert!(!second, "no changes when file does not exist");
+
+    std::fs::remove_dir_all(&directory).unwrap();
+}

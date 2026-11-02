@@ -1,5 +1,14 @@
 # Current Status
 
+## TASK-078: In-game graphics settings & permanent 480p hold (2026-11-01)
+
+- Permanent 480p progressive hold in engine (`native/race_display.{hpp,cpp}`).
+- Memory card save decoupling: guest RAM kept at neutral 480p index 1 (`native/ingame_settings.{hpp,cpp}`).
+- In-game graphics settings manager for 6 resolution presets (480p/1x to 8K/12x), fullscreen, and FXAA.
+- Atomic feedback persistence to `game-changes.toml` (`GT4_SETTINGS_FEEDBACK`).
+- Launcher synchronization in `gt4l-core` and `gt4l-tauri` (`config::merge_game_changes`).
+- Verification: C++ fixtures (`race_display_fixture`, `ingame_settings_fixture`), Cargo tests, and Python test suite 100% passing.
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

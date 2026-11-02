@@ -47,7 +47,7 @@ std::uint32_t race_display_index_address(std::uint32_t owner_pointer, std::uint3
 }
 
 bool should_force_480p_index(std::uint32_t index_value) {
-  return index_value == race_display_index_normal;
+  return index_value != race_display_index_480p;
 }
 
 bool force_race_480p_at_vblank(std::uint8_t *ram, std::uint32_t ram_size, Force480pState &state) {
@@ -57,15 +57,17 @@ bool force_race_480p_at_vblank(std::uint8_t *ram, std::uint32_t ram_size, Force4
   const std::uint32_t index_address = race_display_index_address(owner_pointer, ram_size);
   if (index_address == 0)
     return false;
-  if (!should_force_480p_index(read_le32(ram + index_address)))
+  const std::uint32_t current_index = read_le32(ram + index_address);
+  if (!should_force_480p_index(current_index))
     return false;
   write_le32(ram + index_address, race_display_index_480p);
   ++state.writes;
   if (!state.logged) {
     state.logged = true;
     std::fprintf(stderr,
-                 "[display] GT4_FORCE_480P: race display index 0 (normal) set to 1 (480p) at guest 0x%08X "
+                 "[display] GT4_FORCE_480P: race display index %u set to 1 (480p) at guest 0x%08X "
                  "(owner 0x%08X)\n",
+                 static_cast<unsigned>(current_index),
                  static_cast<unsigned>(index_address), static_cast<unsigned>(owner_pointer));
   }
   return true;

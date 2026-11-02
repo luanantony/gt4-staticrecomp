@@ -255,6 +255,7 @@ pub struct PlayInputs {
     /// The resolved Monitor and Resolution (TASK-080 addendum); `None` when no monitor could be read.
     pub display: Option<DisplayTarget>,
     pub extra: Vec<(String, String)>,
+    pub user_dirs: UserDirs,
 }
 
 /// The checks of Play before anything starts. `program_dir` is the folder of `GT4Recomp.exe`.
@@ -288,6 +289,9 @@ pub fn prepare_play(shared: &Shared, program_dir: &Path) -> Result<PlayInputs, S
     for (key, value) in ra_cfg.launch_environment(&dirs.retroachievements_cache()) {
         extra.push((key, value.to_string_lossy().into_owned()));
     }
+    // TASK-078: In-game settings changes feedback file path
+    let feedback_path = state.user_dirs.game_changes_file();
+    extra.push(("GT4_SETTINGS_FEEDBACK".into(), feedback_path.display().to_string()));
     // Only GSdx runs the game (decision 0070, TASK-096): without a verified GSdx, Play stops here with the error.
     let settings = state.config.settings.clone();
     let installed = gs_release::installed(&dirs.renderer_root());
@@ -334,6 +338,7 @@ pub fn prepare_play(shared: &Shared, program_dir: &Path) -> Result<PlayInputs, S
         settings,
         pcsx2,
         extra,
+        user_dirs: state.user_dirs.clone(),
     })
 }
 
@@ -352,7 +357,7 @@ pub fn play(app: AppHandle, shared: State<'_, Shared>) -> Result<(), String> {
     let inputs = prepare_play(&shared, &program_directory()).inspect_err(|message| {
         lock(&shared).home_message = message.clone();
     })?;
-    let PlayInputs { dirs, disc, elf, executable, settings, pcsx2, display, extra } = inputs;
+    let PlayInputs { dirs, disc, elf, executable, settings, pcsx2, display, extra, user_dirs } = inputs;
     let card = dirs.runtime_card();
     saves::prepare_card(&lock(&shared).library, &card)?;
     let textures = lock(&shared).dirs.textures();
@@ -380,6 +385,16 @@ pub fn play(app: AppHandle, shared: State<'_, Shared>) -> Result<(), String> {
         let log_path = running.log_path.clone();
         drop(running);
         lock(&shared).game_child = None;
+        let changes_file = user_dirs.game_changes_file();
+        if changes_file.exists() {
+            let mut state_guard = lock(&shared);
+            if let Ok(changed) = config::merge_game_changes(&mut state_guard.config, &changes_file) {
+                if changed {
+                    let _ = config::save(&user_dirs.config_file(), &state_guard.config);
+                    state::log(&dirs, "in-game settings changes merged into settings.toml");
+                }
+            }
+        }
         state::log(&dirs, &format!("game ended: {outcome:?} (log {})", log_path.display()));
         let message = match (gsdx_error, &outcome) {
             (Some(error), _) => {

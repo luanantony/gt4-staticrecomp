@@ -281,3 +281,100 @@ pub fn save(path: &Path, config: &ConfigFile) -> Result<(), ConfigError> {
     fs::rename(&temporary, path)?;
     Ok(())
 }
+
+/// Preset resolution mappings to canonical WxH strings (TASK-078).
+pub fn preset_to_resolution(preset: &str) -> Option<&'static str> {
+    match preset.trim().to_ascii_lowercase().as_str() {
+        "480p" | "1x" | "1" => Some("640x480"),
+        "720p" | "2x" | "2" => Some("1280x720"),
+        "1080p" | "3x" | "3" => Some("1920x1080"),
+        "1440p" | "4x" | "4" => Some("2560x1440"),
+        "4k" | "2160p" | "6x" | "6" => Some("3840x2160"),
+        "8k" | "4320p" | "12x" | "12" => Some("7680x4320"),
+        _ => None,
+    }
+}
+
+/// Merges in-game settings changes feedback written by the game (`game-changes.toml`) into the config (TASK-078).
+/// If the file exists, parses `[settings]` and `[gs]`.
+/// Supported keys:
+/// - `[settings].fullscreen`: `"on"` / `"off"`
+/// - `[settings].resolution`: `"480p"`, `"720p"`, `"1080p"`, `"1440p"`, `"4k"`, `"8k"` or `"WxH"`
+/// - `[gs].fxaa` / `[gs].anti_aliasing`: `"true"` / `"false"`
+/// - `[gs].upscale`: `"480p"`, `"720p"`, `"1080p"`, `"1440p"`, `"4k"`, `"8k"` or `"1x"`, `"2x"`, etc. (maps to `resolution`)
+/// Removes the changes file after successful processing.
+/// Returns `Ok(true)` if changes were applied, `Ok(false)` if the file does not exist.
+pub fn merge_game_changes(config: &mut ConfigFile, changes_path: &Path) -> Result<bool, ConfigError> {
+    if !changes_path.exists() {
+        return Ok(false);
+    }
+    let text = match fs::read_to_string(changes_path) {
+        Ok(text) => text,
+        Err(error) => return Err(ConfigError::Io(error)),
+    };
+    let table: toml::Table = match text.parse() {
+        Ok(table) => table,
+        Err(error) => {
+            let _ = fs::remove_file(changes_path);
+            return Err(ConfigError::Syntax(error.to_string()));
+        }
+    };
+    let mut modified = false;
+    if let Some(settings_sec) = table.get("settings").and_then(|v| v.as_table()) {
+        for (key, val) in settings_sec {
+            if let Some(val_str) = val.as_str() {
+                match key.as_str() {
+                    "fullscreen" => {
+                        let normalized = match val_str.trim().to_ascii_lowercase().as_str() {
+                            "on" | "true" | "1" => "on",
+                            _ => "off",
+                        };
+                        if config.settings.set("fullscreen", normalized).is_ok() {
+                            modified = true;
+                        }
+                    }
+                    "resolution" => {
+                        let target_res = preset_to_resolution(val_str).unwrap_or(val_str);
+                        if config.settings.set("resolution", target_res).is_ok() {
+                            modified = true;
+                        }
+                    }
+                    other => {
+                        if config.settings.set(other, val_str).is_ok() {
+                            modified = true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if let Some(gs_sec) = table.get("gs").and_then(|v| v.as_table()) {
+        for (key, val) in gs_sec {
+            if let Some(val_str) = val.as_str() {
+                match key.as_str() {
+                    "fxaa" | "anti_aliasing" => {
+                        let normalized = match val_str.trim().to_ascii_lowercase().as_str() {
+                            "on" | "true" | "1" => "true",
+                            _ => "false",
+                        };
+                        if config.settings.set_gs("fxaa", normalized).is_ok() {
+                            modified = true;
+                        }
+                    }
+                    "upscale" => {
+                        if let Some(res) = preset_to_resolution(val_str) {
+                            if config.settings.set("resolution", res).is_ok() {
+                                modified = true;
+                            }
+                        }
+                    }
+                    other => {
+                        let _ = config.settings.set_gs(other, val_str);
+                    }
+                }
+            }
+        }
+    }
+    let _ = fs::remove_file(changes_path);
+    Ok(modified)
+}

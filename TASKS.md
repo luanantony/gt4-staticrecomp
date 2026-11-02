@@ -124,6 +124,7 @@ See [GS renderer options](docs/GS-RENDERER-OPTIONS.md) and [GSDX-PLAN](docs/GSDX
 | TASK‑100 | Spec II support: SCUS-97436 as a second target (decision 0072), plugin injector mapped, hooks remapped | 📋 Planned (owner, 2026-10-22) · release 1.3.0 |
 | TASK‑101 | Multi-game launcher: Gran Turismo 4 and Spec II side by side (game selector, Play/Install, per-game disc, card and saves, shared settings, Spec II logo) | 📋 Planned (owner, 2026-10-23) · release 1.3.0 with TASK-100; plan docs/MULTI-GAME-LAUNCHER-PLAN.md |
 | TASK‑103 | Launcher: Graphics API choice for GSdx (Vulkan default, Direct3D 12 and Direct3D 11 for older PCs; OpenGL later), hardware backends only | 📋 Planned (owner, 2026-10-23) · after TASK-102 (i18n) |
+| TASK‑140 | Hood camera wind noise disable & 480p full color range (Issue #135 study) | 📋 Planned · study in docs/TASK-140-HOOD-WIND-480P-COLOR-STUDY.md |
 | TASK‑093 | Custom textures straight in the Textures folder: gt4-gs 1.2.1 reads the folder itself; the launcher stops creating `replacements` and moves an old `replacements` folder's contents up once gt4-gs 1.2.1 is in use | ✅ Done (2026-10-22) · release 1.2.3 (owner tested) |
 | TASK‑096 | Remove CoreGS 1.1 from the launcher (owner, 2026-10-22): GSdx only, CoreGS 2.0 shown as "Coming soon" (disabled), a stored CoreGS 1.1 choice migrates to GSdx, a GSdx failure shows a clear error instead of falling back; CoreGS 1.1 stays in the game executable, unused by the launcher. For launcher release 1.2.3 | ✅ Done (2026-10-22) · release 1.2.3 (owner tested) |
 | TASK‑092 | MTVU test switches after TASK-084: `GT4_MTVU=0` and `GT4_MTVU_VERIFY=1` in pcsx2 mode, portable doorbell ordering | ✅ Done (2026-10-22) · release 1.2.3 (owner tested) |
@@ -1808,3 +1809,13 @@ Acceptance: target isolation, account/logout/HTTP cancellation regressions, cont
 preview consistency, full native/Python/Rust and en-US/pt-BR checks, both target builds/pins,
 installer+portable verification. New builds go to draft; owner gameplay/review before merge or
 publication. No code, builds, running agents or public rc7 authorized by this mapping step.
+
+
+### TASK-140 — Hood camera wind noise disable and 480p full color range (issue #135)
+
+State: study completed (2026-11-01), specification in `docs/TASK-140-HOOD-WIND-480P-COLOR-STUDY.md`.
+Issue intake: [#135](https://github.com/moesuito/gt4-staticrecomp/issues/135) by shadowcla02-cloud.
+Scope:
+1. High-speed bonnet/roof camera wind noise fatigue: root caused to SPU2 looped air rush voice scaled by velocity and camera factor in `RaceCarSound` (`0x003918C8`, `0x006213DC`, `0x006213E8`). Remediation path: EE instruction/hook or RAM gain clamp (`GT4_BONNET_WIND_VOLUME=0.0..1.0`), preserving engine/mechanical sounds.
+2. 480p color dynamic range & banding degradation vs 480i: root caused to PS2 VRAM 4 MiB budget constraint where 480i field buffers use PSMCT24 (24-bit RGB888, 16.7M colors) while 480p progressive buffers use PSMCT16 (16-bit RGB5551, 32K colors, 5 bits/channel). Remediation path: evaluate 480p PSMCT32 framebuffer upgrade (`psm = 1`, 0x8C000 words like photo pause) in emulated GS memory, plus swapchain full-range calibration and host post-processing debanding.
+Acceptance: independent A/B spectrum audio verification (wind muted at 250+ km/h with engine sounds intact) and color histogram verification on 480p gradients.

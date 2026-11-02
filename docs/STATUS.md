@@ -1,5 +1,14 @@
 # Current Status
 
+## TASK-140: Hood camera wind noise and 480p full color range study (2026-11-01)
+
+Completed technical analysis and architectural study for GitHub Issue #135 reported by shadowcla02-cloud.
+Study documented in `docs/TASK-140-HOOD-WIND-480P-COLOR-STUDY.md`.
+Identified the root causes for both reported behaviors:
+1. High-speed bonnet camera wind noise: driven by aerodynamic velocity scaling and camera perspective weight ($K \approx 1.0$) in `RaceCarSound` (`0x003918C8`, `0x006213DC`, `0x006213E8`). Outlined EE hook / RAM gain clamping path (`GT4_BONNET_WIND_VOLUME=0.0..1.0`) to silence wind without degrading engine, exhaust, or opponent sound fidelity.
+2. 480p color dynamic range / banding degradation: rooted in PS2 GS 4 MiB VRAM constraint, where Polyphony Digital halved framebuffer bit depth from PSMCT24 (24-bit RGB888, 16.7M colors) in 480i field buffers to PSMCT16 (16-bit RGB5551, 32K colors) in 480p progressive scan mode. Outlined 480p PSMCT32 upgrade (`psm = 1`, 0x8C000 words), Vulkan swapchain full-range tone curve alignment, and host post-processing deband filter options.
+
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

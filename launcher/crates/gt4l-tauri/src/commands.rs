@@ -240,6 +240,65 @@ pub fn reset_gs_settings_to_defaults_of(shared: &Shared) -> Result<Value, String
     Ok(model::settings_table(&state.config.settings, &state.controls))
 }
 
+/// Builds the warm shaders plan from current state (pure, for verification).
+pub fn prepare_shaders_plan_of(shared: &Shared) -> Result<launch::WarmShadersPlan, String> {
+    let state = lock(shared);
+    if state.game_child.is_some() {
+        return Err("The game is currently running. Stop the game before preparing shaders.".to_string());
+    }
+    if state.migration.running {
+        return Err("GT4Recomp is moving its game files. Wait until it has finished.".to_string());
+    }
+    let installed = gs_release::installed(&state.dirs.renderer_root());
+    let pcsx2 = launch::choose_renderer(installed.as_ref(), &state.dirs.logs())?.clone();
+    let settings = state.config.settings.clone();
+    let monitors = gt4l_platform::display::monitors();
+    let display = display_rules::resolve_target(&monitors, settings.get("monitor"), settings.get("resolution"));
+    let textures = state.dirs.textures();
+    let session_dir = state.dirs.session("warm-preview");
+    launch::plan_warm_shaders(&pcsx2, &state.dirs.root().join("gs"), &session_dir, &settings, display.as_ref(), &textures)
+}
+
+/// Compiles the PCSX2 GS pipeline list headless (`gt4-gs --warm-selectors`) to keep the shader cache warm (TASK-046).
+#[tauri::command]
+pub async fn prepare_shaders(shared: State<'_, Shared>) -> Result<Value, String> {
+    let shared: Shared = shared.inner().clone();
+    let (dirs, settings, pcsx2, display, textures) = {
+        let state = lock(&shared);
+        if state.game_child.is_some() {
+            return Err("The game is currently running. Stop the game before preparing shaders.".to_string());
+        }
+        if state.migration.running {
+            return Err("GT4Recomp is moving its game files. Wait until it has finished.".to_string());
+        }
+        let installed = gs_release::installed(&state.dirs.renderer_root());
+        let pcsx2 = launch::choose_renderer(installed.as_ref(), &state.dirs.logs())?.clone();
+        let settings = state.config.settings.clone();
+        let monitors = gt4l_platform::display::monitors();
+        let display = display_rules::resolve_target(&monitors, settings.get("monitor"), settings.get("resolution"));
+        let textures = state.dirs.textures();
+        (state.dirs.clone(), settings, pcsx2, display, textures)
+    };
+
+    let session_dir = dirs.session(&format!("warm-{}", gt4l_platform::game::session_name()));
+    fs::create_dir_all(&session_dir).map_err(|e| format!("session folder: {e}"))?;
+    let plan = launch::plan_warm_shaders(&pcsx2, &dirs.root().join("gs"), &session_dir, &settings, display.as_ref(), &textures)?;
+    let text = launch::gs_config_text(&settings, &launch::Pcsx2Paths::for_session(&pcsx2, &dirs.root().join("gs"), &session_dir, &textures), display.as_ref())?;
+    gt4l_core::gs_table::write_ini_atomic(&plan.config_path, &text).map_err(|e| format!("gt4-gs.ini: {e}"))?;
+
+    state::log(&dirs, &format!("preparing shaders: running {} with --warm-selectors", plan.program.display()));
+
+    let report = tauri::async_runtime::spawn_blocking(move || {
+        gt4l_platform::game::run_warm_shaders(&plan)
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+
+    state::log(&dirs, &format!("prepare shaders completed: {}", report.message));
+
+    Ok(serde_json::to_value(&report).unwrap_or_else(|_| json!({ "success": true, "message": "Shader cache is warm." })))
+}
+
 // Play ------------------------------------------------------------------------------------------
 
 /// Everything Play needs, checked: the copied disc image, the prepared ELF, the game program, the settings, the

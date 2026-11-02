@@ -1,5 +1,14 @@
 # Current Status
 
+## TASK-046: Launcher "Prepare shaders" headless pipeline warming (2026-11-01)
+
+- Headless shader and pipeline pre-warming plan `launch::plan_warm_shaders` and runner `gt4l_platform::game::run_warm_shaders`.
+- Executes `gt4-gs.exe --config <session>/gt4-gs.ini --warm-selectors` with stdout/stderr logged to `<session>/warm-shaders.log`.
+- Parsed pipeline compile counts via `launch::parse_pipelines_compiled` with support for cold vs warm counts.
+- UI button "Prepare shaders" in Settings > Graphics alongside "Open textures folder", communicating with Tauri command `prepare_shaders`.
+- Contract alignment verified across `commands.list`, `main.rs`, `capabilities/default.json`, and UI JavaScript.
+- Automated tests: 18/18 `launch_contract` tests pass; 105 unit tests pass in `gt4l-core`; 72 Python GS tests pass.
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

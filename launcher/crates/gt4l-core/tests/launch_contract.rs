@@ -364,3 +364,38 @@ fn both_window_modes_pass_window_and_send_gt4_fullscreen_to_the_game_and_the_gs_
         assert_eq!(env_map(&gs_plan.environment)["GT4_FULLSCREEN"], expected, "the PCSX2 GS path gets the same mode");
     }
 }
+
+
+#[test]
+fn plan_warm_shaders_sets_config_and_warm_selectors_and_points_to_cache() {
+    let installed = installed_fixture();
+    let renderer_root = Path::new("C:/gs");
+    let session_dir = Path::new("C:/session");
+    let textures = Path::new("C:/Textures");
+    let settings = Settings::default();
+    let plan = launch::plan_warm_shaders(&installed, renderer_root, session_dir, &settings, None, textures).unwrap();
+
+    assert_eq!(plan.program, installed.executable);
+    assert_eq!(
+        plan.arguments,
+        vec![
+            "--config".to_string(),
+            session_dir.join("gt4-gs.ini").display().to_string(),
+            "--warm-selectors".to_string(),
+        ]
+    );
+    assert_eq!(plan.cache_dir, renderer_root.join("cache"));
+    assert_eq!(plan.working_directory, session_dir);
+    assert_eq!(plan.log_path, session_dir.join("warm-shaders.log"));
+    assert_eq!(plan.config_path, session_dir.join("gt4-gs.ini"));
+}
+
+#[test]
+fn parse_pipelines_compiled_handles_various_log_formats() {
+    assert_eq!(launch::parse_pipelines_compiled("Compiled 238 pipelines into cache"), Some(238));
+    assert_eq!(launch::parse_pipelines_compiled("238 pipelines compiled (warm)"), Some(238));
+    assert_eq!(launch::parse_pipelines_compiled("warm selectors: 142 compiled"), Some(142));
+    assert_eq!(launch::parse_pipelines_compiled("cold cache: 0 compiles, 138 cache hits"), Some(0));
+    assert_eq!(launch::parse_pipelines_compiled("no pipelines compiled"), Some(0));
+    assert_eq!(launch::parse_pipelines_compiled("random unrelated log message without any numbers"), None);
+}

@@ -11,7 +11,7 @@ use gt4l_core::display::DisplayTarget;
 use gt4l_core::exit::{self, Outcome};
 use gt4l_core::gs_release::Installed;
 use gt4l_core::gs_table;
-use gt4l_core::launch::{self, LaunchInputs, LaunchPlan, Pcsx2Paths};
+use gt4l_core::launch::{self, parse_pipelines_compiled, LaunchInputs, LaunchPlan, Pcsx2Paths, WarmReport, WarmShadersPlan};
 use gt4l_core::lock::GameLock;
 use gt4l_core::paths::DataDirs;
 use gt4l_core::Settings;
@@ -132,7 +132,7 @@ pub fn wait_for_exit(running: &Running) -> Outcome {
 }
 
 /// `session-<unix seconds>`; the seconds keep names unique for sessions started a second apart.
-fn session_name() -> String {
+pub fn session_name() -> String {
     let seconds = SystemTime::now().duration_since(UNIX_EPOCH).map(|value| value.as_secs()).unwrap_or(0);
     format!("session-{seconds}")
 }
@@ -147,5 +147,59 @@ fn prune_sessions(sessions: &Path, keep: usize) {
         for old in &names[..names.len() - keep] {
             let _ = fs::remove_dir_all(old);
         }
+    }
+}
+
+
+/// Runs headless shader pre-warming according to the plan (TASK-046).
+pub fn run_warm_shaders(plan: &WarmShadersPlan) -> Result<WarmReport, String> {
+    if let Some(parent) = plan.log_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("log directory: {e}"))?;
+    }
+    fs::create_dir_all(&plan.cache_dir).map_err(|e| format!("cache directory: {e}"))?;
+    fs::create_dir_all(&plan.working_directory).map_err(|e| format!("working directory: {e}"))?;
+
+    let log = File::create(&plan.log_path).map_err(|e| format!("warm log: {e}"))?;
+    let log_copy = log.try_clone().map_err(|e| format!("warm log: {e}"))?;
+
+    let mut command = Command::new(&plan.program);
+    command
+        .args(&plan.arguments)
+        .current_dir(&plan.working_directory)
+        .stdin(Stdio::null())
+        .stdout(Stdio::from(log))
+        .stderr(Stdio::from(log_copy));
+
+    for (name, value) in &plan.environment {
+        command.env(name, value);
+    }
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    let status = command
+        .status()
+        .map_err(|e| format!("could not start {}: {e}", plan.program.display()))?;
+
+    let log_text = fs::read_to_string(&plan.log_path).unwrap_or_default();
+    let pipelines_compiled = parse_pipelines_compiled(&log_text);
+
+    if status.success() {
+        let msg = match pipelines_compiled {
+            Some(count) => format!("Shader cache is warm ({count} pipelines compiled)."),
+            None => format!("Shader cache is warm (cache folder: {}).", plan.cache_dir.display()),
+        };
+        Ok(WarmReport {
+            success: true,
+            message: msg,
+            pipelines_compiled,
+            cache_dir: plan.cache_dir.display().to_string(),
+        })
+    } else {
+        let code = status.code().unwrap_or(-1);
+        Err(format!("Shader preparation failed with exit code {code}. See log at {}", plan.log_path.display()))
     }
 }

@@ -166,6 +166,7 @@ fn main() {
             commands::get_settings_table,
             commands::set_setting,
             commands::reset_gs_settings_to_defaults,
+            commands::prepare_shaders,
             setup::setup_choose_disc,
             setup::setup_start,
             setup::setup_cancel,

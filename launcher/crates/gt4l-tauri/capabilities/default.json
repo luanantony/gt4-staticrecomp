@@ -9,6 +9,7 @@
     "allow-get-settings-table",
     "allow-set-setting",
     "allow-reset-gs-settings-to-defaults",
+    "allow-prepare-shaders",
     "allow-setup-choose-disc",
     "allow-setup-start",
     "allow-setup-cancel",

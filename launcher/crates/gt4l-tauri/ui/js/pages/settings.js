@@ -458,7 +458,30 @@
             data: { action: "open-textures-folder" },
             on: { click: function () { call("open_textures_folder").catch(function (err) { GT4.ui.toast(errorText(err), true); }); } }
           }, "Open textures folder");
-          graphics.appendChild(h("div", { class: "advanced-foot" }, [textures]));
+          var prepareShadersBtn = h("button", {
+            class: "btn",
+            type: "button",
+            data: { action: "prepare-shaders" },
+            on: {
+              click: function () {
+                prepareShadersBtn.disabled = true;
+                prepareShadersBtn.textContent = "Preparing shaders...";
+                call("prepare_shaders")
+                  .then(function (report) {
+                    var msg = (report && report.message) || "Shader cache is warm.";
+                    GT4.ui.toast(msg);
+                  })
+                  .catch(function (err) {
+                    GT4.ui.toast(errorText(err), true);
+                  })
+                  .finally(function () {
+                    prepareShadersBtn.disabled = false;
+                    prepareShadersBtn.textContent = "Prepare shaders";
+                  });
+              }
+            }
+          }, "Prepare shaders");
+          graphics.appendChild(h("div", { class: "advanced-foot" }, [textures, prepareShadersBtn]));
         }
         var advanced = section(ctx, "advanced", "Advanced", ctx.table.rows.filter(function (row) {
           return row.page === "advanced";

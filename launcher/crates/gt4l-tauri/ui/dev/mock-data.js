@@ -481,6 +481,13 @@
           }
         });
         return tableView();
+      case "prepare_shaders":
+        return {
+          success: true,
+          message: "Shader cache is warm (238 pipelines compiled).",
+          pipelines_compiled: 238,
+          cache_dir: "C:\\Program Files\\GT4Recomp\\data\\gs\\cache"
+        };
       case "pad_status":
         return padStatusPayload();
       case "get_controls":

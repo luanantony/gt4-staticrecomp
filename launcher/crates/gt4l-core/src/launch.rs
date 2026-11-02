@@ -13,6 +13,8 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use serde::{Deserialize, Serialize};
+
 use crate::display::{self, DisplayTarget};
 use crate::gs_release::Installed;
 use crate::gs_table;
@@ -272,4 +274,77 @@ fn plan_with(inputs: &LaunchInputs<'_>, environment: Vec<(String, String)>, inhe
         log_path: inputs.session_dir.join("game.log"),
         misses_path: misses,
     }
+}
+
+/// The plan to execute headless shader pre-warming (`gt4-gs.exe --warm-selectors`, TASK-046).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WarmShadersPlan {
+    pub program: PathBuf,
+    pub arguments: Vec<String>,
+    pub environment: Vec<(String, String)>,
+    pub working_directory: PathBuf,
+    pub config_path: PathBuf,
+    pub cache_dir: PathBuf,
+    pub log_path: PathBuf,
+}
+
+/// Outcome report of the shader pre-warming task (TASK-046).
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub struct WarmReport {
+    pub success: bool,
+    pub message: String,
+    pub pipelines_compiled: Option<u32>,
+    pub cache_dir: String,
+}
+
+/// Builds the plan to execute `gt4-gs.exe` headless with `--warm-selectors` and the session configuration (TASK-046).
+pub fn plan_warm_shaders(
+    installed: &Installed,
+    renderer_root: &Path,
+    session_dir: &Path,
+    _settings: &Settings,
+    _display: Option<&DisplayTarget>,
+    textures: &Path,
+) -> Result<WarmShadersPlan, String> {
+    let paths = Pcsx2Paths::for_session(installed, renderer_root, session_dir, textures);
+    let log_path = session_dir.join("warm-shaders.log");
+    let arguments = vec![
+        "--config".to_string(),
+        paths.config.display().to_string(),
+        "--warm-selectors".to_string(),
+    ];
+    Ok(WarmShadersPlan {
+        program: paths.executable.clone(),
+        arguments,
+        environment: Vec::new(),
+        working_directory: session_dir.to_path_buf(),
+        config_path: paths.config.clone(),
+        cache_dir: paths.cache.clone(),
+        log_path,
+    })
+}
+
+/// Parses the number of pipelines compiled from the `gt4-gs` or warming log, if reported.
+pub fn parse_pipelines_compiled(log_text: &str) -> Option<u32> {
+    for line in log_text.lines() {
+        let lower = line.to_ascii_lowercase();
+        if lower.contains("no pipelines compiled") {
+            return Some(0);
+        }
+        if lower.contains("pipeline") || lower.contains("selector") || lower.contains("compile") {
+            let words: Vec<&str> = lower.split_whitespace().collect();
+            for (idx, word) in words.iter().enumerate() {
+                let clean: String = word.chars().filter(|c| c.is_ascii_digit()).collect();
+                if let Ok(num) = clean.parse::<u32>() {
+                    let has_keyword = words.iter().skip(idx.saturating_sub(2)).take(5).any(|w| {
+                        w.starts_with("compile") || w.starts_with("pipeline") || w.starts_with("selector")
+                    });
+                    if has_keyword {
+                        return Some(num);
+                    }
+                }
+            }
+        }
+    }
+    None
 }

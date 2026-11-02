@@ -320,11 +320,12 @@ source. A protocol `CONTROL reload_config` lets a later in-game menu apply chang
 
 ### D.3 Texture replacement and dumping
 
-Layout (PCSX2 contract, [C] `GSTextureReplacements.cpp:41-42,271,416`):
-`%LOCALAPPDATA%\GT4Recomp\gs\textures\SCUS-97328\replacements\...`, `...\dumps\...`, or
-`...\textures\SCUS-97328.zip`. Names are hashes of GS texture data and CLUT; because our stream is the
-game's own GS stream, existing PCSX2 GT4 packs should load unchanged [HC]; verified in TASK-040 with a
-synthetic pack and, if the owner has one, a community pack.
+Layout (PCSX2 contract, [C] `GSTextureReplacements.cpp:41-42,271,416`, verified in TASK-050 / `docs/GS-TEXTURES.md`):
+`%LOCALAPPDATA%\GT4Recomp\textures\SCUS-97328\...` (flattened directly under serial in gt4-gs 1.2.1+; older gt4-gs
+read `...\replacements\...`), and `...\dumps\...`. **Correction:** `.zip` packs are **not** supported natively by
+PCSX2 v2.8.2 / gt4-gs; the launcher extracts packs to disk. Names are 64-bit hashes of GS texture data and optional
+CLUT; `-mipN` files are ignored by the base scanner. Duplicates across folders resolve by enumeration order (first
+seen wins). PNG must be 8-bit RGB/RGBA; DDS BC7 with mips is recommended for large packs.
 
 ### D.4 GT4 defaults and GameDB
 

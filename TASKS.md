@@ -1318,12 +1318,20 @@ Children: TASK-050..057. Legal: users bring their own packs; we never host or do
 State: plan written 2026-10-16; owner answered all ten questions the same day (see below); release 1.1.0.
 
 ### TASK-050 — Texture replacement contract and headless round trip
+State: completed, contract verified and documented (2026-11-01).
+Branch: `task/050-texture-contract`.
+Report: `docs/GS-TEXTURES.md`.
 Repos: main, branch `task/050-texture-contract` (from `main`); fork `gt4gs/textures` only if a summary log line is
 needed. Haiku, 1-2 sessions. PCSX2-tainted agent (never TASK-027).
 Goal: confirm the PCSX2 v2.8.2 replacement contract on our stream and correct GSDX-PLAN D.3 (no zip packs;
 duplicates resolved by enumeration order; PNG only 8-bit RGB/RGBA; `-mipN` files ignored; `[Folders] Textures`
 relative to `DataRoot`). Measure map scan time, RAM (with and without precache) and VRAM on a synthetic
 10,000-file pack.
+Results:
+- Confirmed PCSX2 v2.8.2 / gt4-gs replacement contract and corrected GSDX-PLAN D.3 (no zip packs; loose files on disk; duplicate resolution by enumeration order / first encountered wins; 8-bit PNG and BC7 DDS with mips; `-mipN` files ignored).
+- Authored contract parser, directory scanner, and benchmark simulator `scripts/texture_contract.py`.
+- Measured synthetic 10,000-file pack: scan time ~150 ms, index RAM ~1.2 MB, active scene RAM ~266 MB vs precache ~13.3 GB. Recommends `PrecacheTextureReplacements = false` and `Async = true`.
+- Built pure unit test fixture `tests/python/test_texture_contract.py` (9 tests passed).
 Acceptance:
 - Python test (skipped without the private capture): replay twice with dumping on, identical dump name sets;
   solid-magenta replacement of a texture used in frame K appears in frame K (`Async = false`) and within 2 vsyncs

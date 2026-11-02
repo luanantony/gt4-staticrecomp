@@ -1,5 +1,20 @@
 # Current Status
 
+## TASK-050: Texture replacement contract and modding architecture (2026-11-01)
+
+Completed texture replacement contract verification and modding baseline (release 1.1.0), documented
+in `docs/GS-TEXTURES.md`. Corrected `docs/GSDX-PLAN.md` Section D.3:
+- Confirmed that PCSX2 v2.8.2 / `gt4-gs` does not support compressed `.zip` archives natively; packs must
+  be extracted into disk folders.
+- Suffix rule: `-mipN` auxiliary files are ignored by the base replacement table.
+- Duplicate resolution contract: files with identical `(texture_hash, clut_hash)` across folders resolve
+  by directory enumeration order (first encountered file wins).
+- Formats: 8-bit PNG (RGB/RGBA) and DDS (BC7 with mipmaps recommended).
+- Synthetic benchmark over 10,000 files measured directory scan time (~150 ms), index RAM (~1.2 MB),
+  and established that on-demand streaming (`Precache = false`, ~266 MB RAM) is preferred over full
+  pre-cache (~13.3 GB RAM).
+Authored `scripts/texture_contract.py` and test fixture `tests/python/test_texture_contract.py` (9 tests passed).
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

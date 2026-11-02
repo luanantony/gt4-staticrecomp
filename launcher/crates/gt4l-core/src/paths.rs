@@ -182,6 +182,11 @@ impl DataDirs {
         self.root.join("logs")
     }
 
+    /// The mod manager folder (TASK-051 / TASK-054): `<data>\mods`.
+    pub fn mods(&self) -> PathBuf {
+        self.root.join("mods")
+    }
+
     /// The custom texture folder (TASK-088): one not moved yet, else the first folder that has `Textures`, else the
     /// root's. The texture pack goes straight in this folder (gt4-gs 1.2.1, TASK-093).
     pub fn textures(&self) -> PathBuf {

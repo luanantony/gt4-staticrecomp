@@ -142,6 +142,42 @@ pub struct ActiveViewReport {
     pub copies_created: usize,
 }
 
+/// Summary of an installed mod for launcher list display (TASK-054).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModItem {
+    pub id: String,
+    pub name: String,
+    pub version: String,
+    pub author: String,
+    pub kind: String,
+    pub description: String,
+    pub enabled: bool,
+    pub texture_count: usize,
+    pub size_bytes: u64,
+    pub priority: usize,
+}
+
+/// Detailed metadata of a single mod for drawer/inspector display (TASK-054).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModDetails {
+    pub id: String,
+    pub name: String,
+    pub version: String,
+    pub author: String,
+    pub kind: String,
+    pub game: String,
+    pub description: String,
+    pub enabled: bool,
+    pub priority: usize,
+    pub texture_count: usize,
+    pub extras_count: usize,
+    pub size_bytes: u64,
+    pub store_path: String,
+}
+
+
 /// Checks whether a raw path inside an archive is safe against Zip-Slip attacks.
 pub fn check_zip_path_safety(raw_path: &str) -> Result<PathBuf, String> {
     if raw_path.is_empty() {
@@ -571,6 +607,142 @@ impl ModManager {
 
         Ok(report)
     }
+
+    /// Directory where user can drop zip archives for auto-import at start.
+    pub fn inbox_dir(&self) -> PathBuf {
+        self.mods_root.join("inbox")
+    }
+
+    /// Lists all installed mods in priority order for the launcher UI.
+    pub fn list_mods(&self) -> io::Result<Vec<ModItem>> {
+        let registry = ModRegistry::load_from_file(&self.registry_file())?;
+        let mut items = Vec::new();
+        for (idx, entry) in registry.mods.iter().enumerate() {
+            let mod_dir = self.store_dir().join(&entry.id);
+            if !mod_dir.is_dir() {
+                continue;
+            }
+            let manifest = match fs::read_to_string(mod_dir.join("gt4mod.toml")) {
+                Ok(text) => toml::from_str::<ModManifest>(&text).unwrap_or_default(),
+                Err(_) => ModManifest {
+                    id: entry.id.clone(),
+                    name: entry.id.clone(),
+                    ..ModManifest::default()
+                },
+            };
+            let mut texture_count = 0;
+            if let Ok(lock_text) = fs::read_to_string(mod_dir.join("files.lock.json")) {
+                if let Ok(map) = serde_json::from_str::<HashMap<String, String>>(&lock_text) {
+                    texture_count = map.len();
+                }
+            }
+            let size_bytes = dir_size(&mod_dir);
+            items.push(ModItem {
+                id: entry.id.clone(),
+                name: manifest.name,
+                version: manifest.version,
+                author: manifest.author.unwrap_or_default(),
+                kind: manifest.kind,
+                description: manifest.description.unwrap_or_default(),
+                enabled: entry.enabled,
+                texture_count,
+                size_bytes,
+                priority: idx,
+            });
+        }
+        Ok(items)
+    }
+
+    /// Returns detailed metadata and file statistics for a specific mod.
+    pub fn get_mod_details(&self, id: &str) -> io::Result<Option<ModDetails>> {
+        let registry = ModRegistry::load_from_file(&self.registry_file())?;
+        let (priority, enabled) = match registry.mods.iter().enumerate().find(|(_, m)| m.id == id) {
+            Some((pos, m)) => (pos, m.enabled),
+            None => return Ok(None),
+        };
+        let mod_dir = self.store_dir().join(id);
+        if !mod_dir.is_dir() {
+            return Ok(None);
+        }
+        let manifest = match fs::read_to_string(mod_dir.join("gt4mod.toml")) {
+            Ok(text) => toml::from_str::<ModManifest>(&text).unwrap_or_default(),
+            Err(_) => ModManifest {
+                id: id.to_string(),
+                name: id.to_string(),
+                ..ModManifest::default()
+            },
+        };
+        let mut texture_count = 0;
+        if let Ok(lock_text) = fs::read_to_string(mod_dir.join("files.lock.json")) {
+            if let Ok(map) = serde_json::from_str::<HashMap<String, String>>(&lock_text) {
+                texture_count = map.len();
+            }
+        }
+        let extras_count = if mod_dir.join("extras").is_dir() {
+            fs::read_dir(mod_dir.join("extras")).map(|entries| entries.count()).unwrap_or(0)
+        } else {
+            0
+        };
+        let size_bytes = dir_size(&mod_dir);
+        Ok(Some(ModDetails {
+            id: id.to_string(),
+            name: manifest.name,
+            version: manifest.version,
+            author: manifest.author.unwrap_or_default(),
+            kind: manifest.kind,
+            game: manifest.game,
+            description: manifest.description.unwrap_or_default(),
+            enabled,
+            priority,
+            texture_count,
+            extras_count,
+            size_bytes,
+            store_path: mod_dir.display().to_string(),
+        }))
+    }
+
+    /// Toggles the enabled state of a mod and saves the registry.
+    pub fn set_enabled(&self, id: &str, enabled: bool) -> io::Result<bool> {
+        let mut registry = ModRegistry::load_from_file(&self.registry_file())?;
+        if registry.set_enabled(id, enabled) {
+            registry.save_to_file(&self.registry_file())?;
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
+    /// Moves a mod to a new priority index in the registry.
+    pub fn set_priority(&self, id: &str, new_priority: usize) -> io::Result<bool> {
+        let mut registry = ModRegistry::load_from_file(&self.registry_file())?;
+        if registry.set_priority(id, new_priority) {
+            registry.save_to_file(&self.registry_file())?;
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
+    /// Uninstalls and removes a mod from store and registry.
+    pub fn remove_mod(&self, id: &str) -> io::Result<bool> {
+        let mut registry = ModRegistry::load_from_file(&self.registry_file())?;
+        if let Some(pos) = registry.mods.iter().position(|m| m.id == id) {
+            registry.mods.remove(pos);
+            registry.save_to_file(&self.registry_file())?;
+            let mod_dir = self.store_dir().join(id);
+            if mod_dir.is_dir() {
+                let _ = fs::remove_dir_all(&mod_dir);
+            }
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
+    /// Imports an archive file from a local filesystem path.
+    pub fn import_archive_file(&self, zip_path: &Path) -> io::Result<ImportReport> {
+        let file = File::open(zip_path)?;
+        let fallback_id = zip_path.file_stem().and_then(|s| s.to_str()).unwrap_or("imported_mod");
+        self.import_zip(file, fallback_id)
+    }
+
 }
 
 fn walkdir(dir: &Path) -> io::Result<Vec<PathBuf>> {
@@ -589,11 +761,27 @@ fn walkdir(dir: &Path) -> io::Result<Vec<PathBuf>> {
     Ok(results)
 }
 
+fn dir_size(path: &Path) -> u64 {
+    let mut total = 0;
+    if let Ok(entries) = walkdir(path) {
+        for entry in entries {
+            if let Ok(meta) = entry.metadata() {
+                if meta.is_file() {
+                    total += meta.len();
+                }
+            }
+        }
+    }
+    total
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::io::Write;
     use zip::write::SimpleFileOptions;
+    use zip::ZipWriter as ZipArchiveWriter;
 
     fn temp_test_dir(name: &str) -> PathBuf {
         let path = std::env::temp_dir().join(format!("gt4l_core_mods_{}_{}", std::process::id(), name));
@@ -704,4 +892,47 @@ mod tests {
         let active_unique = manager.active_dir().join("unique_b.png");
         assert_eq!(fs::read(active_unique).unwrap(), b"content_unique");
     }
+
+    #[test]
+    fn mod_manager_list_details_reorder_remove_roundtrip() {
+        let root = temp_test_dir("mod_manager_crud");
+        let manager = ModManager::new(&root);
+
+        let mut buf = std::io::Cursor::new(Vec::new());
+        {
+            let mut zip = ZipArchiveWriter::new(&mut buf);
+            let opts = SimpleFileOptions::default();
+            zip.start_file("replacements/tex_01.png", opts).unwrap();
+            zip.write_all(b"TEX1").unwrap();
+            zip.finish().unwrap();
+        }
+        buf.set_position(0);
+        let rep = manager.import_zip(buf, "pack-a").unwrap();
+        assert_eq!(rep.id, "pack-a");
+
+        let list = manager.list_mods().unwrap();
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].id, "pack-a");
+        assert!(list[0].enabled);
+        assert_eq!(list[0].texture_count, 1);
+        assert!(list[0].size_bytes > 0);
+
+        let details = manager.get_mod_details("pack-a").unwrap().unwrap();
+        assert_eq!(details.id, "pack-a");
+        assert_eq!(details.texture_count, 1);
+
+        // Toggle enabled
+        assert!(manager.set_enabled("pack-a", false).unwrap());
+        let list2 = manager.list_mods().unwrap();
+        assert!(!list2[0].enabled);
+
+        // Remove
+        assert!(manager.remove_mod("pack-a").unwrap());
+        let list3 = manager.list_mods().unwrap();
+        assert_eq!(list3.len(), 0);
+        assert!(manager.get_mod_details("pack-a").unwrap().is_none());
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
 }

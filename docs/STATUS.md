@@ -1,5 +1,16 @@
 # Current Status
 
+## TASK-054: Launcher Mods Page and Mod Manager UI (2026-11-01)
+
+Completed the frontend Mods page and Tauri 2 command integration for texture packs and mod management.
+Specification documented in `docs/TASK-054-LAUNCHER-MODS-PAGE.md`.
+- Authored interactive 7-state UI mockup in `launcher/crates/gt4l-tauri/ui/dev/mockup-mods.html` covering Empty, List, Details Drawer, Import Progress, Conflict Resolution, Remove Confirmation, and Wrong Renderer warning states.
+- Authored live Mods page controller in `launcher/crates/gt4l-tauri/ui/js/pages/mods.js` with controller and keyboard navigation hooks (D-pad/Up/Down navigate, Cross/A toggle, Triangle/Y details, L1/R1 priority, Square/X remove, Start import, Circle/B back).
+- Enhanced `gt4l_core::mods::ModManager` with `list_mods`, `get_mod_details`, `set_enabled`, `set_priority`, `remove_mod`, and `import_archive_file`.
+- Implemented and registered Tauri commands in `launcher/crates/gt4l-tauri/src/commands.rs` and `main.rs`: `mods_list`, `mods_import`, `mods_set_enabled`, `mods_move`, `mods_remove`, `mods_details`, `open_mods_folder`, `open_inbox_folder`.
+- Added unit test `mod_manager_list_details_reorder_remove_roundtrip` (110 passed in `gt4l-core`).
+
+
 ## TASK-052: Texture pack importer, mod store, and active view manager (2026-11-01)
 
 Completed texture pack importer, mod store, and active view manager in `launcher/crates/gt4l-core/src/mods.rs`,

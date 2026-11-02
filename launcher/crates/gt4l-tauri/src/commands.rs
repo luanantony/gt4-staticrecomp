@@ -1028,3 +1028,120 @@ pub fn ra_set_options_of(
     Ok(build_ra_status_view(&cfg, None))
 }
 
+
+
+// Mods (TASK-054) ---------------------------------------------------------------------------------
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModsView {
+    pub items: Vec<gt4l_core::mods::ModItem>,
+    pub status: String,
+    pub folder: String,
+    pub inbox_folder: String,
+    pub active_textures: usize,
+}
+
+fn mod_manager(state: &AppState) -> gt4l_core::mods::ModManager {
+    gt4l_core::mods::ModManager::new(state.dirs.mods())
+}
+
+fn mods_view_of(state: &AppState) -> Result<ModsView, String> {
+    let manager = mod_manager(state);
+    let items = manager.list_mods().map_err(|e| e.to_string())?;
+    let active_textures = if manager.active_dir().is_dir() {
+        fs::read_dir(manager.active_dir()).map(|entries| entries.count()).unwrap_or(0)
+    } else {
+        0
+    };
+    Ok(ModsView {
+        items,
+        status: String::new(),
+        folder: state.dirs.mods().display().to_string(),
+        inbox_folder: manager.inbox_dir().display().to_string(),
+        active_textures,
+    })
+}
+
+#[tauri::command]
+pub fn mods_list(shared: State<'_, Shared>) -> Result<ModsView, String> {
+    mods_view_of(&lock(shared.inner()))
+}
+
+#[tauri::command]
+pub async fn mods_import(
+    path: Option<String>,
+    app: AppHandle,
+    shared: State<'_, Shared>,
+) -> Result<Option<gt4l_core::mods::ImportReport>, String> {
+    let zip_path = match path {
+        Some(p) if !p.is_empty() => PathBuf::from(p),
+        _ => {
+            let picked = tauri::async_runtime::spawn_blocking(move || {
+                app.dialog()
+                    .file()
+                    .set_title("Import Texture Pack Archive")
+                    .add_filter("Zip Archive", &["zip"])
+                    .blocking_pick_file()
+            })
+            .await
+            .map_err(|e| e.to_string())?;
+            let Some(picked) = picked else {
+                return Ok(None);
+            };
+            picked.into_path().map_err(|e| e.to_string())?
+        }
+    };
+
+    let state = lock(shared.inner());
+    let manager = mod_manager(&state);
+    let report = manager.import_archive_file(&zip_path).map_err(|e| e.to_string())?;
+    let _ = manager.build_active_view();
+    Ok(Some(report))
+}
+
+#[tauri::command]
+pub fn mods_set_enabled(id: String, enabled: bool, shared: State<'_, Shared>) -> Result<bool, String> {
+    let state = lock(shared.inner());
+    let manager = mod_manager(&state);
+    let ok = manager.set_enabled(&id, enabled).map_err(|e| e.to_string())?;
+    let _ = manager.build_active_view();
+    Ok(ok)
+}
+
+#[tauri::command]
+pub fn mods_move(id: String, new_priority: usize, shared: State<'_, Shared>) -> Result<bool, String> {
+    let state = lock(shared.inner());
+    let manager = mod_manager(&state);
+    let ok = manager.set_priority(&id, new_priority).map_err(|e| e.to_string())?;
+    let _ = manager.build_active_view();
+    Ok(ok)
+}
+
+#[tauri::command]
+pub fn mods_remove(id: String, shared: State<'_, Shared>) -> Result<bool, String> {
+    let state = lock(shared.inner());
+    let manager = mod_manager(&state);
+    let ok = manager.remove_mod(&id).map_err(|e| e.to_string())?;
+    let _ = manager.build_active_view();
+    Ok(ok)
+}
+
+#[tauri::command]
+pub fn mods_details(id: String, shared: State<'_, Shared>) -> Result<Option<gt4l_core::mods::ModDetails>, String> {
+    let state = lock(shared.inner());
+    let manager = mod_manager(&state);
+    manager.get_mod_details(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn open_mods_folder(shared: State<'_, Shared>) -> Result<(), String> {
+    let folder = lock(shared.inner()).dirs.mods();
+    open_folder(&folder)
+}
+
+#[tauri::command]
+pub fn open_inbox_folder(shared: State<'_, Shared>) -> Result<(), String> {
+    let folder = lock(shared.inner()).dirs.mods().join("inbox");
+    open_folder(&folder)
+}

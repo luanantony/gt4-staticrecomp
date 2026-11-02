@@ -417,13 +417,60 @@ const ControlMap &default_controls() {
   return defaults;
 }
 
-ControlMap parse_controls(std::string_view text, const std::string &source_name) {
-  ControlMap map = default_controls();
+const ContextControlMap &default_context_controls() {
+  static const ContextControlMap defaults = [] {
+    ContextControlMap cmap;
+    cmap.base_map = default_controls();
+    for (std::size_t i = 0; i < gt4::context::kContextCount; ++i)
+      cmap.context_maps[i] = cmap.base_map;
+
+    // In Race context (TASK-077): Esc is Start (pause), while Backspace remains Triangle.
+    auto &race_map = cmap.context_maps[static_cast<std::size_t>(gt4::context::GameContext::Race)];
+    race_map.bindings[input_index("start")] = {button(xinput::start), key('P'), key(vk_escape)};
+    race_map.bindings[input_index("triangle")] = {button(xinput::y), key(vk_back)};
+
+    // In Pause context: Esc and Backspace both act as Triangle (back / resume race). Esc also unpauses.
+    auto &pause_map = cmap.context_maps[static_cast<std::size_t>(gt4::context::GameContext::Pause)];
+    pause_map.bindings[input_index("triangle")] = {button(xinput::y), key(vk_back), key(vk_escape)};
+    pause_map.bindings[input_index("start")] = {button(xinput::start), key('P'), key(vk_escape)};
+
+    // In PhotoPause context:
+    auto &photo_map = cmap.context_maps[static_cast<std::size_t>(gt4::context::GameContext::PhotoPause)];
+    photo_map.bindings[input_index("triangle")] = {button(xinput::y), key(vk_back), key(vk_escape)};
+    photo_map.bindings[input_index("start")] = {button(xinput::start), key('P'), key(vk_escape)};
+
+    cmap.has_context_overrides = true;
+    return cmap;
+  }();
+  return defaults;
+}
+
+std::vector<KeyboardBinding> ContextControlMap::keyboard_bindings_for(gt4::context::GameContext context) const {
+  return keyboard_bindings(map_for(context));
+}
+
+ContextControlMap parse_context_controls(std::string_view text, const std::string &source_name) {
+  ContextControlMap result;
+  result.base_map = default_controls();
+
+  int schema_version = 0;
   bool schema_seen = false;
-  bool in_bindings = false;
-  std::vector<bool> replaced(input_count, false);
+  enum class CurrentSection { None, BaseBindings, ContextBindings };
+  CurrentSection current_section = CurrentSection::None;
+  gt4::context::GameContext active_context = gt4::context::GameContext::Unknown;
+
+  std::vector<bool> base_replaced(input_count, false);
+  std::array<std::vector<bool>, gt4::context::kContextCount> context_replaced{};
+  for (auto &arr : context_replaced)
+    arr.resize(input_count, false);
+
+  std::array<std::vector<bool>, gt4::context::kContextCount> context_has_override{};
+  for (auto &arr : context_has_override)
+    arr.resize(input_count, false);
+
   std::size_t line_number = 0;
   std::size_t position = 0;
+
   while (position <= text.size()) {
     const std::size_t newline = text.find('\n', position);
     std::string_view raw_line = newline == std::string_view::npos
@@ -436,12 +483,34 @@ ControlMap parse_controls(std::string_view text, const std::string &source_name)
     const std::string line = trim(strip_comment(raw_line));
     if (line.empty())
       continue;
+
     if (line.front() == '[') {
-      if (line != "[bindings]")
-        fail(source_name, line_number, "unknown table " + line + "; only [bindings] is defined");
-      in_bindings = true;
+      if (line.back() != ']')
+        fail(source_name, line_number, "malformed table header " + line);
+      const std::string table_name = line.substr(1, line.size() - 2);
+      if (table_name == "bindings") {
+        current_section = CurrentSection::BaseBindings;
+        continue;
+      }
+      if (schema_version == 1) {
+        fail(source_name, line_number, "unknown table [" + table_name + "]; schema 1 defines only [bindings]");
+      }
+      // Schema 2 context table: must look like "bindings.<context>"
+      constexpr std::string_view kPrefix = "bindings.";
+      if (table_name.compare(0, kPrefix.size(), kPrefix) != 0) {
+        fail(source_name, line_number, "unknown table [" + table_name + "]; expected [bindings.<context>]");
+      }
+      const std::string context_part = table_name.substr(kPrefix.size());
+      const gt4::context::GameContext parsed_ctx = gt4::context::parse_context_name(context_part);
+      if (parsed_ctx == gt4::context::GameContext::Unknown) {
+        fail(source_name, line_number, "unknown context '" + context_part + "' in table [" + table_name + "]");
+      }
+      current_section = CurrentSection::ContextBindings;
+      active_context = parsed_ctx;
+      result.has_context_overrides = true;
       continue;
     }
+
     const std::size_t equals = line.find('=');
     if (equals == std::string::npos)
       fail(source_name, line_number, "expected name = value");
@@ -449,53 +518,99 @@ ControlMap parse_controls(std::string_view text, const std::string &source_name)
     const std::string value = trim(std::string_view(line).substr(equals + 1));
     if (key_name.empty())
       fail(source_name, line_number, "missing name before '='");
-    if (!in_bindings) {
+
+    if (current_section == CurrentSection::None) {
       if (key_name != "schema")
         fail(source_name, line_number, "unknown top-level key '" + key_name + "'");
       if (schema_seen)
         fail(source_name, line_number, "duplicate schema");
-      if (value != "1")
-        fail(source_name, line_number, "schema must be 1, got " + value);
+      if (value != "1" && value != "2")
+        fail(source_name, line_number, "schema must be 1 or 2, got " + value);
+      schema_version = std::atoi(value.c_str());
       schema_seen = true;
       continue;
     }
+
     const std::size_t index = input_index(key_name);
     if (index == input_count)
       fail(source_name, line_number, "unknown input '" + key_name + "'");
-    if (replaced[index])
-      fail(source_name, line_number, "duplicate binding for " + key_name);
-    replaced[index] = true;
-    std::vector<Binding> bindings;
-    for (const auto &source_text : parse_source_list(value, source_name, line_number)) {
-      const Binding binding = parse_source(source_text, inputs[index], source_name, line_number);
-      for (const auto &existing : bindings)
-        if (existing.kind == binding.kind && existing.button_mask == binding.button_mask &&
-            existing.source_index == binding.source_index &&
-            existing.virtual_key == binding.virtual_key)
-          fail(source_name, line_number, "duplicate source for " + key_name);
-      bindings.push_back(binding);
+
+    if (current_section == CurrentSection::BaseBindings) {
+      if (base_replaced[index])
+        fail(source_name, line_number, "duplicate binding for " + key_name + " in [bindings]");
+      base_replaced[index] = true;
+      std::vector<Binding> bindings;
+      for (const auto &source_text : parse_source_list(value, source_name, line_number)) {
+        const Binding binding = parse_source(source_text, inputs[index], source_name, line_number);
+        for (const auto &existing : bindings)
+          if (existing.kind == binding.kind && existing.button_mask == binding.button_mask &&
+              existing.source_index == binding.source_index &&
+              existing.virtual_key == binding.virtual_key)
+            fail(source_name, line_number, "duplicate source for " + key_name);
+        bindings.push_back(binding);
+      }
+      result.base_map.bindings[index] = std::move(bindings);
+    } else if (current_section == CurrentSection::ContextBindings) {
+      const auto ctx_idx = static_cast<std::size_t>(active_context);
+      if (context_replaced[ctx_idx][index])
+        fail(source_name, line_number, "duplicate binding for " + key_name + " in context table");
+      context_replaced[ctx_idx][index] = true;
+      context_has_override[ctx_idx][index] = true;
+
+      std::vector<Binding> bindings;
+      for (const auto &source_text : parse_source_list(value, source_name, line_number)) {
+        const Binding binding = parse_source(source_text, inputs[index], source_name, line_number);
+        for (const auto &existing : bindings)
+          if (existing.kind == binding.kind && existing.button_mask == binding.button_mask &&
+              existing.source_index == binding.source_index &&
+              existing.virtual_key == binding.virtual_key)
+            fail(source_name, line_number, "duplicate source for " + key_name);
+        bindings.push_back(binding);
+      }
+      result.context_maps[ctx_idx].bindings[index] = std::move(bindings);
     }
-    map.bindings[index] = std::move(bindings);
   }
+
   if (!schema_seen)
-    fail(source_name, line_number, "missing schema = 1");
-  return map;
+    fail(source_name, line_number, "missing schema = 1 or schema = 2");
+
+  // For any context that has overrides, populate unlisted inputs from base_map
+  for (std::size_t c = 0; c < gt4::context::kContextCount; ++c) {
+    for (std::size_t i = 0; i < input_count; ++i) {
+      if (!context_has_override[c][i])
+        result.context_maps[c].bindings[i] = result.base_map.bindings[i];
+    }
+  }
+
+  return result;
 }
 
-ControlMap load_controls_file(const std::string &path) {
+ControlMap parse_controls(std::string_view text, const std::string &source_name) {
+  return parse_context_controls(text, source_name).base_map;
+}
+
+ContextControlMap load_context_controls_file(const std::string &path) {
   std::ifstream file(path, std::ios::binary);
   if (!file)
     throw ConfigError(path + ": cannot open controls file");
   std::ostringstream contents;
   contents << file.rdbuf();
-  return parse_controls(contents.str(), path);
+  return parse_context_controls(contents.str(), path);
+}
+
+ControlMap load_controls_file(const std::string &path) {
+  return load_context_controls_file(path).base_map;
+}
+
+ContextControlMap load_context_controls_from_environment() {
+  const char *path = std::getenv("GT4_CONTROLS_FILE");
+  if (!path || !*path)
+    return default_context_controls();
+  return load_context_controls_file(path);
 }
 
 ControlMap load_controls_from_environment() {
-  const char *path = std::getenv("GT4_CONTROLS_FILE");
-  if (!path || !*path)
-    return default_controls();
-  return load_controls_file(path);
+  return load_context_controls_from_environment().base_map;
 }
 
 std::vector<KeyboardBinding> keyboard_bindings(const ControlMap &map) {

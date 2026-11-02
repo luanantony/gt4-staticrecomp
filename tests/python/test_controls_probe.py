@@ -32,7 +32,7 @@ class ControlsPassThroughTests(unittest.TestCase):
     def test_bad_files_are_refused_before_launch(self):
         cases = {
             'schema missing': ('[bindings]\ncross = ["key:Z"]\n', 'needs schema'),
-            'schema two': ('schema = 2\n', 'needs schema'),
+            'schema three': ('schema = 3\n', 'needs schema'),
             'schema as string': ('schema = "1"\n', 'needs schema'),
             'unknown table': ('schema = 1\n[pad]\ncross = ["key:Z"]\n', 'unknown keys'),
             'unknown input': ('schema = 1\n[bindings]\ntriangel = ["key:S"]\n', 'unknown input'),
@@ -40,11 +40,31 @@ class ControlsPassThroughTests(unittest.TestCase):
             'non-string item': ('schema = 1\n[bindings]\ncross = [1]\n', 'string or a list'),
             'unknown source kind': ('schema = 1\n[bindings]\ncross = ["mouse:left"]\n', 'unknown source'),
             'not TOML': ('schema = \n', 'not valid TOML'),
+            'context table in schema 1': ('schema = 1\n[bindings]\ncross = ["key:Z"]\n[bindings.race]\nstart = ["key:Esc"]\n', 'requires schema = 2'),
+            'unknown context in schema 2': ('schema = 2\n[bindings]\ncross = ["key:Z"]\n[bindings.unknown_ctx]\nstart = ["key:Esc"]\n', 'unknown context table'),
         }
         for label, (text, fragment) in cases.items():
             with self.subTest(label=label):
                 with self.assertRaisesRegex(ValueError, fragment):
                     probe.resolve_controls_file(self.write(text))
+
+    def test_schema_two_context_subtables_pass(self):
+        text = """schema = 2
+
+[bindings]
+cross = ["xinput:A", "key:W"]
+start = ["xinput:Start", "key:P"]
+triangle = ["xinput:Y", "key:Backspace", "key:Esc"]
+
+[bindings.race]
+start = ["key:Esc", "xinput:Start"]
+triangle = ["xinput:Y", "key:Backspace"]
+
+[bindings.pause]
+triangle = ["key:Esc", "key:Backspace", "xinput:Y"]
+"""
+        resolved = probe.resolve_controls_file(self.write(text))
+        self.assertIsNotNone(resolved)
 
     def test_missing_file_is_refused(self):
         with self.assertRaisesRegex(ValueError, 'not found'):

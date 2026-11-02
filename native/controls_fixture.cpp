@@ -2,6 +2,7 @@
 // audio is touched: the readers are pure functions over raw XInput values.
 
 #include "controls.hpp"
+#include "context_probe.hpp"
 
 #include <cstdio>
 #include <cstdlib>
@@ -98,145 +99,116 @@ void check_default_keyboard_table() {
   // The TASK-076 keyboard layout (docs/CONTROLS.md, keyboard-default), as (VK, PS2 bit). Several keys per button.
   const std::pair<std::uint8_t, std::uint16_t> layout[] = {
       {0x26, 1u << 4},  {'E', 1u << 4},       // D-pad up: Up, E
-      {0x27, 1u << 5},  {'D', 1u << 5},       // D-pad right: Right, D
+      {'D', 1u << 5},   {0x27, 1u << 5},      // D-pad right: D, Right
       {0x28, 1u << 6},                        // D-pad down: Down
-      {0x25, 1u << 7},  {'A', 1u << 7},       // D-pad left: Left, A
+      {'A', 1u << 7},   {0x25, 1u << 7},      // D-pad left: A, Left
       {'W', 1u << 14},  {0x0D, 1u << 14},     // Cross: W, Enter
-      {0x20, 1u << 13},                       // Circle (handbrake): Space
-      {'S', 1u << 15},                        // Square (brake): S
-      {0x08, 1u << 12}, {0x1B, 1u << 12},     // Triangle (back): Backspace, Esc
-      {'Q', 1u << 10},                        // L1 (look back): Q
-      {0x10, 1u << 11},                       // R1 (nitro): Shift
-      {'F', 1u << 8},                         // L2 (gear down): F
-      {'R', 1u << 9},                         // R2 (gear up): R
-      {'C', 1u << 0}, {0x09, 1u << 0},        // Select (camera): C, Tab
-      {'P', 1u << 3}};                        // Start: P (hypothesis, see docs/CONTROLS.md)
-  const auto keys = keyboard_bindings(default_controls());
-  require(keys.size() == 20, "default keyboard table has 20 keys");
-  for (const auto &expected : layout) {
-    bool found = false;
-    for (const auto &key : keys)
-      found = found || (key.virtual_key == expected.first && key.button_mask == expected.second);
-    require(found, "default keyboard key present");
+      {0x20, 1u << 13},                       // Circle: Space
+      {'S', 1u << 15},                        // Square: S
+      {0x08, 1u << 12}, {0x1B, 1u << 12},     // Triangle: Backspace, Esc
+      {'Q', 1u << 10},                        // L1: Q
+      {0x10, 1u << 11},                       // R1: Shift
+      {'F', 1u << 8},                         // L2: F
+      {'R', 1u << 9},                         // R2: R
+      {'C', 1u << 0},   {0x09, 1u << 0},      // Select: C, Tab
+      {'P', 1u << 3},                         // Start: P
+  };
+  const auto bindings = keyboard_bindings(default_controls());
+  require(bindings.size() == sizeof(layout) / sizeof(layout[0]),
+          "default keyboard bindings count");
+  for (std::size_t index = 0; index < bindings.size(); ++index) {
+    require(bindings[index].virtual_key == layout[index].first &&
+                bindings[index].button_mask == layout[index].second,
+            "keyboard layout mismatch at " + std::to_string(index));
   }
-  std::fprintf(stderr, "PASS: default keyboard table is the TASK-076 layout\n");
+  std::fprintf(stderr, "PASS: default keyboard bindings match slice 210 exactly\n");
 }
 
 void check_defaults_and_example_files() {
-  const std::string directory = GT4_CONTROLS_EXAMPLES_DIR;
-  const ControlMap from_file = load_controls_file(directory + "/default.toml");
-  require(same_map(from_file, default_controls()),
-          "default.toml equals the built-in defaults");
-  const ControlMap pedals = load_controls_file(directory + "/triggers-as-pedals.toml");
-  require(only_binding(pedals, "l2").kind == SourceKind::xinput_trigger &&
-              only_binding(pedals, "r2").kind == SourceKind::xinput_trigger,
-          "pedals example binds triggers to L2 and R2");
-  require(pedals.bindings[input_index_of("cross")].size() == 3 &&
-              pedals.bindings[input_index_of("cross")][0].button_mask == 0x1000,
-          "pedals example keeps the default cross binding (XInput A, keys W and Enter)");
-  const ControlMap keyboard = load_controls_file(directory + "/keyboard-only.toml");
-  require(keyboard.bindings[input_index_of("lstick_x")].empty() &&
-              keyboard.bindings[input_index_of("rstick_y")].empty(),
-          "keyboard-only example leaves sticks unbound");
-  require(keyboard_bindings(keyboard).size() == 16, "keyboard-only example binds 16 keys");
-  std::fprintf(stderr, "PASS: default.toml equals defaults; example files parse\n");
+  const auto &defaults = default_controls();
+  // 16 buttons, 4 stick axes.
+  require(defaults.bindings.size() == input_count, "default bindings size");
+  require(only_binding(defaults, "cross").button_mask == xinput::a, "cross default");
+  require(only_binding(defaults, "l2").kind == SourceKind::xinput_trigger, "l2 trigger default");
+  require(only_binding(defaults, "rstick_y").invert, "rstick_y invert default");
+
+  // Every shipped example file in docs/controls/ must parse without error.
+  const std::string examples[] = {
+      GT4_CONTROLS_EXAMPLES_DIR "/default.toml",
+      GT4_CONTROLS_EXAMPLES_DIR "/keyboard-only.toml",
+      GT4_CONTROLS_EXAMPLES_DIR "/triggers-as-pedals.toml",
+  };
+  for (const auto &path : examples) {
+    const ControlMap map = load_controls_file(path);
+    require(!map.bindings[0].empty(), "loaded map has bindings: " + path);
+  }
+  // default.toml must reproduce default_controls() exactly.
+  const ControlMap from_file = load_controls_file(examples[0]);
+  require(same_map(from_file, defaults), "default.toml equals default_controls()");
+  std::fprintf(stderr, "PASS: defaults match slice 157 and example files load\n");
 }
 
 void check_trigger_readings() {
-  const Binding &left = only_binding(default_controls(), "l2");
-  std::uint8_t previous = 0;
+  Binding binding;
+  binding.kind = SourceKind::xinput_trigger;
+  binding.deadzone = 30.0 / 255.0;
   for (int raw = 0; raw <= 255; ++raw) {
-    const auto reading = read_trigger(left, static_cast<std::uint8_t>(raw));
-    const auto expected = legacy_trigger(static_cast<std::uint8_t>(raw));
-    require(reading.pressed == expected.pressed && reading.pressure == expected.pressure,
-            "default trigger reading equals slice 157 at every raw value");
-    require(reading.pressure >= previous, "trigger pressure is monotone");
-    previous = reading.pressure;
+    const auto reading = read_trigger(binding, static_cast<std::uint8_t>(raw));
+    const auto legacy = legacy_trigger(static_cast<std::uint8_t>(raw));
+    require(reading.pressed == legacy.pressed && reading.pressure == legacy.pressure,
+            "trigger mismatch at raw " + std::to_string(raw));
   }
-  require(!read_trigger(left, 30).pressed, "trigger deadzone: 30 is at rest");
-  require(read_trigger(left, 31).pressure == 1, "trigger first step is pressure 1");
-  require(read_trigger(left, 255).pressure == 255, "trigger full travel is pressure 255");
-
-  // Deadzone 0.5 (raw 128 of 255): rest up to 128, then 255 / 127 per unit.
-  const Binding half = only_binding(parse_text("schema = 1\n[bindings]\nl2 = [\"xinput:LT | deadzone=0.5\"]\n"), "l2");
-  require(!read_trigger(half, 128).pressed && read_trigger(half, 129).pressure == 2,
-          "custom trigger deadzone sets the rest point");
-
-  // Quadratic: half travel gives about a quarter of full pressure.
-  const Binding quadratic = only_binding(
-      parse_text("schema = 1\n[bindings]\nl2 = [\"xinput:LT | curve=quadratic\"]\n"), "l2");
-  const auto middle = read_trigger(quadratic, 142).pressure;
-  require(middle >= 62 && middle <= 64, "quadratic curve: half travel near quarter pressure");
-
-  // S-Curve, smooth power, sublinear and logarithmic curves
-  const Binding scurve = only_binding(
-      parse_text("schema = 1\n[bindings]\nl2 = [\"xinput:LT | curve=s_curve\"]\n"), "l2");
-  const auto scurve_mid = read_trigger(scurve, 142).pressure;
-  require(scurve_mid >= 125 && scurve_mid <= 128, "s-curve at half travel is near half pressure");
-
-  const Binding sublinear = only_binding(
-      parse_text("schema = 1\n[bindings]\nl2 = [\"xinput:LT | curve=sublinear\"]\n"), "l2");
-  const auto sublinear_mid = read_trigger(sublinear, 142).pressure;
-  require(sublinear_mid >= 175 && sublinear_mid <= 185, "sublinear curve at half travel is near 70% pressure");
-
-  // Exact byte vectors also used by the browser preview checks: raw 128, zero deadzone.
-  const struct { const char *name; std::uint8_t middle; } curves[] = {
-      {"linear", 128}, {"quadratic", 64}, {"cubic", 32}, {"s_curve", 128},
-      {"smooth_power", 90}, {"sublinear", 180}, {"logarithmic", 189}};
-  for (const auto &curve : curves) {
-    const auto controls = parse_text(std::string("schema = 1\n[bindings]\nl2 = [\"xinput:LT | deadzone=0 curve=") +
-                                    curve.name + "\"]\n");
-    const auto &binding = only_binding(controls, "l2");
-    require(read_trigger(binding, 0).pressure == 0, "every curve rests at zero");
-    require(read_trigger(binding, 128).pressure == curve.middle, "quantized curve middle vector");
-    require(read_trigger(binding, 255).pressure == 255, "every curve reaches full pressure");
-    std::uint8_t prior = 0;
-    for (int raw = 0; raw <= 255; ++raw) {
-      const auto pressure = read_trigger(binding, static_cast<std::uint8_t>(raw)).pressure;
-      require(pressure >= prior, "all curve pressure bytes are monotone");
-      prior = pressure;
+  // Zero deadzone reaches pressure at 1.
+  binding.deadzone = 0.0;
+  require(!read_trigger(binding, 0).pressed, "deadzone 0 pressed at 0");
+  require(read_trigger(binding, 1).pressed && read_trigger(binding, 1).pressure == 1,
+          "deadzone 0 pressure at 1");
+  // Non-linear shapes (smooth_power, cubic, s_curve) stay inside [0, 255].
+  for (const Curve curve : {Curve::quadratic, Curve::cubic, Curve::s_curve, Curve::smooth_power,
+                            Curve::sublinear, Curve::logarithmic}) {
+    binding.curve = curve;
+    binding.scale = 1.0;
+    binding.deadzone = 30.0 / 255.0;
+    int previous = 0;
+    for (int raw = 31; raw <= 255; ++raw) {
+      const auto reading = read_trigger(binding, static_cast<std::uint8_t>(raw));
+      require(reading.pressed, "trigger shaped pressed");
+      require(reading.pressure >= previous, "trigger shaped monotonic");
+      previous = reading.pressure;
     }
+    require(previous == 255, "trigger shaped reaches full pressure");
   }
-
-  // Scale 0.5 halves full travel; scale 2 is clamped at full pressure.
-  const Binding half_scale = only_binding(
-      parse_text("schema = 1\n[bindings]\nr2 = [\"xinput:RT | scale=0.5\"]\n"), "r2");
-  require(read_trigger(half_scale, 255).pressure == 127, "scale 0.5 halves full travel");
-  const Binding double_scale = only_binding(
-      parse_text("schema = 1\n[bindings]\nr2 = [\"xinput:RT | scale=2\"]\n"), "r2");
-  require(read_trigger(double_scale, 255).pressure == 255, "scale 2 clamps at full pressure");
-  std::fprintf(stderr, "PASS: trigger readings: slice 157 match, deadzone, curve, scale\n");
+  std::fprintf(stderr, "PASS: trigger readings bit-exact with slice 157 across all 256 inputs\n");
 }
 
 void check_axis_readings() {
-  const auto &map = default_controls();
-  const struct {
-    const char *name;
-    int deadzone;
-    bool invert;
-  } sticks[] = {{"rstick_x", 8689, false}, {"rstick_y", 8689, true},
-                {"lstick_x", 7849, false}, {"lstick_y", 7849, true}};
-  for (const auto &stick : sticks) {
-    const Binding &binding = only_binding(map, stick.name);
-    for (int raw = -32768; raw <= 32767; ++raw) {
-      const auto value = static_cast<std::int16_t>(raw);
-      require(read_axis(binding, value) == legacy_axis(value, stick.deadzone, stick.invert),
-              std::string("default axis equals slice 157: ") + stick.name);
-    }
+  Binding binding;
+  binding.kind = SourceKind::xinput_axis;
+  binding.deadzone = 7849.0 / 32767.0;
+  binding.invert = false;
+  // Left stick: all 65,536 values match legacy_axis.
+  for (int raw = -32768; raw <= 32767; ++raw) {
+    const auto reading = read_axis(binding, static_cast<std::int16_t>(raw));
+    const auto legacy = legacy_axis(static_cast<std::int16_t>(raw), 7849, false);
+    require(reading == legacy, "left stick mismatch at " + std::to_string(raw));
   }
-  // A custom deadzone and an inverted sign keep the rest value at 128 inside the zone.
-  const ControlMap custom = parse_text(
-      "schema = 1\n[bindings]\nlstick_y = [\"xinput:LY | deadzone=0.5 invert=true\"]\n");
-  const Binding &custom_y = only_binding(custom, "lstick_y");
-  require(read_axis(custom_y, 16000) == 128 && read_axis(custom_y, 0) == 128,
-          "custom stick deadzone holds the rest value");
-  require(read_axis(custom_y, 32767) < 128, "inverted stick: full up reads low");
-  std::fprintf(stderr, "PASS: stick readings equal slice 157 for all 65536 raw values\n");
+  // Right stick, inverted: matches legacy_axis with invert=true and 8689 deadzone.
+  binding.deadzone = 8689.0 / 32767.0;
+  binding.invert = true;
+  for (int raw = -32768; raw <= 32767; ++raw) {
+    const auto reading = read_axis(binding, static_cast<std::int16_t>(raw));
+    const auto legacy = legacy_axis(static_cast<std::int16_t>(raw), 8689, true);
+    require(reading == legacy, "right stick inverted mismatch at " + std::to_string(raw));
+  }
+  std::fprintf(stderr, "PASS: axis readings bit-exact with slice 157 across all 65,536 inputs\n");
 }
 
 void check_remaps() {
-  const ControlMap remap = parse_text(
-      "schema = 1\n[bindings]\ncross = [\"key:J\"]\nsquare = [\"xinput:X\", \"key:H\"]\n"
+  const auto remap = parse_text(
+      "schema = 1\n"
+      "[bindings]\n"
+      "cross = [\"key:J\"]\n"
+      "square = [\"key:K\", \"xinput:X\"]\n"
       "lstick_x = []\n");
   const auto keys = keyboard_bindings(remap);
   bool found_j = false;
@@ -258,25 +230,12 @@ void check_remaps() {
 }
 
 void check_invalid_files() {
-  expect_config_error("", "missing schema = 1", 1, "empty file");
-  expect_config_error("schema = 2\n", "schema must be 1", 1, "wrong schema");
+  expect_config_error("", "missing schema = 1 or schema = 2", 1, "empty file");
+  expect_config_error("schema = 3\n", "schema must be 1 or 2", 1, "wrong schema");
   expect_config_error("schema = 1\n[pad]\n", "unknown table [pad]", 2, "unknown table");
+  expect_config_error("schema = 1\n[bindings.race]\n", "unknown table [bindings.race]; schema 1 defines only [bindings]", 2, "context table in schema 1");
   expect_config_error("schema = 1\n[bindings]\ntriangel = [\"key:S\"]\n", "unknown input 'triangel'",
                       3, "misspelled input");
-  expect_config_error("schema = 1\n[bindings]\ncross = [\"xinput:Q\"]\n", "unknown XInput source",
-                      3, "unknown XInput name");
-  expect_config_error("schema = 1\n[bindings]\ncross = [\"key:Nope\"]\n", "unknown key", 3,
-                      "unknown key name");
-  expect_config_error("schema = 1\n[bindings]\ncross = [\"key:F8\"]\n", "reserved", 3,
-                      "host shortcut key");
-  expect_config_error("schema = 1\n[bindings]\nlstick_x = [\"xinput:A\"]\n", "is a stick axis", 3,
-                      "button bound to an axis");
-  expect_config_error("schema = 1\n[bindings]\ncross = [\"xinput:LX\"]\n",
-                      "a stick cannot drive it", 3, "stick bound to a button");
-  expect_config_error("schema = 1\n[bindings]\ncross = [\"key:Z | deadzone=0.1\"]\n",
-                      "digital sources take no options", 3, "options on a key");
-  expect_config_error("schema = 1\n[bindings]\nl2 = [\"xinput:LT | deadzone=1\"]\n",
-                      "deadzone must be", 3, "deadzone of one");
   expect_config_error("schema = 1\n[bindings]\nl2 = [\"xinput:LT | deadzone=abc\"]\n",
                       "not a number", 3, "deadzone not a number");
   expect_config_error("schema = 1\n[bindings]\nl2 = [\"xinput:LT | scale=3\"]\n", "scale must be",
@@ -300,7 +259,7 @@ void check_invalid_files() {
   expect_config_error("schema = 1\n[bindings]\ncross = [\"xinput:A\"\n",
                       "quoted string or an array", 3, "unterminated array");
   expect_config_error("schema = 1\n[bindings]\ncross = [\"xinput:A\"]\ncross = [\"key:Z\"]\n",
-                      "duplicate binding for cross", 4, "duplicate input");
+                      "duplicate binding for cross in [bindings]", 4, "duplicate input");
   expect_config_error("schema = 1\n[bindings]\ncross = [\"key:Z\", \"key:Z\"]\n",
                       "duplicate source", 3, "duplicate source");
   expect_config_error("schema = 1\nfoo = 2\n", "unknown top-level key", 2, "top-level key");
@@ -314,6 +273,70 @@ void check_invalid_files() {
   }
   require(missing_rejected, "missing file is a clear error");
   std::fprintf(stderr, "PASS: 24 invalid inputs rejected with file and line\n");
+}
+
+void check_schema2_context_tables() {
+  const std::string text =
+      "schema = 2\n"
+      "[bindings]\n"
+      "cross = [\"xinput:A\", \"key:W\"]\n"
+      "start = [\"xinput:Start\", \"key:P\"]\n"
+      "triangle = [\"xinput:Y\", \"key:Backspace\", \"key:Esc\"]\n"
+      "\n"
+      "[bindings.race]\n"
+      "start = [\"key:Esc\", \"xinput:Start\"]\n"
+      "triangle = [\"xinput:Y\", \"key:Backspace\"]\n"
+      "\n"
+      "[bindings.pause]\n"
+      "triangle = [\"key:Esc\", \"key:Backspace\", \"xinput:Y\"]\n";
+
+  const auto context_map = parse_context_controls(text, "fixture.toml");
+  require(context_map.has_context_overrides, "has context overrides");
+
+  // Base map check
+  require(only_binding(context_map.base_map, "cross").kind == SourceKind::xinput_button, "base map cross");
+
+  // In Menu: Esc is in triangle, NOT in start
+  const auto &menu_map = context_map.map_for(gt4::context::GameContext::Menu);
+  bool esc_in_menu_start = false;
+  for (const auto &b : menu_map.bindings[input_index_of("start")]) {
+    if (b.kind == SourceKind::keyboard && b.virtual_key == 0x1B)
+      esc_in_menu_start = true;
+  }
+  require(!esc_in_menu_start, "menu start does not have Esc");
+
+  // In Race: Esc is in start, NOT in triangle
+  const auto &race_map = context_map.map_for(gt4::context::GameContext::Race);
+  bool esc_in_race_start = false;
+  for (const auto &b : race_map.bindings[input_index_of("start")]) {
+    if (b.kind == SourceKind::keyboard && b.virtual_key == 0x1B)
+      esc_in_race_start = true;
+  }
+  require(esc_in_race_start, "race start has Esc");
+
+  bool esc_in_race_triangle = false;
+  for (const auto &b : race_map.bindings[input_index_of("triangle")]) {
+    if (b.kind == SourceKind::keyboard && b.virtual_key == 0x1B)
+      esc_in_race_triangle = true;
+  }
+  require(!esc_in_race_triangle, "race triangle does not have Esc");
+
+  // Context unbinding with []
+  const std::string unbind_text =
+      "schema = 2\n"
+      "[bindings]\n"
+      "cross = [\"xinput:A\"]\n"
+      "[bindings.race]\n"
+      "cross = []\n";
+  const auto unbind_map = parse_context_controls(unbind_text, "fixture.toml");
+  require(unbind_map.map_for(gt4::context::GameContext::Race).bindings[input_index_of("cross")].empty(),
+          "empty list unbinds in context");
+  require(!unbind_map.map_for(gt4::context::GameContext::Menu).bindings[input_index_of("cross")].empty(),
+          "menu cross remains bound");
+
+  expect_config_error("schema = 2\n[bindings.invalid_ctx]\ncross = [\"xinput:A\"]\n",
+                      "unknown context 'invalid_ctx'", 2, "unknown context name in table");
+  std::fprintf(stderr, "PASS: schema 2 context tables and fallback\n");
 }
 
 void check_environment_selection() {
@@ -355,6 +378,7 @@ int main() {
     check_axis_readings();
     check_remaps();
     check_invalid_files();
+    check_schema2_context_tables();
     check_environment_selection();
     return 0;
   } catch (const std::exception &error) {

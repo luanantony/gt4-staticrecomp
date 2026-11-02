@@ -73,6 +73,7 @@ set_tests_properties(native_achievements native_achievements_http PROPERTIES RUN
 add_test(NAME native_quickfix COMMAND $<TARGET_FILE:quickfix_fixture>)
 add_test(NAME native_race_display COMMAND $<TARGET_FILE:race_display_fixture>)
 add_test(NAME native_race_widescreen COMMAND $<TARGET_FILE:race_widescreen_fixture>)
+add_test(NAME native_context_probe COMMAND $<TARGET_FILE:context_probe_fixture>)
 # TASK-080: GT4_DISPLAY_ASPECT parse, Hor+/Vert+ factors, matrix scale, scene policy.
 add_test(NAME native_display_aspect COMMAND $<TARGET_FILE:display_aspect_fixture>)
 add_test(NAME native_cursor_autohide COMMAND $<TARGET_FILE:cursor_autohide_fixture>)

@@ -4,6 +4,8 @@
 // host_io.cpp. This header has no Windows dependency so controls_fixture can
 // test the mapping on any host.
 
+#include "context_probe.hpp"
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -92,6 +94,23 @@ struct KeyboardBinding {
   std::uint16_t button_mask = 0; // one PS2 button bit
 };
 
+// TASK-077: Context-aware mapping container.
+// Holds the default [bindings] map plus per-context overrides.
+struct ContextControlMap {
+  ControlMap base_map;
+  std::array<ControlMap, gt4::context::kContextCount> context_maps{};
+  bool has_context_overrides = false;
+
+  const ControlMap &map_for(gt4::context::GameContext context) const {
+    const auto idx = static_cast<std::size_t>(context);
+    if (idx < gt4::context::kContextCount && has_context_overrides)
+      return context_maps[idx];
+    return base_map;
+  }
+
+  std::vector<KeyboardBinding> keyboard_bindings_for(gt4::context::GameContext context) const;
+};
+
 // Reported by every parser and loader. what() is "<source>:<line>: <message>".
 class ConfigError : public std::runtime_error {
 public:
@@ -101,15 +120,24 @@ public:
 // Built-in bindings: the XInput map and the keyboard map of slice 157 and earlier.
 const ControlMap &default_controls();
 
-// Parses the TOML subset described in docs/CONTROLS.md. Inputs listed in the file
-// replace their defaults; unlisted inputs keep them; `[]` unbinds an input.
+// Built-in context-aware bindings (TASK-077):
+// Base/Menu: Esc and Backspace are Triangle.
+// Race: Esc is Start (pause), Backspace is Triangle.
+// Pause: Esc and Backspace both act as Triangle/resume.
+const ContextControlMap &default_context_controls();
+
+// Parses the TOML subset described in docs/CONTROLS.md (schema 1 or schema 2).
+// Inputs listed in the file replace their defaults; unlisted inputs keep them; `[]` unbinds an input.
 ControlMap parse_controls(std::string_view text, const std::string &source_name);
+ContextControlMap parse_context_controls(std::string_view text, const std::string &source_name);
 
 // Reads and parses a file; throws ConfigError when it cannot be read.
 ControlMap load_controls_file(const std::string &path);
+ContextControlMap load_context_controls_file(const std::string &path);
 
 // GT4_CONTROLS_FILE: unset or empty selects the defaults, otherwise the file is loaded.
 ControlMap load_controls_from_environment();
+ContextControlMap load_context_controls_from_environment();
 
 // Digital keyboard bindings, used by window.cpp for GetAsyncKeyState polling.
 std::vector<KeyboardBinding> keyboard_bindings(const ControlMap &map);

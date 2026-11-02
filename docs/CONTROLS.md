@@ -29,9 +29,9 @@ TOML subset, UTF-8. Comments start with `#` outside quotes. Strings use double q
 contain `"`. No escapes, no multi-line values, no dotted keys, no inline tables.
 
 ```toml
-schema = 1                     # required; must be exactly 1
+schema = 1                     # schema = 1 or schema = 2 (TASK-077)
 
-[bindings]                     # the only table
+[bindings]                     # base bindings table
 cross = ["xinput:A", "key:Z"]  # one array of sources per input
 l2 = ["xinput:LT | deadzone=0.05"]
 rstick_y = []                  # an empty list unbinds the input
@@ -39,8 +39,8 @@ rstick_y = []                  # an empty list unbinds the input
 
 Rules:
 
-1. `schema = 1` is required. Any other value is refused.
-2. Only the `[bindings]` table exists. Any other table is refused.
+1. `schema = 1` or `schema = 2` is required. Any other value is refused.
+2. In schema 1, only `[bindings]` exists. In schema 2, `[bindings]` is required and optional `[bindings.<context>]` tables are permitted.
 3. Each key in `[bindings]` is an input name (table below). A name may appear once.
 4. Inputs you list replace their defaults. Inputs you do not list keep their defaults. Use `[]`
    to unbind an input.
@@ -222,3 +222,37 @@ Run with the default file first, then with `triggers-as-pedals.toml`.
    This is the open question the owner test answers; record the result in the journal.
 7. Edit the file to break it (for example `cross = ["xinput:Q"]`). Start the window and check that
    the game does not start and the log shows the file, line and reason.
+
+## Schema 2: Context-aware mapping (TASK-077)
+
+In `schema = 2`, optional context override tables `[bindings.<context>]` can be specified.
+Missing inputs in a context table fall back to `[bindings]`. An empty list `[]` unbinds an input for that context.
+
+```toml
+schema = 2
+
+[bindings]                       # default base table for every context
+cross = ["xinput:A", "key:W", "key:Enter"]
+triangle = ["xinput:Y", "key:Backspace", "key:Esc"]
+start = ["xinput:Start", "key:P"]
+
+[bindings.race]                  # in race: Esc acts as Start (pause)
+start = ["key:Esc", "xinput:Start", "key:P"]
+triangle = ["xinput:Y", "key:Backspace"]
+
+[bindings.pause]                 # in pause menu: Esc acts as Triangle (back / resume)
+triangle = ["key:Esc", "key:Backspace", "xinput:Y"]
+```
+
+Supported context tables:
+- `[bindings.race]`
+- `[bindings.pause]`
+- `[bindings.menu]`
+- `[bindings.photo_pause]` (or `[bindings.photo]`)
+- `[bindings.replay]`
+- `[bindings.showroom]`
+
+### Context transition rules
+1. **Re-arm rule:** A physical key or button held across a context boundary does not fire in the new context until it is physically released and pressed again. This prevents holding Esc in a race from immediately selecting an option in the menu.
+2. **Clean pad on switch:** On the exact frame a context transition occurs, all logical buttons are released so the game receives a neutral state.
+3. **Loading:** While in loading screens, pad outputs are held neutral.

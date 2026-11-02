@@ -102,7 +102,7 @@ See [GS renderer options](docs/GS-RENDERER-OPTIONS.md) and [GSDX-PLAN](docs/GSDX
 | TASK‑062 | Performance overlay (FPS, frame time, CPU/GPU of the game, resolutions, frame cost and headroom) | ✅ Done · owner test 2026-10-16; overlay off by default, +0.35 us/frame EE, +0.02 ms/frame GS thread |
 | TASK‑063 | Bit-exact R5900 FPU `div.s`/`mul.s` (license demo phase, real-PS2 card replays and ghosts) | 📋 Planned · oracle ready (`scripts/license_demo_oracle.py`); needs hardware vectors |
 | TASK‑064 | Third-party overlays (MSI Afterburner / RivaTuner) with the PCSX2 GS: Arbitrary Code Guard off by default | ✅ Done (2026-10-17) · owner test: the RivaTuner/Afterburner overlay shows in game with default settings |
-| TASK‑077 | Context-aware input mapping (race vs menus, e.g. Esc = Start in a race, Triangle in menus) | 📋 Open, study done (docs/CONTEXT-INPUT-STUDY.md); not in 1.0.0 |
+| TASK‑077 | Context-aware input mapping (race vs menus, e.g. Esc = Start in a race, Triangle in menus) | ✅ Done (2026-11-01) · host-side VBlank context probe, 3-frame debounce, transition filter (re-arm rule), schema 2 controls with per-context tables (docs/TASK-077-CONTEXT-INPUT-MAPPING.md) |
 | TASK‑078 | Graphics settings inside GT4's own Options menu (output resolution 480p to 8K replacing the 480i/480p/1080i row, fullscreen, anti-aliasing); game fixed at 480p | 📋 Planned (after 1.0.0), study done (docs/INGAME-SETTINGS-STUDY.md) |
 | TASK‑079 | Force 16:9 at boot: `GT4_FORCE_WIDESCREEN` holds the game's own Wide flag at 16:9 (slice211); launcher setting "Widescreen 16:9", default on | ✅ Done (2026-10-21) · slice211, GT4_FORCE_WIDESCREEN default on, launcher "Widescreen 16:9"; owner tested (boots 16:9 and 480p; the 100% save loads). The "Load failed!" seen on the way was the launcher card bug, fixed in TASK-019 |
 | TASK‑080 | Native ultrawide and other aspect ratios (16:10, phones, 21:9, 32:9): screen-ratio detection, automatic Width/Aspect for the 3D, HUD/UI fix, renderer stretch | ✅ Done 2026-10-21 (P0, P1, P2 and the seamless-display addendum, owner approved; release 1.1.0) · P3 progressive menus open with TASK-078 |
@@ -1808,3 +1808,19 @@ Acceptance: target isolation, account/logout/HTTP cancellation regressions, cont
 preview consistency, full native/Python/Rust and en-US/pt-BR checks, both target builds/pins,
 installer+portable verification. New builds go to draft; owner gameplay/review before merge or
 publication. No code, builds, running agents or public rc7 authorized by this mapping step.
+
+
+### TASK-077 — Context-aware input mapping (race vs menus)
+
+Context-aware input mapping separating race and menu controls, implemented natively without guest modifications.
+Branch: `task/077-context-input-mapping`.
+Documentation: [TASK-077](docs/TASK-077-CONTEXT-INPUT-MAPPING.md), [CONTROLS](docs/CONTROLS.md).
+
+- **Host-side Context Probe (`native/context_probe.{hpp,cpp}`):** Reads guest RAM at VBlank starting from game owner pointer `0x622F4C`. Recognizes 10 race vtables (`RaceGTmode`, `RaceArcade`, `RaceFreeRun`, `RaceLicense`, etc.), attract mode `RaceArcadeDemo` (mapped to Menu), and pause objects at `race + 0xE418` (`RacePause`, `SimplePause`, `PhotoPause`). 3-frame debounce filter prevents state chatter.
+- **Transition Filter (`native/context_input.{hpp,cpp}`):** Implements re-arm rule (held keys across transitions are disarmed until physically released), clean switch frames (all buttons released on the switch frame), and loading screen clean pad.
+- **Schema 2 Controls (`native/controls.{hpp,cpp}`):** Supports `schema = 2` with `[bindings.<context>]` override tables (`race`, `pause`, `menu`, etc.) and fallback to `[bindings]`. Built-in defaults map Esc to Start in races and Triangle in menus.
+- **Verification:**
+  - `native/context_probe_fixture.cpp` (all tests passed).
+  - `native/controls_fixture.cpp` (all 8 suites passed).
+  - `tests/python/test_controls_probe.py` (7 tests passed).
+  - `cargo test -p gt4controls` (17 lib + 4 docs_match passed).

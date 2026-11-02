@@ -2,6 +2,8 @@
 #include "race_display.hpp"
 #include "race_widescreen.hpp"
 #include "display_aspect.hpp"
+#include "context_probe.hpp"
+#include "context_input.hpp"
 #include "ps2/memory.hpp"
 #include "gpu.hpp"
 #include "gs/gs.hpp"
@@ -57,6 +59,10 @@ gt4::display::Force480pState force_480p_state;
 AudioOutput *audio_output = nullptr;
 // Input bindings (controls.hpp). open_window loads them before the window exists.
 gt4::controls::ControlMap active_controls;
+// TASK-077: context-aware input mapping, probe and transition filter.
+gt4::controls::ContextControlMap active_context_controls;
+gt4::context::ContextProbeState context_probe_state;
+gt4::context::ContextInputFilter context_input_filter;
 // TASK-075: gamepad backend (GT4_INPUT=sdl default, xinput for one release). open_window loads it.
 gt4::pad::Backend input_backend = gt4::pad::Backend::sdl;
 std::vector<gt4::controls::KeyboardBinding> keyboard_keys;
@@ -333,6 +339,12 @@ void on_vblank() {
   update_cursor();
   if (force_480p_enabled)
     gt4::display::force_race_480p_at_vblank(ps2::g_ram, ps2::kRamSize, force_480p_state);
+  // TASK-077: detect context and set active control mapping and transition filter
+  const gt4::context::GameContext current_context =
+      gt4::context::update_context_at_vblank(ps2::g_ram, ps2::kRamSize, context_probe_state);
+  context_input_filter.set_context(current_context);
+  if (controller)
+    controller->set_map(active_context_controls.map_for(current_context));
 #ifdef GT4_SHAPE_CAPTURE
   if (capture)
     capture->service();
@@ -340,18 +352,24 @@ void on_vblank() {
   std::uint16_t buttons = 0;
   const bool focused = GetForegroundWindow() == game_window;
   if (focused) {
-    // Keyboard bindings come from the controls table (defaults match the old fixed map).
+    // Keyboard bindings come from the context controls table for the active context.
     // Alt+Enter toggles fullscreen: while Alt is held, Enter is not Start.
+    const auto &context_keys = active_context_controls.keyboard_bindings_for(current_context);
     const bool alt_held = (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
-    for (const auto &binding : keyboard_keys) {
+    for (const auto &binding : context_keys) {
       if (binding.virtual_key == VK_RETURN && alt_held)
         continue;
-      if (GetAsyncKeyState(binding.virtual_key) & 0x8000)
+      const bool physically_down = (GetAsyncKeyState(binding.virtual_key) & 0x8000) != 0;
+      if (context_input_filter.filter_key(binding.virtual_key, physically_down))
         buttons |= binding.button_mask;
     }
+  } else {
+    context_input_filter.reset();
   }
   if (ps2::g_options.presses.empty()) {
-    apply_pad(controller->poll(focused, buttons));
+    PadState polled = controller->poll(focused, buttons);
+    polled.buttons = context_input_filter.filter_gamepad_buttons(polled.buttons);
+    apply_pad(polled);
     if (focused)
       controller->rumble(ps2::pad_rumble());
   }
@@ -378,13 +396,16 @@ bool open_window(bool fullscreen) {
   }
   // An invalid GT4_CONTROLS_FILE stops the start here, before any window or guest work.
   try {
-    active_controls = gt4::controls::load_controls_from_environment();
+    active_context_controls = gt4::controls::load_context_controls_from_environment();
+    active_controls = active_context_controls.base_map;
   } catch (const gt4::controls::ConfigError &error) {
     std::fprintf(stderr, "[controls] invalid controls file, game not started: %s\n",
                  error.what());
     return false;
   }
-  keyboard_keys = gt4::controls::keyboard_bindings(active_controls);
+  keyboard_keys = active_context_controls.keyboard_bindings_for(gt4::context::GameContext::Menu);
+  context_probe_state = {};
+  context_input_filter.reset();
   // TASK-080: an invalid GT4_DISPLAY_ASPECT, GT4_OUTPUT_SIZE or GT4_ASPECT_FOV_EXTRA stops the start here (prints and
   // exits).
   gt4::display_aspect::configured_setting();

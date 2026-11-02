@@ -234,7 +234,7 @@ target_compile_options(gt4_pacing PRIVATE /W4)
 # Pure window-mode state and the GT4_FORCE_480P race display index (slice164).
 # TASK-060: cursor auto-hide rule (cursor_autohide.cpp) shared by the window.
 # TASK-080: display aspect (GT4_DISPLAY_ASPECT parse, Hor+/Vert+ matrix scale, scene policy, runtime glue).
-add_library(gt4_quickfix STATIC window_mode.cpp race_display.cpp race_widescreen.cpp cursor_autohide.cpp display_aspect.cpp)
+add_library(gt4_quickfix STATIC window_mode.cpp race_display.cpp race_widescreen.cpp cursor_autohide.cpp display_aspect.cpp context_probe.cpp context_input.cpp)
 target_compile_options(gt4_quickfix PRIVATE /W4)
 # TASK-081: pure Vulkan extension selection (required surface/swapchain only; swapchain maintenance 1 when present).
 add_library(gt4_vulkan_extensions STATIC vulkan_extensions.cpp)
@@ -793,6 +793,8 @@ add_executable(perf_accounting_fixture perf_accounting_fixture.cpp)
 target_compile_options(perf_accounting_fixture PRIVATE /W4)
 add_executable(fpu_chop_fixture fpu_chop_fixture.cpp)
 target_compile_options(fpu_chop_fixture PRIVATE /W4)
+add_executable(context_probe_fixture context_probe_fixture.cpp context_probe.cpp context_input.cpp controls.cpp)
+target_compile_options(context_probe_fixture PRIVATE /W4)
 add_executable(quickfix_fixture quickfix_fixture.cpp)
 add_executable(race_display_fixture race_display_fixture.cpp)
 add_executable(race_widescreen_fixture race_widescreen_fixture.cpp)

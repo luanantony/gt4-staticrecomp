@@ -203,6 +203,8 @@ PACING_OVERRIDES = {'GT4_PACING': ('paced', 'audio'),
 CURSOR_AUTOHIDE_VALUES = ('0', '1')
 # GT4_CONTROLS_FILE (docs/CONTROLS.md): input bindings in a TOML file. Unset means the built-in map.
 CONTROLS_SCHEMA = 1
+CONTROLS_SCHEMAS = (1, 2)
+CONTROLS_CONTEXTS = ('race', 'pause', 'menu', 'photo_pause', 'photo', 'replay', 'showroom', 'loading')
 CONTROLS_INPUTS = ('dpad_up', 'dpad_right', 'dpad_down', 'dpad_left', 'cross', 'circle', 'square',
                    'triangle', 'l1', 'r1', 'l2', 'r2', 'l3', 'r3', 'select', 'start',
                    'rstick_x', 'rstick_y', 'lstick_x', 'lstick_y')
@@ -668,21 +670,32 @@ def resolve_controls_file(controls_file):
     unknown_tables = sorted(set(document) - {'schema', 'bindings'})
     if unknown_tables:
         raise ValueError(f'Controls file has unknown keys: {unknown_tables}')
-    if type(document.get('schema')) is not int or document['schema'] != CONTROLS_SCHEMA:
-        raise ValueError(f'Controls file needs schema = {CONTROLS_SCHEMA}')
+    schema = document.get('schema')
+    if type(schema) is not int or schema not in CONTROLS_SCHEMAS:
+        raise ValueError(f'Controls file needs schema = 1 or 2')
     bindings = document.get('bindings', {})
     if not isinstance(bindings, dict):
         raise ValueError('Controls file: [bindings] must be a table')
+    def check_inputs_table(tbl, ctx_label='[bindings]'):
+        for name, sources in tbl.items():
+            if name not in CONTROLS_INPUTS:
+                raise ValueError(f'Controls file: unknown input {name!r} in {ctx_label}')
+            items = [sources] if isinstance(sources, str) else sources
+            if not isinstance(items, list) or not all(isinstance(item, str) for item in items):
+                raise ValueError(f'Controls file: {name} must be a string or a list of strings')
+            for item in items:
+                kind = item.split('|', 1)[0].partition(':')[0].strip().lower()
+                if kind not in CONTROLS_SOURCE_KINDS:
+                    raise ValueError(f'Controls file: {name} has an unknown source {item!r}')
     for name, sources in bindings.items():
-        if name not in CONTROLS_INPUTS:
-            raise ValueError(f'Controls file: unknown input {name!r}')
-        items = [sources] if isinstance(sources, str) else sources
-        if not isinstance(items, list) or not all(isinstance(item, str) for item in items):
-            raise ValueError(f'Controls file: {name} must be a string or a list of strings')
-        for item in items:
-            kind = item.split('|', 1)[0].partition(':')[0].strip().lower()
-            if kind not in CONTROLS_SOURCE_KINDS:
-                raise ValueError(f'Controls file: {name} has an unknown source {item!r}')
+        if isinstance(sources, dict):
+            if schema != 2:
+                raise ValueError(f'Controls file context table [bindings.{name}] requires schema = 2')
+            if name not in CONTROLS_CONTEXTS:
+                raise ValueError(f'Controls file: unknown context table [bindings.{name}]')
+            check_inputs_table(sources, f'[bindings.{name}]')
+        else:
+            check_inputs_table({name: sources})
     return path
 
 

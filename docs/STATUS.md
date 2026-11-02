@@ -1,5 +1,15 @@
 # Current Status
 
+## TASK-077: Context-aware input mapping (2026-11-01)
+
+Completed TASK-077, implementing native context-aware input mapping separating race controls from menus and garages (e.g. Esc = Start in races, Triangle in menus).
+- Host-side VBlank context probe (`native/context_probe.{hpp,cpp}`) inspecting guest owner pointer `0x622F4C`, 10 race class vtables, attract demo detection, and pause objects (`race + 0xE418`).
+- 3-frame debounce filtering with cached offset resolution.
+- Context transition filter (`native/context_input.{hpp,cpp}`) enforcing the re-arm rule and clean switch frames to prevent stuck keys across scene changes.
+- Schema 2 controls (`native/controls.{hpp,cpp}`) supporting per-context override tables (`[bindings.<context>]`) with full fallback to `[bindings]`.
+- Verified with `context_probe_fixture` (all passed), `controls_fixture` (all passed), `test_controls_probe.py` (7 passed), and `gt4controls` (21 passed).
+- Documentation: `docs/TASK-077-CONTEXT-INPUT-MAPPING.md`, `docs/CONTROLS.md`.
+
 ## TASK-133: rc7 scope reset to RetroAchievements and controller upgrades (2026-10-26)
 
 Owner requested mapping only: published rc6 is the fixed program baseline, with RetroAchievements

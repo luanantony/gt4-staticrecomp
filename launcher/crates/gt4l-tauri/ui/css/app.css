@@ -815,3 +815,157 @@ body.input-pad .info:focus .tip { display: block; }
 .ra-pill.is-unlocked { background: rgba(47, 168, 102, 0.16); border-color: var(--ok); color: #7ee2a8; }
 .ra-pill.is-locked { color: var(--faint); }
 
+
+
+/* ---- Trigger Learning (Aprendizado Gatilho) ---- */
+.cx-calib-toggle-btn {
+  font: 500 11px var(--label);
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--hair);
+  color: var(--dim);
+  cursor: pointer;
+  margin-top: 6px;
+  margin-bottom: 2px;
+  display: inline-block;
+  transition: all 0.15s ease;
+}
+.cx-calib-toggle-btn:hover {
+  background: rgba(44, 107, 237, 0.15);
+  border-color: rgba(44, 107, 237, 0.45);
+  color: #9cc0ff;
+}
+.cx-calib-card {
+  margin: 8px 0;
+  padding: 12px;
+  background: rgba(20, 24, 30, 0.95);
+  border: 1px solid rgba(44, 107, 237, 0.35);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+.cx-calib-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.cx-calib-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 13px var(--label);
+  color: var(--white);
+}
+.cx-calib-close {
+  background: transparent;
+  border: none;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+}
+.cx-calib-close:hover {
+  color: var(--white);
+}
+.cx-calib-desc {
+  font: 400 12px var(--label);
+  color: var(--dim);
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+.cx-calib-steps {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.cx-calib-step {
+  flex: 1;
+  text-align: center;
+  padding: 6px 0;
+  border-radius: 4px;
+  font: 600 12px var(--label);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--dim);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
+}
+.cx-calib-step.active {
+  background: rgba(44, 107, 237, 0.3);
+  color: #ffffff;
+  border-color: #2c6bed;
+  box-shadow: 0 0 8px rgba(44, 107, 237, 0.5);
+}
+.cx-calib-step.done {
+  background: rgba(47, 168, 102, 0.25);
+  color: #7ee2a8;
+  border-color: var(--ok);
+}
+.cx-calib-live {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+.cx-calib-instruction {
+  font: 500 12px var(--label);
+  color: #f6d365;
+  margin-bottom: 8px;
+  text-align: center;
+}
+.cx-calib-gauge {
+  position: relative;
+  height: 10px;
+  background: var(--graphite);
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.cx-calib-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2c6bed, #2fa866);
+  border-radius: 5px;
+  transition: width 0.04s linear;
+}
+.cx-calib-metrics {
+  display: flex;
+  justify-content: space-between;
+  font: 400 11px var(--label);
+  color: var(--dim);
+}
+.cx-calib-metrics strong {
+  color: var(--white);
+}
+.cx-calib-success {
+  margin-top: 10px;
+  padding: 10px;
+  background: rgba(47, 168, 102, 0.15);
+  border: 1px solid var(--ok);
+  border-radius: 5px;
+  text-align: center;
+}
+.cx-calib-success-title {
+  font: 600 13px var(--label);
+  color: #7ee2a8;
+  margin-bottom: 4px;
+}
+.cx-calib-success-body {
+  font: 400 12px var(--label);
+  color: var(--white);
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+.cx-calib-apply-btn {
+  background: var(--ok);
+  color: #ffffff;
+  border: none;
+  font: 500 12px var(--label);
+  padding: 6px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.cx-calib-apply-btn:hover {
+  background: #39be75;
+}

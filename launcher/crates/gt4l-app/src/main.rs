@@ -376,7 +376,7 @@ fn main() -> Result<(), slint::PlatformError> {
                     6 => Curve::Logarithmic,
                     _ => Curve::Linear,
                 };
-                match state.controls.set_trigger_tuning(input, TriggerTuning { deadzone, curve }) {
+                match state.controls.set_trigger_tuning(input, TriggerTuning { deadzone, curve, scale: state.controls.trigger_tuning(input).scale }) {
                     Ok(()) => save_controls(&state),
                     Err(error) => state.controls_status = error.to_string(),
                 }

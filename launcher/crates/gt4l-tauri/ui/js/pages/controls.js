@@ -136,12 +136,170 @@
     // ---- side panel: analog settings with live meters ----
     var meters = {};
     var analogRows = {};
+    function createTriggerCalibWidget(id) {
+      var toggleBtn = h("button", {
+        class: "cx-calib-toggle-btn",
+        type: "button",
+        title: "Calibrar os pontos 0% e 100% do gatilho"
+      }, "Aprendizado Gatilho");
+
+      var card = h("div", { class: "cx-calib-card", hidden: true });
+      
+      var closeBtn = h("button", { class: "cx-calib-close", type: "button", text: "✕" });
+      var header = h("div", { class: "cx-calib-header" }, [
+        h("div", { class: "cx-calib-title" }, [
+          h("span", { text: "🎯" }),
+          h("strong", { text: "Aprendizado do Gatilho (" + id.toUpperCase() + ")" })
+        ]),
+        closeBtn
+      ]);
+
+      var desc = h("p", {
+        class: "cx-calib-desc",
+        text: "Pressione o gatilho até o fundo e solte completamente 5 vezes para que o launcher aprenda o repouso (0%) e o ponto 100% físico."
+      });
+
+      var stepEls = [];
+      var stepsBox = h("div", { class: "cx-calib-steps" });
+      for (var s = 1; s <= 5; s++) {
+        var el = h("span", { class: "cx-calib-step", text: String(s), data: { step: String(s) } });
+        stepEls.push(el);
+        stepsBox.appendChild(el);
+      }
+
+      var instruction = h("div", { class: "cx-calib-instruction", text: "👉 Aperte o gatilho até o fundo..." });
+      var fill = h("div", { class: "cx-calib-fill" });
+      var gauge = h("div", { class: "cx-calib-gauge" }, [fill]);
+
+      var curVal = h("strong", { text: "0%" });
+      var minVal = h("strong", { text: "0%" });
+      var maxVal = h("strong", { text: "0%" });
+      var metrics = h("div", { class: "cx-calib-metrics" }, [
+        h("span", null, ["Posição: ", curVal]),
+        h("span", null, ["0% Repouso: ", minVal]),
+        h("span", null, ["100% Fundo: ", maxVal])
+      ]);
+
+      var liveBox = h("div", { class: "cx-calib-live" }, [instruction, gauge, metrics]);
+
+      var successTitle = h("div", { class: "cx-calib-success-title", text: "✅ Calibração Concluída com Sucesso!" });
+      var successBody = h("div", { class: "cx-calib-success-body" });
+      var applyBtn = h("button", { class: "cx-calib-apply-btn", type: "button", text: "Concluir" });
+      var successBox = h("div", { class: "cx-calib-success", hidden: true }, [successTitle, successBody, applyBtn]);
+
+      card.appendChild(header);
+      card.appendChild(desc);
+      card.appendChild(stepsBox);
+      card.appendChild(liveBox);
+      card.appendChild(successBox);
+
+      var active = false;
+      var completedCycles = 0;
+      var phase = "press";
+      var minRaw = 1.0;
+      var maxRaw = 0.0;
+
+      function start() {
+        active = true;
+        card.hidden = false;
+        successBox.hidden = true;
+        completedCycles = 0;
+        phase = "press";
+        minRaw = 1.0;
+        maxRaw = 0.0;
+        stepEls.forEach(function (el, idx) {
+          el.className = "cx-calib-step" + (idx === 0 ? " active" : "");
+          el.textContent = String(idx + 1);
+        });
+        instruction.textContent = "👉 Aperte o gatilho até o fundo (1/5)...";
+      }
+
+      function stop() {
+        active = false;
+        card.hidden = true;
+      }
+
+      toggleBtn.addEventListener("click", function () {
+        if (card.hidden) {
+          start();
+        } else {
+          stop();
+        }
+      });
+      closeBtn.addEventListener("click", stop);
+      applyBtn.addEventListener("click", stop);
+
+      function updateLive(raw) {
+        if (!active) return;
+        var r = Math.max(0, Math.min(1, Number(raw) || 0));
+        fill.style.width = (r * 100).toFixed(1) + "%";
+        curVal.textContent = Math.round(r * 100) + "%";
+
+        if (phase === "press") {
+          if (r < 0.20) {
+            minRaw = Math.min(minRaw, r);
+            minVal.textContent = (minRaw * 100).toFixed(1) + "%";
+          }
+          if (r >= 0.75) {
+            maxRaw = Math.max(maxRaw, r);
+            maxVal.textContent = (maxRaw * 100).toFixed(1) + "%";
+            phase = "release";
+            instruction.textContent = "👉 Agora solte o gatilho completamente...";
+          }
+        } else if (phase === "release") {
+          if (r > 0.75) {
+            maxRaw = Math.max(maxRaw, r);
+            maxVal.textContent = (maxRaw * 100).toFixed(1) + "%";
+          }
+          if (r <= 0.15) {
+            minRaw = Math.min(minRaw, r);
+            minVal.textContent = (minRaw * 100).toFixed(1) + "%";
+            
+            stepEls[completedCycles].className = "cx-calib-step done";
+            stepEls[completedCycles].textContent = "✓";
+            completedCycles++;
+
+            if (completedCycles < 5) {
+              stepEls[completedCycles].className = "cx-calib-step active";
+              phase = "press";
+              instruction.textContent = "👉 Aperte até o fundo novamente (" + (completedCycles + 1) + "/5)...";
+            } else {
+              active = false;
+              var finalDz = Math.max(0, Math.min(0.20, minRaw + 0.015));
+              var peak = Math.max(0.6, maxRaw);
+              var scaleFactor = 0.353 / peak;
+              var finalScale = Math.round(scaleFactor * 100);
+              var finalDzPct = Math.round(finalDz * 100);
+
+              successBody.innerHTML = "Ponto 0% (Repouso): <strong>" + (minRaw * 100).toFixed(1) + "%</strong> (Zona morta: " + finalDzPct + "%)<br>" +
+                "Ponto 100% (Fundo): <strong>" + (maxRaw * 100).toFixed(1) + "%</strong> (Escala: " + finalScale + "%)<br>" +
+                "100% do curso físico do gatilho agora modula exatamente 100% do acelerador/freio no GT4!";
+              successBox.hidden = false;
+              instruction.textContent = "🎉 Calibração Concluída!";
+
+              call("set_setting", { id: id + "_deadzone", value: finalDzPct }).then(function () {
+                return call("set_setting", { id: id + "_scale", value: finalScale });
+              }).then(function () {
+                return load(id + "_scale");
+              });
+            }
+          }
+        }
+      }
+
+      return {
+        toggleBtn: toggleBtn,
+        card: card,
+        updateLive: updateLive
+      };
+    }
     function triggerBlock(id, title) {
       var raw = h("i", { class: "raw" });
       var out = h("i", { class: "out" });
       var dz = h("b", { class: "dz" });
       var value = h("span", { class: "cx-meter-v", text: "0%" });
-      meters[id] = { raw: raw, out: out, dz: dz, value: value };
+      var calibWidget = createTriggerCalibWidget(id);
+      meters[id] = { raw: raw, out: out, dz: dz, value: value, calibWidget: calibWidget };
       analogRows[id] = h("div", { class: "cx-rows" });
       return h("div", { class: "cx-block" }, [
         h("div", { class: "cx-block-head" }, [
@@ -149,6 +307,8 @@
           h("span", { class: "cx-meter", "aria-hidden": "true", title: "Grey: the trigger now. Blue: the pressure the game reads. Stripes: the deadzone." }, [dz, raw, out]),
           value
         ]),
+        calibWidget.toggleBtn,
+        calibWidget.card,
         analogRows[id]
       ]);
     }
@@ -285,7 +445,7 @@
         content: panel,
         refresh: function (id) { return load(id); }
       };
-      [["l2", ["l2_deadzone", "l2_curve"]], ["r2", ["r2_deadzone", "r2_curve"]], ["lstick", ["lstick_deadzone"]],
+      [["l2", ["l2_deadzone", "l2_scale", "l2_curve"]], ["r2", ["r2_deadzone", "r2_scale", "r2_curve"]], ["lstick", ["lstick_deadzone"]],
         ["rstick", ["rstick_deadzone"]]].forEach(function (pair) {
         var box = analogRows[pair[0]];
         GT4.ui.clear(box);
@@ -294,8 +454,11 @@
           if (!row) {
             return;
           }
+          var label = "Deadzone";
+          if (rowId.indexOf("curve") > 0) label = "Curve";
+          else if (rowId.indexOf("scale") > 0) label = "Scale";
           var node = GT4.settingsRows.rowNode(context, Object.assign({}, row, {
-            label: rowId.indexOf("curve") > 0 ? "Curve" : "Deadzone",
+            label: label,
             disabled: state.locked || !!row.disabled
           }));
           if (node) {
@@ -389,6 +552,9 @@
         meter.out.style.setProperty("--w", (reading.output * 100).toFixed(1) + "%");
         meter.dz.style.setProperty("--w", (analogValue(id + "_deadzone", M.TRIGGER_DEFAULT_DEADZONE) * 100).toFixed(1) + "%");
         meter.value.textContent = Math.round(reading.output * 100) + "%";
+        if (meter.calibWidget) {
+          meter.calibWidget.updateLive(reading.value);
+        }
       });
       [["lstick", live.sticks.left, 0.24], ["rstick", live.sticks.right, 0.265]].forEach(function (triple) {
         var meter = meters[triple[0]];

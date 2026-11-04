@@ -114,6 +114,7 @@ pub fn settings_table_with_monitors(settings: &Settings, controls: &Controls, mo
     }
     for trigger in ["l2", "r2"] {
         rows.push(trigger_row(trigger, controls, "deadzone"));
+        rows.push(trigger_row(trigger, controls, "scale"));
         rows.push(trigger_row(trigger, controls, "curve"));
     }
     for stick in [Stick::Left, Stick::Right] {
@@ -254,7 +255,11 @@ fn gs_row(row: &gs_table::Row, settings: &Settings) -> Value {
 
 fn trigger_row(trigger: &str, controls: &Controls, field: &str) -> Value {
     let tuning = controls.trigger_tuning(trigger);
-    let label = if field == "deadzone" { "deadzone" } else { "curve" };
+    let label = match field {
+        "deadzone" => "deadzone",
+        "scale" => "scale",
+        _ => "curve",
+    };
     let title = format!("{} {}", trigger.to_uppercase(), label);
     if field == "deadzone" {
         json!({
@@ -268,6 +273,18 @@ fn trigger_row(trigger: &str, controls: &Controls, field: &str) -> Value {
             "values": { "min": 0, "max": 95, "step": 1, "unit": "%" },
             "default": percent(gt4controls::TRIGGER_DEFAULT_DEADZONE),
             "current": percent(tuning.deadzone),
+        })
+    } else if field == "scale" {
+        json!({
+            "id": format!("{trigger}_scale"),
+            "label": format!("{} scale (sensitivity)", trigger.to_uppercase()),
+            "help": "Sensitivity scale. 100% is standard PS2; ~35% provides full-range pedal modulation in Gran Turismo 4.",
+            "page": "basic",
+            "group": "controls",
+            "control": "slider",
+            "values": { "min": 10, "max": 200, "step": 1, "unit": "%" },
+            "default": 100.0,
+            "current": (f64::from(tuning.scale) * 100.0).round(),
         })
     } else {
         json!({
@@ -534,7 +551,7 @@ pub fn trigger_tuning(deadzone_percent: f32, curve: &str) -> Result<TriggerTunin
         return Err("the deadzone must be between 0 and 100 percent".into());
     }
     let curve = curve_from_name(curve).ok_or_else(|| format!("unknown curve '{curve}'"))?;
-    Ok(TriggerTuning { deadzone: deadzone_percent / 100.0, curve })
+    Ok(TriggerTuning { deadzone: deadzone_percent / 100.0, curve, scale: 1.0 })
 }
 
 /// Whether an input is one the page may rebind (the digital inputs of the controls file).
@@ -830,7 +847,7 @@ mod table_tests {
         let circle = buttons.iter().find(|button| button["id"] == "circle").unwrap();
         assert_eq!(circle["xinput"], "A", "swapped");
         let analog: Vec<&str> = view["triggers"].as_array().unwrap().iter().map(|row| row["id"].as_str().unwrap()).collect();
-        assert_eq!(analog, ["l2_deadzone", "l2_curve", "r2_deadzone", "r2_curve", "lstick_deadzone", "rstick_deadzone"]);
+        assert_eq!(analog, ["l2_deadzone", "l2_scale", "l2_curve", "r2_deadzone", "r2_scale", "r2_curve", "lstick_deadzone", "rstick_deadzone"]);
         assert_eq!(view["locked"], false);
         assert_eq!(stick_setting("rstick_deadzone"), Some(Stick::Right));
         assert_eq!(stick_setting("l2_deadzone"), None);

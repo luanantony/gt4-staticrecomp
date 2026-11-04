@@ -194,18 +194,22 @@ pub fn set_setting_of(id: String, value: Value, shared: &Shared) -> Result<(), S
         }
     } else if let Some((trigger, field)) = id.split_once('_').filter(|(name, _)| ["l2", "r2"].contains(name)) {
         let current = state.controls.trigger_tuning(trigger);
-        let (deadzone, curve) = match field {
-            "deadzone" => (
-                value.as_f64().ok_or_else(|| format!("'{id}' needs a number"))? as f32,
-                current.curve.as_str().to_string(),
-            ),
-            "curve" => (
-                current.deadzone * 100.0,
-                value.as_str().ok_or_else(|| format!("'{id}' needs a curve name"))?.to_string(),
-            ),
+        let tuning = match field {
+            "deadzone" => {
+                let dz = value.as_f64().ok_or_else(|| format!("'{id}' needs a number"))? as f32 / 100.0;
+                gt4controls::TriggerTuning { deadzone: dz, curve: current.curve, scale: current.scale }
+            }
+            "curve" => {
+                let curve_name = value.as_str().ok_or_else(|| format!("'{id}' needs a curve name"))?;
+                let curve = model::curve_from_name(curve_name).ok_or_else(|| format!("unknown curve '{curve_name}'"))?;
+                gt4controls::TriggerTuning { deadzone: current.deadzone, curve, scale: current.scale }
+            }
+            "scale" => {
+                let sc = value.as_f64().ok_or_else(|| format!("'{id}' needs a number"))? as f32 / 100.0;
+                gt4controls::TriggerTuning { deadzone: current.deadzone, curve: current.curve, scale: sc.clamp(0.05, 2.0) }
+            }
             _ => return Err(format!("unknown setting '{id}'")),
         };
-        let tuning = model::trigger_tuning(deadzone, &curve)?;
         return change_controls(&mut state, |controls| {
             controls.set_trigger_tuning(trigger, tuning).map_err(|error| error.to_string())
         });

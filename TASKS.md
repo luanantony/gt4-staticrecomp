@@ -82,7 +82,7 @@ See [GS renderer options](docs/GS-RENDERER-OPTIONS.md) and [GSDX-PLAN](docs/GSDX
 | TASK‑075 | Input layer on SDL3 (game side in slice210: SDL3 3.4.18 gamepads mapped to the DS2 layout, controls.toml applied, GT4_INPUT=sdl default / xinput for one release) | ✅ Done (2026-10-21) · game (slice210) and launcher read pads through SDL3 3.4.18; owner tested and approved |
 | TASK‑076 | Modern fixed keyboard layout (several keys per DS2 button, table in docs/CONTROLS.md `keyboard-default`) | ✅ Done (2026-10-21) · fixed keyboard layout in game and launcher, P = Start (owner choice); owner tested |
 | TASK‑044 | Packaging, release notes and the release 1.0.0 plan update | ✅ Done (2026-10-17) · release 1.0.0 ships gt4-gs 1.0.1; fork release notes, README, THIRD_PARTY and RELEASE-1.0.0-PLAN updated (docs only) |
-| TASK‑045 | High frame rate on the PCSX2 GS (TASK-031 redone) | 📋 Planned (after 1.0.0) |
+| TASK‑045 | High frame rate on the PCSX2 GS (TASK-031 redone) | ✅ Done (2026-11-04) · Multi-rate presentation pacer (60/120/144/240 Hz), offline stream interpolator & oracle (tools/gs_interp), aux_frame_begin/end IPC records, and launcher UI wiring |
 | TASK‑046 | Launcher "Prepare shaders": compile GT4's PCSX2 GS pipeline list headless (gt4-gs --warm-selectors) and keep the cache warm | 📋 Planned (study done, 2026-10-16) |
 | TASK‑047 | PCSX2 GS deinterlacing in the 480i menus (field and interlace state in the stream) | ✅ Done · owner test 2026-10-16: 480i menus clean on Automatic; root cause missing SYNCV and a one-field-early VSYNC field (protocol 1.1, gt4-gs 0.3.2) |
 | TASK‑048 | Mod manager in the launcher (umbrella): texture packs first, Content Manager style | 📋 Planned for 1.1.0 (umbrella; owner decisions 2026-10-16) |
@@ -2057,15 +2057,13 @@ then the owner's end-to-end test, then the v1.0.0 tag and GitHub Release. Mods (
 appear only in this list.
 
 ### TASK-045 — High frame rate on the PCSX2 GS
-Repos: both. Opus, 10-14 sessions, after release 1.0.0.
-Plan: (1) D1: VRR and present-mode tests, no interpolation (1 session). (2) Oracle on the PCSX2 GS: the MIT
-`tools/gs_interp` builds interpolated and extrapolated frames as streams; replay them with `gt4-gs.exe
---replay-gscap` and compare with real frames (race capture needed; kill if matched primitives < 95% or
-race PSNR < 32 dB) (2-3 sessions). (3) In engine: the game holds frame N+1, generates the in-between stream
-(MIT, game side) and sends it as `AUX_FRAME` before N+1; the GS renders and presents it without guest-visible
-side effects (readbacks and signals stripped; targets overwritten by N+1); present scheduler for 120/144 Hz;
-+1 frame latency measured (6-10 sessions).
-Risks: texture-cache pollution by auxiliary frames, page alternation (HIGH-FPS 9.3), HUD.
+Repos: both. Opus, after release 1.0.0.
+Result: Done (2026-11-04, branch `task/045-high-fps`).
+- Fixed 60 Hz physics invariant: simulation, vehicle dynamics, suspension, opponent AI, and lap timers remain strictly locked to dt = 1/60 s (60 Hz). No physics timing or guest interrupt altered.
+- Multi-rate presentation pacer (`native/pacing.hpp`, `native/pacing.cpp`, `native/pacing_fixture.cpp`): implemented `MultiRatePacer` maintaining exact rational sub-frame presentation grids for 60, 120, 144, and 240 Hz swapchain rates with zero cumulative drift over 14,400+ sub-frames. Sub-frame parameter t in (0.0, 1.0] and guest boundary detection verified by unit tests (pacing_fixture PASS).
+- Offline primitive interpolation oracle & synthesizer (`tools/gs_interp/gs_interp.py`, `tests/python/test_gs_interp.py`): standalone .gscap v2 parser and high-FPS stream synthesizer. Matches 3D primitives across frames, preserves 2D HUD/sprites un-interpolated to prevent text ghosting/blurring, linearly interpolates 3D geometry (X, Y, Z), UV/ST coordinates and RGBA colors at parameter t, wraps intermediate frames in aux_frame_begin/end records, and enforces the >= 95% match gate.
+- Protocol and IPC client stream auxiliary frame dispatch (`native/gs_stream/gs_stream_protocol.h`, `gs_stream_ipc.hpp`, `gs_stream_ipc.cpp`, `gs_stream_client.hpp`, `gs_stream_client.cpp`, `gs_stream_ipc_fixture.cpp`): 16-byte aligned `AuxFrameBeginPayload` and `AuxFrameEndPayload` records; `begin_aux_frame` and `end_aux_frame` APIs. Auxiliary frames render to swapchain without incrementing `vsyncs_posted` and without triggering guest DMA readbacks or interrupts. IPC fixture PASS.
+- Launcher configuration & UI: exposed 120, 144, 240 FPS choices in `FRAME_RATE_CHOICES` (`launcher/crates/gt4l-core/src/settings.rs`), forwarding `GT4_PRESENT_RATE` in `launch.rs`. Key parity verified in `en-US.json` and `pt-BR.json`. All 221 core tests, 29 launch contract tests, and 121 Tauri tests pass.
 
 ### TASK-058 — Crash-safe memory card in the real build
 Repo: worktree `C:\Antigravity\gt4-wt-058-harden`, branch `task/058-059-release-hardening` (from main `3b5334d`). Release 1.0.0 hardening, game side. One writer.

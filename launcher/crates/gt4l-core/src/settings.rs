@@ -89,6 +89,9 @@ const RENDERER_CHOICES: &[Choice] = &[
 /// The strength of CoreGS 2.0's FSR1 sharpening (GSdx has CAS instead).
 const FRAME_RATE_CHOICES: &[Choice] = &[
     Choice { value: "60", label: "60 FPS", selectable: true },
+    Choice { value: "120", label: "120 FPS", selectable: true },
+    Choice { value: "144", label: "144 FPS", selectable: true },
+    Choice { value: "240", label: "240 FPS", selectable: true },
     Choice { value: "30", label: "30 FPS", selectable: true },
 ];
 
@@ -193,7 +196,7 @@ pub const SETTINGS: &[SettingDef] = &[
         page: Page::Graphics,
         group: "Performance",
         title: "Frame rate (experimental)",
-        info: "60 FPS is the default: in a race, when the PC cannot keep up, the frame rate drops instead of the game slowing down, with the same physics. The 30 FPS mode is for weaker PCs: races draw 30 frames per second. Both are experimental; menus stay at 60.",
+        info: "60 FPS is the default: in a race, when the PC cannot keep up, the frame rate drops instead of the game slowing down, with the same physics. High frame rates (120, 144, 240 FPS) synthesize intermediate presentation frames while preserving 60 Hz physics. The 30 FPS mode is for weaker PCs: races draw 30 frames per second. Menus stay at 60.",
         kind: Kind::Choice(FRAME_RATE_CHOICES),
         default: "60",
         connected: true,

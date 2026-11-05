@@ -510,6 +510,34 @@ class Client {
     post_display_aspect();
   }
 
+  void begin_aux(std::uint64_t base_frame, float t, std::uint32_t flags) {
+    const proto::AuxFrameBeginPayload payload{base_frame, t, flags};
+    write_capture(RecordType::aux_frame_begin, 0, &payload, sizeof payload);
+    ++sequence_;
+    count(sizeof payload);
+    if (session_ && !dead_) {
+      try {
+        session_->post_aux_frame_begin(payload);
+      } catch (const ipc::IpcError &error) {
+        lost(error.what());
+      }
+    }
+  }
+
+  void end_aux(std::uint64_t base_frame, std::uint32_t flags) {
+    const proto::AuxFrameEndPayload payload{base_frame, flags, 0};
+    write_capture(RecordType::aux_frame_end, 0, &payload, sizeof payload);
+    ++sequence_;
+    count(sizeof payload);
+    if (session_ && !dead_) {
+      try {
+        session_->post_aux_frame_end(payload);
+      } catch (const ipc::IpcError &error) {
+        lost(error.what());
+      }
+    }
+  }
+
   void reset(proto::ResetKind kind, std::uint32_t mask) {
     const proto::ResetPayload payload{static_cast<std::uint32_t>(kind), mask, 0};
     emit(RecordType::reset, 0, &payload, sizeof payload);
@@ -1398,6 +1426,14 @@ void on_vsync(bool odd_field) {
   }
   if (const InProcessSink *sink = hw_sink()) return sink->vsync(odd_field);
   if (Client *c = client()) c->vsync(odd_field);
+}
+
+void begin_aux_frame(std::uint64_t base_frame, float t, std::uint32_t flags) {
+  if (Client *c = client()) c->begin_aux(base_frame, t, flags);
+}
+
+void end_aux_frame(std::uint64_t base_frame, std::uint32_t flags) {
+  if (Client *c = client()) c->end_aux(base_frame, flags);
 }
 
 void set_vsync_deferral(bool defer) { g_defer_vsync = defer; }

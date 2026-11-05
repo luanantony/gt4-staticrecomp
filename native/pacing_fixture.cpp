@@ -331,6 +331,110 @@ void test_counter_interval_difference() {
   require(later.since(later).late_frames == 0, "identical totals give an empty interval");
 }
 
+void test_multirate_parsers() {
+  require(parse_presentation_rate(nullptr) == 60, "default presentation rate is 60");
+  require(parse_presentation_rate("60") == 60, "60 FPS");
+  require(parse_presentation_rate("30") == 30, "30 FPS");
+  require(parse_presentation_rate("120") == 120, "120 FPS");
+  require(parse_presentation_rate("144") == 144, "144 FPS");
+  require(parse_presentation_rate("240") == 240, "240 FPS");
+  require(parse_presentation_rate("90") == 90, "custom rate 90");
+  bool refused = false;
+  try {
+    parse_presentation_rate("0");
+  } catch (const std::invalid_argument &) {
+    refused = true;
+  }
+  require(refused, "0 rate is refused");
+  refused = false;
+  try {
+    parse_presentation_rate("500");
+  } catch (const std::invalid_argument &) {
+    refused = true;
+  }
+  require(refused, "excessive rate is refused");
+  refused = false;
+  try {
+    parse_presentation_rate("invalid");
+  } catch (const std::invalid_argument &) {
+    refused = true;
+  }
+  require(refused, "invalid string is refused");
+}
+
+void test_multirate_120hz_schedule() {
+  MultiRatePacer pacer(frequency, 60, 120);
+  require(pacer.is_high_fps(), "120 Hz is high-FPS");
+  pacer.anchor(0);
+
+  for (std::uint64_t i = 0; i < 12000; ++i) {
+    const std::int64_t expected_deadline = static_cast<std::int64_t>((i + 1) * frequency / 120);
+    require(pacer.deadline() == expected_deadline, "exact rational subframe deadline");
+    const SubframeRelease rel = pacer.release_subframe(pacer.deadline());
+    require(!rel.is_late, "on-time subframe is not late");
+    if (i % 2 == 0) {
+      require(!rel.is_guest_boundary, "subframe 0 is auxiliary frame");
+      require(rel.subframe_index == 0, "subframe 0 index");
+      require(std::abs(rel.t - 0.5f) < 0.01f, "subframe 0 t is 0.5");
+    } else {
+      require(rel.is_guest_boundary, "subframe 1 is guest boundary");
+      require(rel.subframe_index == 1, "subframe 1 index");
+      require(std::abs(rel.t - 1.0f) < 0.001f, "subframe 1 t is 1.0");
+    }
+  }
+  require(pacer.subframes_presented() == 12000, "12,000 subframes presented");
+  require(pacer.guest_frames_completed() == 6000, "6,000 guest frames completed");
+  require(pacer.late_subframes() == 0, "zero late subframes in clean run");
+  require(pacer.resyncs() == 0, "zero resyncs in clean run");
+}
+
+void test_multirate_144hz_schedule() {
+  MultiRatePacer pacer(frequency, 60, 144);
+  require(pacer.is_high_fps(), "144 Hz is high-FPS");
+  pacer.anchor(1000);
+
+  for (std::uint64_t i = 0; i < 14400; ++i) {
+    const std::int64_t expected = 1000 + static_cast<std::int64_t>((i + 1) * frequency / 144);
+    require(pacer.deadline() == expected, "144 Hz deadline exact without drift");
+    const SubframeRelease rel = pacer.release_subframe(pacer.deadline());
+    require(!rel.is_late, "on-time release is not late");
+    require(rel.t > 0.0f && rel.t <= 1.0f, "t parameter within (0.0, 1.0]");
+  }
+  require(pacer.subframes_presented() == 14400, "14,400 subframes");
+  require(pacer.guest_frames_completed() == 6000, "6,000 guest frames completed");
+  require(pacer.late_subframes() == 0 && pacer.resyncs() == 0, "no drift or resync");
+}
+
+void test_multirate_60hz_schedule() {
+  MultiRatePacer pacer(frequency, 60, 60);
+  require(!pacer.is_high_fps(), "60 Hz is not high-FPS");
+  pacer.anchor(0);
+  for (std::uint64_t i = 0; i < 6000; ++i) {
+    const SubframeRelease rel = pacer.release_subframe(pacer.deadline());
+    require(rel.is_guest_boundary, "60 Hz is always guest boundary");
+    require(rel.subframe_index == 0, "subframe index is always 0");
+    require(rel.t == 1.0f, "t is 1.0 for real frame");
+  }
+  require(pacer.subframes_presented() == 6000, "6,000 subframes");
+  require(pacer.guest_frames_completed() == 6000, "6,000 guest frames");
+}
+
+void test_multirate_resync_and_shift() {
+  MultiRatePacer pacer(frequency, 60, 120);
+  pacer.anchor(1000);
+  const std::int64_t before = pacer.deadline();
+  pacer.shift(500);
+  require(pacer.deadline() == before + 500, "shifted deadline moves");
+  pacer.shift(-500);
+  require(pacer.deadline() == before, "shifted back returns to grid");
+
+  const std::int64_t period = static_cast<std::int64_t>(frequency / 120);
+  pacer.release_subframe(before);
+  pacer.release_subframe(before + period * 10);
+  require(pacer.resyncs() == 1, "severe lateness triggers resync");
+  require(pacer.late_subframes() == 1, "late subframe counted");
+}
+
 } // namespace
 
 int main() {
@@ -351,6 +455,11 @@ int main() {
     test_sample_window();
     test_diagnostics_format();
     test_counter_interval_difference();
+    test_multirate_parsers();
+    test_multirate_120hz_schedule();
+    test_multirate_144hz_schedule();
+    test_multirate_60hz_schedule();
+    test_multirate_resync_and_shift();
     std::puts("pacing fixture PASS");
     return 0;
   } catch (const std::exception &error) {

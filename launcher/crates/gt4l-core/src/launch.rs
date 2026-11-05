@@ -296,6 +296,11 @@ fn add_common(variables: &mut BTreeMap<&'static str, String>, settings: &Setting
         }
         .to_string(),
     );
+    // TASK-045: High-FPS presentation rate decoupled from 60 Hz guest physics.
+    let frame_rate = settings.get("frame_rate");
+    if matches!(frame_rate, "120" | "144" | "240") {
+        variables.insert("GT4_PRESENT_RATE", frame_rate.to_string());
+    }
     if settings.is_on("performance_report") {
         variables.insert("GT4_PERF", "1".to_string());
     }

@@ -223,7 +223,6 @@ fn the_lines_of_the_shader_compile_are_read_and_anything_else_is_ignored() {
 
 #[test]
 fn a_coregs20_session_runs_the_hw_renderer_with_the_shared_choices() {
-    use gt4l_core::games;
     let textures = TextureLocation::default_folder(Path::new(r"D:\data\Textures"));
     let mut settings = Settings::default();
     assert!(!launch::uses_coregs20(&settings), "GSdx by default");
@@ -274,6 +273,12 @@ fn a_coregs20_session_runs_the_hw_renderer_with_the_shared_choices() {
     assert_eq!(tuned["GT4_CORE2_FSR_SHARPNESS"], "0.2");
     assert_eq!(tuned["GT4_HW_SCALE"], "1", "the integrated GPU default of the session plan");
 
+    settings.set("frame_rate", "120").unwrap();
+    let high120 = env_map(&launch::coregs20_environment(&settings, None, true, &textures));
+    assert_eq!(high120["GT4_PRESENT_RATE"], "120");
+    assert_eq!(high120["GT4_FRAME_SKIP"], "1");
+
+    settings.set("frame_rate", "30").unwrap();
     let section = launch::coregs20_section(&settings, Some(&display), false, &textures);
     assert!(section.starts_with("renderer=coregs20\n"));
     assert!(section.contains("hw_scale=3\n") && section.contains("hw_performance=1\n") && section.contains("hw_postfx=fxaa\n"));

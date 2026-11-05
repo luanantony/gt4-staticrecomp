@@ -204,7 +204,7 @@
       page: "advanced", control: "toggle", values: null, default: false, current: false },
     { id: "performance_report", label: "Performance report", help: "Records frame timing while you play for bug reports.",
       page: "advanced", control: "toggle", values: null, default: false, current: false },
-    { visible_when: { id: "renderer", equals: "coregs20" }, id: "frame_rate", label: "Frame rate (experimental)", help: "60 FPS is the default. The 30 FPS mode is for weaker PCs and is still experimental: races draw 30 frames per second, with the game at full speed and the same physics. Menus stay at 60.", page: "basic", group: null, control: "dropdown", values: [{ value: "60", label: "60 FPS" }, { value: "30", label: "30 FPS" }], default: "60", current: "60", connected: true },
+    { visible_when: { id: "renderer", equals: "coregs20" }, id: "frame_rate", label: "Frame rate (experimental)", help: "60 FPS is the default. The 30 FPS mode is for weaker PCs and is still experimental: races draw 30 frames per second, with the game at full speed and the same physics. Menus stay at 60.", page: "basic", group: null, control: "dropdown", values: [{ value: "60", label: "60 FPS" }, { value: "120", label: "120 FPS" }, { value: "144", label: "144 FPS" }, { value: "240", label: "240 FPS" }, { value: "30", label: "30 FPS" }], default: "60", current: "60", connected: true },
     { visible_when: { id: "renderer", equals: "coregs20" }, id: "coregs_sharpening", label: "Sharpening (FSR1)",
       help: "AMD FidelityFX Super Resolution 1 sharpening of the final picture. Off leaves the picture as the game drew it.",
       page: "basic", group: "graphics", control: "dropdown",

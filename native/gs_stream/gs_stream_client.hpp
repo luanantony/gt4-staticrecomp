@@ -103,6 +103,12 @@ void set_readback_journal(const ReadbackJournal &journal);
 bool readback_local_active();
 // Posts the queued READ_FIFO without waiting for the reply; called by the MTVU journal drain, in stream order.
 void post_read_fifo_nowait(std::uint32_t qwords);
+// TASK-045: High-FPS Auxiliary Frames
+// Dispatches synthesized intermediate presentation frames to the GS process without advancing
+// guest VBlank, triggering DMA readbacks, or incrementing EE cycle / frame counters.
+void begin_aux_frame(std::uint64_t base_frame, float t, std::uint32_t flags = 0);
+void end_aux_frame(std::uint64_t base_frame, std::uint32_t flags = 0);
+
 // Start of the vertical blank, after the donor toggled the field: odd_field is the CSR FIELD bit the EE now reads.
 // The donor toggles the field together with INTC VBLANK_S, before the game's VBLANK_S handler runs, so this is also
 // the display field of the frame that ends here (protocol 1.1 VSYNC.field; docs/GS-STREAM-PROTOCOL.md 6.1).

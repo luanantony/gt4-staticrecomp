@@ -58,6 +58,25 @@ const char *present_mode_name(PresentMode mode) {
   return "unknown";
 }
 
+std::uint64_t parse_presentation_rate(const char *value) {
+  if (!value || std::strcmp(value, "60") == 0 || std::strcmp(value, "default") == 0)
+    return 60;
+  if (std::strcmp(value, "30") == 0)
+    return 30;
+  if (std::strcmp(value, "120") == 0)
+    return 120;
+  if (std::strcmp(value, "144") == 0)
+    return 144;
+  if (std::strcmp(value, "240") == 0)
+    return 240;
+  char *end = nullptr;
+  unsigned long parsed = std::strtoul(value, &end, 10);
+  if (end && *end == '\0' && parsed >= 15 && parsed <= 360) {
+    return static_cast<std::uint64_t>(parsed);
+  }
+  throw std::invalid_argument("GT4_PRESENT_RATE must be 30, 60, 120, 144, 240 or 15..360");
+}
+
 FramePacer::FramePacer(std::uint64_t frequency, std::uint64_t rate)
     : frequency_(frequency), rate_(rate) {
   if (!frequency_ || !rate_)
@@ -99,6 +118,86 @@ bool FramePacer::release(std::int64_t now) {
     ++resyncs_;
   }
   return late;
+}
+
+MultiRatePacer::MultiRatePacer(std::uint64_t frequency, std::uint64_t guest_rate,
+                               std::uint64_t presentation_rate)
+    : frequency_(frequency), guest_rate_(guest_rate),
+      presentation_rate_(presentation_rate) {
+  if (!frequency_ || !guest_rate_ || !presentation_rate_)
+    throw std::invalid_argument("MultiRatePacer needs nonzero frequency and rates");
+}
+
+void MultiRatePacer::anchor(std::int64_t now) {
+  scaled_pres_deadline_ = now * static_cast<std::int64_t>(presentation_rate_) +
+                          static_cast<std::int64_t>(frequency_);
+  scaled_guest_start_ = now * static_cast<std::int64_t>(guest_rate_);
+  scaled_guest_deadline_ = scaled_guest_start_ + static_cast<std::int64_t>(frequency_);
+  anchored_ = true;
+  current_subframe_index_ = 0;
+}
+
+void MultiRatePacer::shift(std::int64_t ticks) {
+  scaled_pres_deadline_ += ticks * static_cast<std::int64_t>(presentation_rate_);
+  scaled_guest_start_ += ticks * static_cast<std::int64_t>(guest_rate_);
+  scaled_guest_deadline_ += ticks * static_cast<std::int64_t>(guest_rate_);
+}
+
+std::int64_t MultiRatePacer::deadline() const {
+  return scaled_pres_deadline_ / static_cast<std::int64_t>(presentation_rate_);
+}
+
+std::int64_t MultiRatePacer::guest_deadline() const {
+  return scaled_guest_deadline_ / static_cast<std::int64_t>(guest_rate_);
+}
+
+std::int64_t MultiRatePacer::remaining(std::int64_t now) const {
+  return std::max<std::int64_t>(0, deadline() - now);
+}
+
+SubframeRelease MultiRatePacer::release_subframe(std::int64_t now) {
+  if (!anchored_)
+    anchor(now);
+
+  const std::int64_t current_deadline = deadline();
+  const bool late = now > current_deadline + static_cast<std::int64_t>(frequency_ / late_tolerance_divisor);
+  if (late)
+    ++late_subframes_;
+
+  const std::int64_t guest_start_ticks = scaled_guest_start_ / static_cast<std::int64_t>(guest_rate_);
+  const std::int64_t guest_end_ticks = scaled_guest_deadline_ / static_cast<std::int64_t>(guest_rate_);
+  const std::int64_t guest_span = std::max<std::int64_t>(1, guest_end_ticks - guest_start_ticks);
+
+  SubframeRelease result;
+  result.is_late = late;
+  result.subframe_index = current_subframe_index_;
+
+  if (presentation_rate_ <= guest_rate_ || current_deadline >= guest_end_ticks) {
+    result.is_guest_boundary = true;
+    result.t = 1.0f;
+    ++guest_frames_completed_;
+    current_subframe_index_ = 0;
+
+    scaled_guest_start_ = scaled_guest_deadline_;
+    scaled_guest_deadline_ += static_cast<std::int64_t>(frequency_);
+  } else {
+    result.is_guest_boundary = false;
+    const double frac = static_cast<double>(current_deadline - guest_start_ticks) / static_cast<double>(guest_span);
+    result.t = static_cast<float>(clamp_value(frac, 0.01, 0.99));
+    ++current_subframe_index_;
+  }
+
+  ++subframes_presented_;
+  scaled_pres_deadline_ += static_cast<std::int64_t>(frequency_);
+
+  const std::int64_t allowed = (scaled_pres_deadline_ + static_cast<std::int64_t>(frequency_) * (resync_periods_ - 1)) /
+                               static_cast<std::int64_t>(presentation_rate_);
+  if (now > allowed) {
+    anchor(now);
+    ++resyncs_;
+  }
+
+  return result;
 }
 
 void LinearResampler::set_ratio(double ratio) {

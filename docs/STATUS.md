@@ -1,5 +1,25 @@
 # Current Status
 
+## TASK-045: High frame rate on the PCSX2 GS (2026-11-04)
+
+Branch `task/045-high-fps`; `docs/TASK-045-HIGH-FPS-ROADMAP.md`. 120, 144, and 240 FPS visual presentation decoupled
+from 60 Hz guest physics. Game simulation loop, vehicle dynamics, suspension, opponent AI, and lap timers remain strictly
+locked to constant dt = 1/60 s (60 Hz).
+- Multi-rate presentation pacer (`native/pacing.hpp`, `native/pacing.cpp`): `MultiRatePacer` and `parse_presentation_rate`
+  maintain exact rational sub-frame grids at 60, 120, 144, 240 Hz with zero drift over 14,400+ sub-frames (pacing fixture PASS).
+- Offline primitive interpolation oracle & synthesizer (`tools/gs_interp/gs_interp.py`, `tests/python/test_gs_interp.py`):
+  parses .gscap v2 captures, extracts GIF packets and GS context registers (FRAME, ZBUF, TEST, TEX0, PRIM), preserves 2D HUD/sprites
+  un-interpolated to eliminate text ghosting/blurring, linearly interpolates 3D geometry (X, Y, Z), UV/ST coordinates and RGBA colors
+  at parameter t, wraps intermediate frames in aux_frame_begin/end records, and enforces the >= 95% match gate. Unit tests PASS.
+- Protocol and IPC client stream auxiliary frame dispatch (`native/gs_stream/gs_stream_protocol.h`, `gs_stream_ipc.hpp`,
+  `gs_stream_ipc.cpp`, `gs_stream_client.hpp`, `gs_stream_client.cpp`, `gs_stream_ipc_fixture.cpp`): 16-byte aligned
+  `AuxFrameBeginPayload` and `AuxFrameEndPayload` records; `begin_aux_frame` and `end_aux_frame` APIs. Auxiliary frames render to
+  swapchain without advancing guest VBlank, without incrementing `vsyncs_posted`, and without triggering guest DMA readbacks or interrupts.
+  IPC fixture PASS.
+- Launcher configuration & UI: exposed 120, 144, 240 FPS choices in `FRAME_RATE_CHOICES` (`launcher/crates/gt4l-core/src/settings.rs`),
+  forwarding `GT4_PRESENT_RATE` in `launch.rs`. Key parity verified in `en-US.json` and `pt-BR.json`. All 221 core tests, 29 launch
+  contract tests, and 121 Tauri tests pass.
+
 ## 1.3.0-rc14: closing as a pre-release (2026-11-04, afternoon)
 
 On top of the slice407 test build: the full trigger range on by default with a fixed-width meter (TASK-161), the shader

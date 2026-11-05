@@ -164,6 +164,9 @@ class Session {
             std::size_t second_bytes = 0);
   // Posts VSYNC, then waits while more than frames_in_flight VSYNCs are unprocessed.
   void post_vsync(const VsyncPayload &vsync);
+  // TASK-045: Auxiliary presentation frames
+  void post_aux_frame_begin(const AuxFrameBeginPayload &payload);
+  void post_aux_frame_end(const AuxFrameEndPayload &payload);
   // Posts READ_FIFO and waits for the reply; copies qwords*16 bytes to `out`. Returns the readback status.
   std::uint32_t read_fifo(std::uint32_t qwords, void *out);
   // TASK-116 step 1: posts READ_FIFO without waiting and returns its request id; the reply is collected later with

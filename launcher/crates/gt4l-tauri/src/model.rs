@@ -949,7 +949,7 @@ mod table_tests {
         let table = settings_table(&Settings::default(), &Controls::default());
         let skip = row(&table, "frame_rate");
         assert_eq!(skip["control"], "dropdown");
-        assert_eq!(skip["values"].as_array().unwrap().len(), 2);
+        assert_eq!(skip["values"].as_array().unwrap().len(), 5);
         assert_eq!(skip["page"], "basic", "the main Graphics section, not Advanced");
         assert_eq!(skip["default"], "60");
         assert_eq!(skip["current"], "60");

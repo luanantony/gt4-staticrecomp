@@ -58,6 +58,10 @@ const char *present_mode_name(PresentMode mode);
 // immediate stand in for each other (both are "do not wait for vsync"), then FIFO.
 PresentMode available_present_mode(PresentMode wanted, bool mailbox_available, bool immediate_available);
 
+// GT4_PRESENT_RATE: target presentation refresh rate (TASK-045).
+// Unset or "60" (default), "120", "144", "240", "30", or integer 15..360.
+std::uint64_t parse_presentation_rate(const char *value);
+
 // Release schedule on a clock with `frequency` ticks per second. The period is
 // frequency / rate ticks, kept exact by storing the deadline scaled by `rate`,
 // so 10,000 frames accumulate no drift.
@@ -97,6 +101,67 @@ private:
   std::int64_t scaled_deadline_ = 0;
   std::uint64_t late_frames_ = 0;
   std::uint64_t resyncs_ = 0;
+  std::uint32_t resync_periods_ = 1;
+};
+
+// TASK-045: High-FPS presentation subframe result
+struct SubframeRelease {
+  bool is_guest_boundary = false;
+  bool is_late = false;
+  std::uint32_t subframe_index = 0;
+  float t = 1.0f;
+};
+
+// Release schedule for presentation decoupled from or multiplied against the guest
+// 60 Hz VBlank schedule (TASK-045). Accumulates no drift over 100,000+ frames.
+class MultiRatePacer {
+public:
+  static constexpr std::uint64_t late_tolerance_divisor = 1000;
+
+  MultiRatePacer(std::uint64_t frequency, std::uint64_t guest_rate,
+                 std::uint64_t presentation_rate);
+
+  void anchor(std::int64_t now);
+  void shift(std::int64_t ticks);
+  void set_resync_periods(std::uint32_t periods) { resync_periods_ = periods; }
+  bool anchored() const { return anchored_; }
+
+  std::uint64_t guest_rate() const { return guest_rate_; }
+  std::uint64_t presentation_rate() const { return presentation_rate_; }
+  bool is_high_fps() const { return presentation_rate_ > guest_rate_; }
+
+  // Next presentation subframe deadline in clock ticks.
+  std::int64_t deadline() const;
+  // Ticks until the subframe deadline.
+  std::int64_t remaining(std::int64_t now) const;
+
+  // Deadline of the current guest frame window end.
+  std::int64_t guest_deadline() const;
+
+  // Releases one presentation subframe, calculating its interpolation parameter t
+  // in (0.0, 1.0] and determining if this subframe matches the guest boundary.
+  SubframeRelease release_subframe(std::int64_t now);
+
+  std::uint64_t late_subframes() const { return late_subframes_; }
+  std::uint64_t resyncs() const { return resyncs_; }
+  std::uint64_t subframes_presented() const { return subframes_presented_; }
+  std::uint64_t guest_frames_completed() const { return guest_frames_completed_; }
+
+private:
+  std::uint64_t frequency_;
+  std::uint64_t guest_rate_;
+  std::uint64_t presentation_rate_;
+  bool anchored_ = false;
+
+  std::int64_t scaled_pres_deadline_ = 0;
+  std::int64_t scaled_guest_start_ = 0;
+  std::int64_t scaled_guest_deadline_ = 0;
+
+  std::uint32_t current_subframe_index_ = 0;
+  std::uint64_t late_subframes_ = 0;
+  std::uint64_t resyncs_ = 0;
+  std::uint64_t subframes_presented_ = 0;
+  std::uint64_t guest_frames_completed_ = 0;
   std::uint32_t resync_periods_ = 1;
 };
 

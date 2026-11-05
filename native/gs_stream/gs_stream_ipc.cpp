@@ -398,6 +398,14 @@ void Session::post_vsync(const VsyncPayload &vsync) {
   }
 }
 
+void Session::post_aux_frame_begin(const AuxFrameBeginPayload &payload) {
+  post(RecordType::aux_frame_begin, 0, &payload, sizeof payload);
+}
+
+void Session::post_aux_frame_end(const AuxFrameEndPayload &payload) {
+  post(RecordType::aux_frame_end, 0, &payload, sizeof payload);
+}
+
 std::uint64_t Session::post_read_fifo_nowait(std::uint32_t qwords) {
   ControlBlock &c = *control_;
   if (static_cast<std::uint64_t>(qwords) * 16 > c.response_capacity) throw IpcError("READ_FIFO larger than the response area");

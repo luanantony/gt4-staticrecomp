@@ -56,6 +56,7 @@ SessionOptions small_options(std::uint64_t ring_bytes) {
 
 void check_layout() {
   require(sizeof(RecordHeader) == 16 && sizeof(ControlBlock) == 4096 && sizeof(FileHeader) == 64, "struct sizes");
+  require(sizeof(AuxFrameBeginPayload) == 16 && sizeof(AuxFrameEndPayload) == 16, "aux frame payload sizes");
   require(record_size(0) == 16 && record_size(1) == 32 && record_size(16) == 32 && record_size(17) == 48, "padding");
   auto session = Session::create_producer(small_options(8192));
   const ControlBlock &c = session->control();
@@ -522,6 +523,47 @@ void check_child_process() {
   }
 }
 
+void check_aux_frames() {
+  auto producer = Session::create_producer(small_options(16384));
+  auto consumer = Session::open_consumer(producer->name());
+
+  std::thread server([&] {
+    RecordView view;
+    // 1. expect aux_frame_begin
+    consumer->next_command(view);
+    require(view.header->type == static_cast<std::uint16_t>(RecordType::aux_frame_begin), "aux_frame_begin record");
+    const AuxFrameBeginPayload begin = *reinterpret_cast<const AuxFrameBeginPayload *>(view.payload);
+    require(begin.base_frame == 42, "aux_frame_begin base_frame");
+    require(std::abs(begin.t - 0.5f) < 0.001f, "aux_frame_begin t");
+    consumer->release_command(view);
+
+    // 2. expect gif record
+    consumer->next_command(view);
+    require(view.header->type == static_cast<std::uint16_t>(RecordType::gif), "gif record");
+    consumer->release_command(view);
+
+    // 3. expect aux_frame_end
+    consumer->next_command(view);
+    require(view.header->type == static_cast<std::uint16_t>(RecordType::aux_frame_end), "aux_frame_end record");
+    const AuxFrameEndPayload end = *reinterpret_cast<const AuxFrameEndPayload *>(view.payload);
+    require(end.base_frame == 42, "aux_frame_end base_frame");
+    consumer->release_command(view);
+  });
+
+  const AuxFrameBeginPayload begin_req{42, 0.5f, 0};
+  producer->post_aux_frame_begin(begin_req);
+  const std::uint8_t dummy_gif[32] = {0x01, 0x02};
+  producer->post(RecordType::gif, 0, dummy_gif, sizeof dummy_gif);
+  const AuxFrameEndPayload end_req{42, 0, 0};
+  producer->post_aux_frame_end(end_req);
+
+  server.join();
+
+  // Crucial safety invariant: auxiliary frames must NOT increment vsyncs_posted
+  require(producer->control().vsyncs_posted == 0, "auxiliary frame does not advance guest VBlanks");
+  std::puts("[gs-stream-ipc] aux frames: begin, lerp payload, end, vsyncs_posted untouched ok");
+}
+
 }  // namespace
 
 int main(int argc, char **argv) {
@@ -530,6 +572,7 @@ int main(int argc, char **argv) {
     const std::uint64_t records = argc > 1 ? std::strtoull(argv[1], nullptr, 10) : 1000000;
     check_layout();
     check_split();
+    check_aux_frames();
     check_readback_and_frames();
     check_readback_nowait();
     check_spurious_wakes();

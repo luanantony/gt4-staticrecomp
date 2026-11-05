@@ -190,6 +190,24 @@ struct ControlPayload {
 };
 static_assert(sizeof(ControlPayload) == 32);
 
+// --- AUX_FRAME_BEGIN / AUX_FRAME_END (TASK-045) ----------------------------------------------------------------
+// Synthesized intermediate presentation frame between frame N and frame N+1.
+// The consumer renders the auxiliary frame to the swapchain without advancing guest VBlank or triggering
+// guest DMA readbacks or interrupts.
+struct AuxFrameBeginPayload {
+  std::uint64_t base_frame;  // preceding guest VSYNC frame number
+  float t;                   // interpolation parameter in (0.0, 1.0)
+  std::uint32_t flags;       // flags (0)
+};
+static_assert(sizeof(AuxFrameBeginPayload) == 16);
+
+struct AuxFrameEndPayload {
+  std::uint64_t base_frame;  // matching base_frame
+  std::uint32_t flags;       // flags (0)
+  std::uint32_t reserved;
+};
+static_assert(sizeof(AuxFrameEndPayload) == 16);
+
 // --- Back channel (event ring) -----------------------------------------------------------------------------------
 inline constexpr std::uint32_t kReadyFlagReadbacksZeroFilled = 1u;  // READ_FIFO replies are zeros (no VRAM model)
 inline constexpr std::uint32_t kReadyFlagPresents = 2u;             // the consumer presents frames itself

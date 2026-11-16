@@ -1047,19 +1047,57 @@ bool is_candidate_wheel_device(bool sdl_is_wheel_type, bool sdl_is_gamepad,
 int select_primary_device(const WheelConfig &config, const std::vector<DeviceReading> &devices) {
   if (!config.enabled)
     return -1;
-  int selected = -1;
+  if (!config.device_guid.empty()) {
+    const std::string target_guid = to_lower_ascii(config.device_guid);
+    std::vector<int> matching;
+    for (std::size_t i = 0; i < devices.size(); ++i) {
+      if (to_lower_ascii(devices[i].guid) == target_guid) {
+        matching.push_back(static_cast<int>(i));
+      }
+    }
+    if (matching.empty())
+      return -1;
+    if (matching.size() == 1)
+      return matching[0];
+    // Multiple devices share this GUID (e.g. Logitech G920 presenting both RawInput/DirectInput
+    // and XInput gamepad nodes on Windows). Prefer a dedicated wheel (is_wheel && !is_gamepad).
+    int dedicated_idx = -1;
+    for (int idx : matching) {
+      const auto &dev = devices[static_cast<std::size_t>(idx)];
+      if (dev.is_wheel && !dev.is_gamepad) {
+        dedicated_idx = idx;
+        break;
+      }
+    }
+    if (dedicated_idx >= 0)
+      return dedicated_idx;
+    // Fall back to any wheel-candidate device matching this GUID
+    for (int idx : matching) {
+      if (devices[static_cast<std::size_t>(idx)].is_wheel)
+        return idx;
+    }
+    // Ambiguous non-wheel devices (e.g. two identical generic gamepads): return -1
+    return -1;
+  }
+
+  // Auto-detection mode (device_guid is empty):
+  // Pass 1: Look for a dedicated wheel (is_wheel && !is_gamepad) to ensure dual-node wheels
+  // (like G920) always pick the DirectInput/RawInput node with true FFB support rather than the XInput shadow node.
   for (std::size_t i = 0; i < devices.size(); ++i) {
     const auto &device = devices[i];
-    if (!config.device_guid.empty()) {
-      if (to_lower_ascii(device.guid) == to_lower_ascii(config.device_guid)) {
-        if (selected >= 0) return -1;
-        selected = static_cast<int>(i);
-      }
-    } else if (is_candidate_wheel_device(device.is_wheel, device.is_gamepad, device.name, device.guid)) {
+    if (device.is_wheel && !device.is_gamepad &&
+        is_candidate_wheel_device(device.is_wheel, device.is_gamepad, device.name, device.guid)) {
       return static_cast<int>(i);
     }
   }
-  return selected;
+  // Pass 2: Fall back to any candidate wheel (e.g. HORI Apex XInput wheel).
+  for (std::size_t i = 0; i < devices.size(); ++i) {
+    const auto &device = devices[i];
+    if (is_candidate_wheel_device(device.is_wheel, device.is_gamepad, device.name, device.guid)) {
+      return static_cast<int>(i);
+    }
+  }
+  return -1;
 }
 
 PadState map_wheel_devices(const WheelConfig &config,
@@ -1256,6 +1294,11 @@ void WheelInput::close_haptic() {
         SDL_DestroyHapticEffect(primary_haptic_, *id);
       *id = -1;
     }
+    // Restore default gain/autocenter before closing so the driver/firmware isn't left zeroed across session restarts
+    if (haptic_features_ & SDL_HAPTIC_GAIN)
+      SDL_SetHapticGain(primary_haptic_, 100);
+    if (haptic_features_ & SDL_HAPTIC_AUTOCENTER)
+      SDL_SetHapticAutocenter(primary_haptic_, 100);
     haptic_features_ = 0;
     SDL_CloseHaptic(primary_haptic_);
     primary_haptic_ = nullptr;
@@ -1271,9 +1314,10 @@ void WheelInput::open_haptic_for_primary(SDL_Joystick *joystick) {
   if (!primary_haptic_)
     return;
   haptic_features_ = SDL_GetHapticFeatures(primary_haptic_);
-  // Opening a handle never enables force; focused rumble() resumes the configured outputs.
+  // Initialize gain according to configured strength, and silence autocenter until forces resume
+  const int initial_gain = config_.dfp ? 100 : static_cast<int>(std::lround(std::clamp(config_.ffb.strength * 100.0, 0.0, 100.0)));
   if (haptic_features_ & SDL_HAPTIC_GAIN)
-    SDL_SetHapticGain(primary_haptic_, 0);
+    SDL_SetHapticGain(primary_haptic_, initial_gain);
   if (haptic_features_ & SDL_HAPTIC_AUTOCENTER)
     SDL_SetHapticAutocenter(primary_haptic_, 0);
   if (config_.dfp) {
@@ -1471,11 +1515,17 @@ void WheelInput::prepare(bool focused) {
         if (match(source)) return true;
     return false;
   };
-  for (const auto &device : readings)
-    if (device.instance_id == selected_id || (references(device) &&
-        std::count_if(readings.begin(), readings.end(), [&device](const DeviceReading &candidate) {
-          return candidate.guid == device.guid;
-        }) == 1)) owned_device_ids_.push_back(device.instance_id);
+  const std::string selected_guid = selected < 0 ? "" : readings[static_cast<std::size_t>(selected)].guid;
+  for (const auto &device : readings) {
+    if (device.instance_id == selected_id ||
+        (!selected_guid.empty() && to_lower_ascii(device.guid) == to_lower_ascii(selected_guid)) ||
+        (references(device) &&
+         std::count_if(readings.begin(), readings.end(), [&device](const DeviceReading &candidate) {
+           return candidate.guid == device.guid;
+         }) == 1)) {
+      owned_device_ids_.push_back(device.instance_id);
+    }
+  }
   if (config_.dfp) {
     prepare_dfp(focused, readings, selected);
     if (!focused)
@@ -1639,8 +1689,11 @@ void WheelInput::apply_dfp_forces(bool focused) {
   if (forces.spring)
     update_condition(dfp_spring_, SDL_HAPTIC_SPRING, forces.spring_left, forces.spring_right, forces.spring_center,
                      forces.spring_deadband, forces.spring_saturation);
-  else if (forces.autocenter)
+  else if (forces.autocenter) {
+    if (haptic_features_ & SDL_HAPTIC_AUTOCENTER)
+      SDL_SetHapticAutocenter(primary_haptic_, static_cast<int>(std::lround(forces.autocenter_strength * 100.0)));
     update_condition(dfp_spring_, SDL_HAPTIC_SPRING, forces.autocenter_strength, forces.autocenter_strength, 0, 0, 1);
+  }
   else
     update_condition(dfp_spring_, SDL_HAPTIC_SPRING, 0, 0, 0, 0, 0);
   // Damping: the game's damper, at least the configured floor ([ffb] damper). The wheel's firmware applies it with no

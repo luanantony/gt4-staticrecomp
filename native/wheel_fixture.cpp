@@ -241,6 +241,33 @@ void test_opt_in_and_device_identity() {
   for (auto &slot : cfg.buttons) slot.clear();
   const auto ambiguous = map_wheel_devices(cfg, {unknown, unknown});
   require(ambiguous.buttons == 0 && ambiguous.axes[2] == 128, "duplicate auxiliary GUID reads neutral");
+
+  // Dual-node racing wheels (e.g. Logitech G920 presenting both XInput and RawInput/DirectInput nodes):
+  DeviceReading g920_xinput{};
+  g920_xinput.guid = "030000006d04000062c2000000000000";
+  g920_xinput.name = "G920 Driving Force Racing Wheel";
+  g920_xinput.is_wheel = true;
+  g920_xinput.is_gamepad = true;
+
+  DeviceReading g920_rawinput{};
+  g920_rawinput.guid = "030000006d04000062c2000000000000";
+  g920_rawinput.name = "Logitech G920 Driving Force Racing Wheel USB";
+  g920_rawinput.is_wheel = true;
+  g920_rawinput.is_gamepad = false;
+
+  auto g920_cfg = default_wheel_config();
+  g920_cfg.enabled = true;
+  g920_cfg.device_guid = g920_xinput.guid;
+  require(select_primary_device(g920_cfg, {g920_xinput, g920_rawinput}) == 1,
+          "dual-node G920 explicit GUID prefers dedicated wheel node with FFB");
+  require(select_primary_device(g920_cfg, {g920_rawinput, g920_xinput}) == 0,
+          "dual-node G920 explicit GUID prefers dedicated wheel node in any enumeration order");
+
+  g920_cfg.device_guid.clear();
+  require(select_primary_device(g920_cfg, {g920_xinput, g920_rawinput}) == 1,
+          "dual-node G920 auto-detect prefers dedicated wheel node with FFB");
+  require(select_primary_device(g920_cfg, {g920_rawinput, g920_xinput}) == 0,
+          "dual-node G920 auto-detect prefers dedicated wheel node in any enumeration order");
 }
 
 struct VirtualDevice {

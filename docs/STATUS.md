@@ -1,5 +1,10 @@
 # Current Status
 
+## Controls improvements and response clarity (#242, #223, 2026-11-16)
+
+- #242 (PR #256): Resolved racing wheel button conflicts and pedal lockup when wheel is connected.
+- #223: Documented trigger sensitivity, progressive curve options (quadratic / smooth power), and trigger_full_range behavior in docs/CONTROLS.md.
+
 ## 1.3.0-rc14: closing as a pre-release (2026-11-04, afternoon)
 
 On top of the slice407 test build: the full trigger range on by default with a fixed-width meter (TASK-161), the shader

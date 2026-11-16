@@ -114,8 +114,9 @@ about 27% of its travel and 100% brake at about 40%. R2 (the throttle in the usu
 spread the game's own range over the whole travel. If the game's controller options put the brake on R2 or the throttle
 on L2, set `range=84` on R2 or `range=45` on L2; `range=255` restores the whole byte.
 
-**Full trigger range (TASK-161, experimental, off by default).** The launcher's "Full trigger range" toggle (Controls page,
-above L2 and R2) passes `GT4_TRIGGER_FULL_RANGE=1` (`game.ini` `trigger_full_range=1` for a direct start). The game then
+**Full trigger range (TASK-161, on by default since rc14).** The launcher's "Full trigger range" toggle (Controls page,
+above L2 and R2) passes `GT4_TRIGGER_FULL_RANGE=1` (`game.ini` `trigger_full_range=1` for a direct start; unset or empty is on,
+`0` turns it off). The game then
 reads the throttle and the brake from the whole pressure byte, `min(100p / 99, 256)`, 100% from `p = 254`: about 255 levels
 instead of 46 and 85 (`docs/research/TRIGGER-SENSITIVITY.md`). The same switch, read once by the game at start, sets the
 triggers' default ranges: the whole byte (255) on every trigger with it on, 45 and 84 with it off, so the end of the travel is
@@ -125,6 +126,20 @@ and a `range_full` never changes the game's own scale. With the full range on, t
 option (both pedals use the same scale). The Controls page's trigger meters show the percentage of the game's 100% and the
 pressure over that 100% (`28/45`, or `158/255` with the full range).
 
+
+**Trigger sensitivity, progressive throttle/brake modulation, and touchy response (#223).**
+Players moving from DualShock 2 pressure buttons or digital keys to modern long-throw analog triggers (LT/RT) often find that car
+throttle or braking feels very touchy or appears to max out at 60–70% physical trigger travel. This is explained by how GT4 was built:
+1. PS2 GT4 vehicle physics and engine torque curves ramp up acceleration rapidly in the mid-range of pedal input. With a `linear`
+   trigger curve, 50% physical pull delivers 50% throttle, which in high-powered or rear-wheel drive cars easily induces heavy wheelspin
+   or immediate full engine sound.
+2. In the Recomp Launcher under **Controls**:
+   - Change **R2 curve** (Throttle) and **L2 curve** (Brake) from `Linear` to **`Quadratic`** or **`Smooth Power (x^1.5)`**. The quadratic
+     curve dampens low-to-mid travel (50% physical pull gives 25% throttle; 70% pull gives 49%), reserving the upper travel for full
+     acceleration. This provides progressive throttle feathering and eliminates the touchy response.
+   - Verify that **Full trigger range** (`trigger_full_range`) is **On** (default), ensuring all 255 levels are used instead of the
+     legacy 46/85-level DualShock 2 scale.
+3. In `controls.toml`, custom trigger options such as `curve=quadratic`, `deadzone=0.05`, and `scale` can also be tuned per binding.
 SDL3 Gamepad triggers already use 0 released through 32767 pressed for Xbox and DualSense alike.
 The adapter reduces that standardized value to a pressure byte; raw joystick/HID signed ranges are
 not read here. No device-name range override or `mode` source option is supported.

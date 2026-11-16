@@ -3418,6 +3418,7 @@ Owner request (2026-11-04): throttle and brake precision is low. Idea from the "
   unset means on, `0` turns it off; `game.ini` and the launcher default are on. The Controls page meter keeps the width of its
   widest text (100% and the whole byte, plus a margin) with equal-width digits, so the bar no longer changes size while a
   trigger moves (owner, 2026-11-04; focus check in both languages).
+- Follow-up (#223, 2026-11-16): documented trigger sensitivity and progressive curve modulation (quadratic, smooth power, cubic) in docs/CONTROLS.md for players reporting touchy response or early perceived 100% saturation on long-throw modern triggers.
 
 ### TASK-169 — Save states for endurance races (study accepted; planned after 1.3.0)
 

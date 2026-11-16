@@ -581,6 +581,9 @@ fn variables_of_game_ini(text: &str) -> std::collections::BTreeMap<String, Strin
             "trigger_full_range" => {
                 variables.insert("GT4_TRIGGER_FULL_RANGE".to_string(), value.to_string());
             }
+            "button_prompts" => {
+                variables.insert("GT4_BUTTON_PROMPTS".to_string(), value.to_string());
+            }
             other => panic!("unknown game.ini key {other}"),
         }
     }
@@ -597,6 +600,8 @@ fn every_game_ini_key_stands_for_the_variable_the_launcher_sets_at_play() {
         vec![("performance_report", "on"), ("check_vu_code", "100")],
         vec![("check_vu_code", "1000"), ("fullscreen", "off"), ("vsync", "on")],
         vec![("trigger_full_range", "on")],
+        vec![("button_prompts", "xbox")],
+        vec![("button_prompts", "switch")],
     ];
     let display = display_target(r"\\.\DISPLAY1", 2560, 1440);
     for changes in variants {
@@ -680,4 +685,25 @@ fn a_chosen_textures_folder_reaches_the_renderers_and_the_shader_cache_stays_in_
     let paths = launch::Pcsx2Paths { textures: chosen.folder.clone(), ..pcsx2_paths() };
     let text = launch::gs_config_text(&Settings::default(), &paths, None, false).unwrap();
     assert!(text.contains(r"E:\Emulators\PCSX2\textures"), "{text}");
+}
+
+#[test]
+fn button_prompts_maps_to_gt4_button_prompts_and_game_ini() {
+    let mut settings = Settings::default();
+    assert_eq!(settings.get("button_prompts"), "playstation");
+    let env_default = env_map(&game_environment(&settings));
+    assert!(!env_default.contains_key("GT4_BUTTON_PROMPTS"), "default playstation sets no variable");
+    assert!(!launch::standalone_config_text(&settings, None).contains("button_prompts="));
+
+    settings.set("button_prompts", "xbox").unwrap();
+    let env_xbox = env_map(&game_environment(&settings));
+    assert_eq!(env_xbox["GT4_BUTTON_PROMPTS"], "xbox");
+    assert!(launch::standalone_config_text(&settings, None).contains("button_prompts=xbox\n"));
+
+    settings.set("button_prompts", "switch").unwrap();
+    let env_switch = env_map(&game_environment(&settings));
+    assert_eq!(env_switch["GT4_BUTTON_PROMPTS"], "switch");
+    assert!(launch::standalone_config_text(&settings, None).contains("button_prompts=switch\n"));
+
+    assert!(settings.set("button_prompts", "invalid").is_err());
 }

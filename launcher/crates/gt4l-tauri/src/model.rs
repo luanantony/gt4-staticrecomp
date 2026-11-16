@@ -162,10 +162,12 @@ pub fn settings_table_with_monitors(
         // rows below).
         // TASK-082: the frame rate sits after Performance Mode, under the renderer that has it.
         // TASK-148: the controller is chosen on the Controls page, from the pads connected now.
+        // TASK-165: button_prompts is configured on the Controls page.
         if definition.id == "graphics_card"
             || definition.id == "coregs_sharpening"
             || definition.id == "frame_rate"
             || definition.id == "controller"
+            || definition.id == "button_prompts"
         {
             continue;
         }
@@ -494,7 +496,9 @@ pub fn controls_view(settings: &Settings, controls: &Controls, locked: bool) -> 
         .as_array()
         .map(|rows| rows.iter().filter(|row| row["group"] == "controls").cloned().collect())
         .unwrap_or_default();
-    json!({ "controls": rows, "triggers": analog, "locked": locked })
+    let button_prompts = gt4l_core::settings::definition("button_prompts")
+        .map(|def| launcher_row(def, settings));
+    json!({ "controls": rows, "triggers": analog, "locked": locked, "button_prompts": button_prompts })
 }
 
 /// The text a `set_setting` value stands for: booleans as `on`/`off` for launcher toggles and `true`/`false` for the

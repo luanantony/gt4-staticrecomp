@@ -416,10 +416,11 @@ pub fn render_ini(settings: &BTreeMap<String, String>, launcher: &BTreeMap<Strin
 /// The bytes of a gt4-gs.ini file. `render_ini` returns LF lines; the file is written the way Python's text-mode
 /// write does it (CRLF on Windows), so the launcher and scripts/gs_settings.py produce the same bytes.
 pub fn ini_file_bytes(text: &str) -> Vec<u8> {
+    let normalized = text.replace("\r\n", "\n");
     if cfg!(windows) {
-        text.replace('\n', "\r\n").into_bytes()
+        normalized.replace('\n', "\r\n").into_bytes()
     } else {
-        text.as_bytes().to_vec()
+        normalized.into_bytes()
     }
 }
 

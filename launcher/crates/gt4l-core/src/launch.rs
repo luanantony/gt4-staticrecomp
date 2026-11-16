@@ -301,6 +301,11 @@ fn add_common(variables: &mut BTreeMap<&'static str, String>, settings: &Setting
     }
     // TASK-161: the game's full trigger range and the controls' trigger ranges follow this one switch (game_main.cpp).
     variables.insert("GT4_TRIGGER_FULL_RANGE", flag(settings.is_on("trigger_full_range")));
+    // TASK-165: controller button prompt style (playstation, xbox, switch).
+    let button_prompts = settings.get("button_prompts");
+    if button_prompts == settings::BUTTON_PROMPTS_XBOX || button_prompts == settings::BUTTON_PROMPTS_SWITCH {
+        variables.insert("GT4_BUTTON_PROMPTS", button_prompts.to_string());
+    }
     match settings.get("check_vu_code") {
         "100" => {
             variables.insert("GT4_VU1_VERIFY", "100".to_string());
@@ -434,6 +439,11 @@ pub fn standalone_config_text(settings: &Settings, display: Option<&DisplayTarge
     text.push_str(&format!("performance_report={}\n", flag(settings.is_on("performance_report"))));
     text.push_str(&format!("check_vu_code={check_vu_code}\n"));
     text.push_str(&format!("trigger_full_range={}\n", flag(settings.is_on("trigger_full_range"))));
+    // TASK-165: controller button prompts option for direct start.
+    let button_prompts = settings.get("button_prompts");
+    if button_prompts == settings::BUTTON_PROMPTS_XBOX || button_prompts == settings::BUTTON_PROMPTS_SWITCH {
+        text.push_str(&format!("button_prompts={button_prompts}\n"));
+    }
     // TASK-148: the chosen controller, as GT4_PAD.
     if let Some(choice) = controller_environment(settings) {
         text.push_str(&format!("pad={choice}\n"));

@@ -693,5 +693,10 @@
   "ra.pill_locked": "Bloqueada",
   "ra.pts": "{pts} pts",
   "ra.unsupported_title": "O RetroAchievements não está disponível para o Gran Turismo 4 Spec II",
-  "ra.unsupported_desc": "As conquistas são suportadas apenas na versão original de Gran Turismo 4 (v2.00). Você pode alternar para o Gran Turismo 4 no menu Jogos para visualizar e desbloquear conquistas."
+  "ra.unsupported_desc": "As conquistas são suportadas apenas na versão original de Gran Turismo 4 (v2.00). Você pode alternar para o Gran Turismo 4 no menu Jogos para visualizar e desbloquear conquistas.",
+  "setting.button_prompts.label": "Ícones dos botões",
+  "setting.button_prompts.help": "Escolhe os ícones de botões nos menus e na corrida: PlayStation (padrão), Xbox (A/B/X/Y) ou Nintendo Switch (B/A/Y/X).",
+  "choice.button_prompts.playstation": "PlayStation",
+  "choice.button_prompts.xbox": "Xbox",
+  "choice.button_prompts.switch": "Nintendo Switch"
 }

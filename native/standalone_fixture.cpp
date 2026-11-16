@@ -463,6 +463,20 @@ void check_resolve() {
     check(has(sa::resolve(triggers, chosen.access()).set, "GT4_TRIGGER_FULL_RANGE", "1"),
           "game.ini's trigger_full_range becomes GT4_TRIGGER_FULL_RANGE");
     check(!sa::parse_config("trigger_full_range=on\n").warnings.empty(), "trigger_full_range takes only 0 or 1");
+    // TASK-165: controller button prompts option (playstation, xbox, switch).
+    sa::Inputs prompts = inputs_for(*layout, nullptr);
+    prompts.config = sa::parse_config("version=1\nbutton_prompts=xbox\n");
+    check(prompts.config->warnings.empty(), "the button prompts key is accepted");
+    check(has(sa::resolve(prompts, chosen.access()).set, "GT4_BUTTON_PROMPTS", "xbox"),
+          "game.ini's button_prompts=xbox becomes GT4_BUTTON_PROMPTS=xbox");
+    sa::Inputs prompts_sw = inputs_for(*layout, nullptr);
+    prompts_sw.config = sa::parse_config("version=1\nbutton_prompts=switch\n");
+    check(has(sa::resolve(prompts_sw, chosen.access()).set, "GT4_BUTTON_PROMPTS", "switch"),
+          "game.ini's button_prompts=switch becomes GT4_BUTTON_PROMPTS=switch");
+    check(sa::parse_config("button_prompts=playstation\n").warnings.empty(), "playstation is accepted");
+    check(lacks(sa::resolve(inputs_for(*layout, nullptr), chosen.access()).set, "GT4_BUTTON_PROMPTS"),
+          "default button prompts sets no variable");
+    check(!sa::parse_config("button_prompts=ps3\n").warnings.empty(), "invalid button_prompts value produces warning");
     sa::Inputs fast = inputs_for(*layout, nullptr);
     fast.config = sa::parse_config(std::string("present_mode=mailbox") + char(10) + "renderer=coregs20" + char(10) + "hw_present_mode=fifo" + char(10));
     check(has(sa::resolve(fast, chosen.access()).set, "GT4_PRESENT_MODE", "fifo"), "a stored Fast vsync draws as On under CoreGS 2.0");

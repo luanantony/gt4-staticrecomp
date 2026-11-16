@@ -450,6 +450,21 @@
           is_default: JSON.stringify(sources) === JSON.stringify(DEFAULT_SOURCES[id]) };
       }),
       triggers: JSON.parse(JSON.stringify(analog)),
+      button_prompts: {
+        id: "button_prompts",
+        label: "Button prompts",
+        help: "Chooses in-game controller button prompts: PlayStation (default), Xbox (A/B/X/Y) or Nintendo Switch (B/A/Y/X).",
+        page: "basic",
+        group: "controls",
+        control: "dropdown",
+        values: [
+          { value: "playstation", label: "PlayStation" },
+          { value: "xbox", label: "Xbox" },
+          { value: "switch", label: "Nintendo Switch" }
+        ],
+        default: "playstation",
+        current: "playstation"
+      },
       locked: query.get("locked") === "1"
     };
   }

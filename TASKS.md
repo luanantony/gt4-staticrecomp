@@ -3084,10 +3084,20 @@ Play starts, Cancel and Back start nothing, a failed check starts at once. Tests
 
 ### TASK-165 — Xbox and Switch button prompts in the game (issue #161; study #166)
 
+State (2026-11-16): done on branch `task/165-button-prompts`.
 Owner (2026-11-04): planned. Issue #161 asks for Xbox or Switch button prompts instead of the PlayStation ones. Luan Antony's
 study (`docs/studies/BUTTON-PROMPTS.md`, PR #166) designs it through texture replacement of the button glyphs plus a launcher
 setting (PlayStation, Xbox, Switch). Needs the glyph textures drawn (own or CC0 art) and the replacement path on both
 renderers (CoreGS 2.0 and GSdx). No change to the game code.
+Done (2026-11-16):
+- Setting `button_prompts` added in `gt4l-core` with choices `playstation` (default), `xbox`, `switch` on `Page::General`, `group: "Controls"`.
+- Launch plan exports `GT4_BUTTON_PROMPTS=xbox|switch` when non-default, and writes `button_prompts=xbox|switch` to `game.ini`.
+- `native/standalone.cpp` parses `button_prompts` and sets `GT4_BUTTON_PROMPTS` accordingly for direct starts.
+- Native startup validation in `native/button_prompts.hpp` and `native/button_prompts.cpp`.
+- Controls page (`controls.js`) exposes the Button Prompts dropdown selector with immediate persistence via `set_setting`.
+- Localized in `en-US.json` and `pt-BR.json`.
+- Texture directory layout in `data/prompts/xbox` and `data/prompts/switch`, and setup documentation in `docs/BUTTON-PROMPTS-SETUP.md`.
+- Automated checks: `button_prompts_fixture` (PASS), `standalone_fixture` (PASS), `launch_contract` (30/30 PASS), `gt4l-core` (221 unit tests PASS).
 
 ### TASK-166 — Spec II ultrawide: race-font text and mirror stretched (owner, 2026-11-04; done in rc14)
 

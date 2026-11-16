@@ -693,5 +693,10 @@
   "ra.pill_locked": "Locked",
   "ra.pts": "{pts} pts",
   "ra.unsupported_title": "RetroAchievements is not available for Gran Turismo 4 Spec II",
-  "ra.unsupported_desc": "Achievements are supported only on the original Gran Turismo 4 (v2.00) release. You can switch to Gran Turismo 4 in the Games menu to view and unlock achievements."
+  "ra.unsupported_desc": "Achievements are supported only on the original Gran Turismo 4 (v2.00) release. You can switch to Gran Turismo 4 in the Games menu to view and unlock achievements.",
+  "setting.button_prompts.label": "Button prompts",
+  "setting.button_prompts.help": "Chooses in-game controller button prompts: PlayStation (default), Xbox (A/B/X/Y) or Nintendo Switch (B/A/Y/X).",
+  "choice.button_prompts.playstation": "PlayStation",
+  "choice.button_prompts.xbox": "Xbox",
+  "choice.button_prompts.switch": "Nintendo Switch"
 }

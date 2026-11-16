@@ -130,7 +130,9 @@
     // TASK-148: which controller the game reads (the `controller` setting), from the pads the Rust service sees.
     var pickBox = h("div", { class: "cx-pick" });
     var pickNote = h("p", { class: "cx-pick-note", hidden: true, text: "" });
-    content.appendChild(h("div", { class: "cx-pick-row" }, [pickBox, pickNote]));
+    // TASK-165: controller button prompts option (PlayStation, Xbox, Nintendo Switch).
+    var promptsBox = h("div", { class: "cx-prompts", style: "margin-top: 6px;" });
+    content.appendChild(h("div", { class: "cx-pick-row" }, [pickBox, pickNote, promptsBox]));
     content.appendChild(lockedNote);
 
     var legend = h("div", { class: "cx-legend" });
@@ -354,6 +356,7 @@
     function apply(view, focusId) {
       state.controls = view.controls || [];
       state.analog = view.triggers || [];
+      state.buttonPrompts = view.button_prompts || null;
       state.locked = !!view.locked;
       lockedNote.hidden = !state.locked;
       lockedNote.textContent = state.locked
@@ -362,6 +365,33 @@
       paintBadges();
       paintCard();
       paintAnalog(focusId);
+      paintPrompts();
+    }
+
+    function paintPrompts() {
+      if (!state.buttonPrompts) return;
+      var hadFocus = promptsBox.contains(document.activeElement);
+      GT4.ui.clear(promptsBox);
+      var row = Object.assign({}, state.buttonPrompts, {
+        label: GT4.t("setting.button_prompts.label"),
+        disabled: state.locked
+      });
+      var context = {
+        table: { rows: [row] },
+        content: content,
+        selfDrawn: {},
+        refresh: function () { return load(); }
+      };
+      var node = GT4.settingsRows.rowNode(context, row);
+      if (node) {
+        promptsBox.appendChild(node);
+      }
+      if (hadFocus) {
+        var target = promptsBox.querySelector("[data-setting=\"button_prompts\"]");
+        if (target) {
+          target.focus({ preventScroll: true });
+        }
+      }
     }
 
     var reads = GT4.settingsModel.readGate();

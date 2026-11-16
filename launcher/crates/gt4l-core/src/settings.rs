@@ -118,6 +118,16 @@ const VERIFY_CHOICES: &[Choice] = &[
 
 const TOGGLE: Kind = Kind::Toggle;
 
+pub const BUTTON_PROMPTS_PLAYSTATION: &str = "playstation";
+pub const BUTTON_PROMPTS_XBOX: &str = "xbox";
+pub const BUTTON_PROMPTS_SWITCH: &str = "switch";
+
+pub const BUTTON_PROMPTS_CHOICES: &[Choice] = &[
+    Choice { value: BUTTON_PROMPTS_PLAYSTATION, label: "PlayStation", selectable: true },
+    Choice { value: BUTTON_PROMPTS_XBOX, label: "Xbox", selectable: true },
+    Choice { value: BUTTON_PROMPTS_SWITCH, label: "Nintendo Switch", selectable: true },
+];
+
 /// Every user setting, in display order. Ids are the TOML keys.
 pub const SETTINGS: &[SettingDef] = &[
     SettingDef {
@@ -141,6 +151,16 @@ pub const SETTINGS: &[SettingDef] = &[
         kind: TOGGLE,
         // On by default since the owner's rc14 test (2026-11-04).
         default: "on",
+        connected: true,
+    },
+    SettingDef {
+        id: "button_prompts",
+        page: Page::General,
+        group: "Controls",
+        title: "Button prompts",
+        info: "The button prompts shown in menus and races: PlayStation (default), Xbox (A/B/X/Y) or Nintendo Switch (B/A/Y/X).",
+        kind: Kind::Choice(BUTTON_PROMPTS_CHOICES),
+        default: BUTTON_PROMPTS_PLAYSTATION,
         connected: true,
     },
     SettingDef {

@@ -1,5 +1,13 @@
 # Current Status
 
+## TASK-215: H-shifter, direct gears and clutch mod completed (2026-11-16)
+
+On branch `task/215-hshifter-mod`. Implemented `native/hshifter_mod.{hpp,cpp}` and `native/hshifter_guest.{hpp,cpp}` covering the pure state machine, safety rules, and guest memory application for the opt-in H-shifter and clutch gameplay mod under decision 0073 and `docs/H-SHIFTER-CLUTCH-MOD-STUDY.md`:
+- Pure state machine enforcing direct gear application without step sequencing, reverse safety lock at speed (|speed| < 0.2778 m/s), forward gear clamping to vehicle forward gears (`Engine + 0x236`), clutch requirement and engagement ramp from pedal bite point, HUD glyph ('R'/'N' on gear 0), and automatic transmission bypass.
+- Guest RAM player vehicle discovery via `RaceDisplay` chain (`RaceDisplay -> RaceOrganization -> Cars -> CarRecord -> Automobile`), and VBlank direct gear/clutch injection (`Automobile + 0x624`, `+0x626`, `+0x618`, clearing shift requests `+0x567`, `+0x566`, `+0x62A`, and updating host parameter block `0x7F10..0x7F16`).
+- Integrated into `WheelConfig` and `WheelInput` with `[shifter]` parsing (`reverse`, `gear_1..8`), analog clutch pedal evaluation (`clutch_pedal()`), digital gate decoding (`shifter_gate()`), and `window.cpp` VBlank update loop with keyboard fallback bindings.
+- Verified via CTest fixture `native_hshifter_mod` (all passed) and Python test suite `test_hshifter_mod.py` (9/9 passed).
+
 ## 1.3.0-rc14: closing as a pre-release (2026-11-04, afternoon)
 
 On top of the slice407 test build: the full trigger range on by default with a fixed-width meter (TASK-161), the shader

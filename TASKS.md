@@ -3430,3 +3430,15 @@ compatibility pin (executable, target, disc, renderer, settings); a disposable d
 an uninterrupted run at the same guest boundary; a coordinated capture boundary (EE, VU and GS workers fenced, GPU work finished,
 in-flight card and disc I/O settled); a CoreGS 2.0 logical state independent of Vulkan handles (the external GS process separate
 or excluded); then the launcher's save and resume flow. Effort is not measured. Starts only on the owner's word after 1.3.0.
+
+### TASK-215 — H-shifter, direct gear application, and clutch pedal gameplay mod (opt-in; decision 0073)
+
+Owner request (2026-11-11): real gameplay modification: an H-shifter with direct gear application (no up/downshift button emulation), reverse as a gate position in the sequence R, N, 1, 2, ..., and a clutch pedal with a clutch system the game can use. Branch `task/215-hshifter-mod`. Study: `docs/H-SHIFTER-CLUTCH-MOD-STUDY.md`.
+
+- Mod rules: opt-in and off by default (`GT4_MOD_HSHIFTER=1` / `game.ini` `mod_hshifter=1`). With mod off, game behavior and simulation are bit-identical to the reference.
+- Implementation:
+  - `native/hshifter_mod.{hpp,cpp}`: pure state machine enforcing direct gear application, reverse lock at speed (|speed| < 0.2778 m/s), gear clamp to forward count (`Engine + 0x236`), clutch requirement when shifting without auto-clutch assist, analog clutch engagement ramp, and automatic transmission vehicle refusal.
+  - `native/hshifter_guest.{hpp,cpp}`: live player `Automobile` discovery via `RaceDisplay` chain (`RaceDisplay -> RaceOrganization -> Cars -> CarRecord -> Automobile`), and VBlank direct gear/clutch injection (`Automobile + 0x624`, `+0x626`, `+0x618`, clearing shift requests `+0x567`, `+0x566`, `+0x62A`, and updating host parameter block `0x7F10..0x7F16`).
+  - `native/wheel.{hpp,cpp}`: `WheelConfig` and `WheelInput` with `[shifter]` parsing (`reverse`, `gear_1..8`), analog clutch pedal evaluation (`clutch_pedal()`), digital gate decoding (`shifter_gate()`).
+  - `native/window.cpp`: VBlank integration reading live player car, polling wheel shifter/clutch and keyboard fallbacks ('C' for clutch, '1'..'6' and 'R' for gates), applying outputs to guest RAM.
+- Tests: CTest fixture `native_hshifter_mod` (all passed) and Python unit suite `tests/python/test_hshifter_mod.py` (9/9 passed).

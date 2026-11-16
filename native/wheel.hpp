@@ -10,6 +10,7 @@
 // SDL3 Haptics / rumble Force Feedback.
 
 #include "controls.hpp"
+#include "hshifter_mod.hpp"
 #include "pad_mapping.hpp"
 
 #include <array>
@@ -128,6 +129,25 @@ inline constexpr std::array<ButtonSlotInfo, button_slot_count> button_slots{{
     {"start", "Pause / Start (Start)", 3},
 }};
 
+struct ShifterConfig {
+  bool enabled = false;
+  SourceRef reverse{};
+  SourceRef gear_1{};
+  SourceRef gear_2{};
+  SourceRef gear_3{};
+  SourceRef gear_4{};
+  SourceRef gear_5{};
+  SourceRef gear_6{};
+  SourceRef gear_7{};
+  SourceRef gear_8{};
+
+  bool empty() const {
+    return !enabled && reverse.empty() && gear_1.empty() && gear_2.empty() && gear_3.empty() &&
+           gear_4.empty() && gear_5.empty() && gear_6.empty() && gear_7.empty() && gear_8.empty();
+  }
+  bool operator==(const ShifterConfig &other) const = default;
+};
+
 struct WheelConfig {
   int version = 1;
   bool enabled = false;
@@ -143,6 +163,7 @@ struct WheelConfig {
   PedalConfig brake{};
   PedalConfig handbrake{};
   PedalConfig clutch{};
+  ShifterConfig shifter{};
   FfbConfig ffb{};
   std::array<std::vector<SourceRef>, button_slot_count> buttons{};
 };
@@ -203,6 +224,10 @@ int select_primary_device(const WheelConfig &config, const std::vector<DeviceRea
 
 // Evaluates a full multi-device snapshot into a PS2 PadState.
 // Sets `active` to true if a primary wheel or bound auxiliary device contributed input.
+gt4::hshifter::Gate evaluate_shifter_gate(const ShifterConfig &shifter,
+                                          const std::vector<DeviceReading> &devices,
+                                          int primary_idx);
+
 PadState map_wheel_devices(const WheelConfig &config,
                            const std::vector<DeviceReading> &devices,
                            bool *active = nullptr);
@@ -255,6 +280,11 @@ public:
   // Stops all active rumble/FFB effects immediately (e.g., on focus loss or exit).
   void stop();
 
+  float clutch_pedal() const { return prepared_clutch_; }
+  gt4::hshifter::Gate shifter_gate() const { return prepared_gate_; }
+  bool has_clutch_pedal() const { return !config_.clutch.source.empty(); }
+  bool has_shifter() const { return config_.shifter.enabled; }
+
   bool enabled() const { return config_.enabled; }
   bool explicit_config() const { return explicit_config_; }
   bool has_active_wheel() const { return primary_joystick_ != nullptr; }
@@ -283,6 +313,8 @@ private:
   WheelConfig config_;
   HapticOutput output_override_;
   std::vector<std::uint32_t> owned_device_ids_;
+  float prepared_clutch_ = 0.0f;
+  gt4::hshifter::Gate prepared_gate_ = gt4::hshifter::Gate::neutral;
   PadState prepared_pad_{};
   bool prepared_active_ = false;
   bool haptic_suspended_ = true;

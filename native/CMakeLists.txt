@@ -358,14 +358,14 @@ target_compile_options(gt4_pacing PRIVATE /W4)
 # TASK-159: the 360-degree chase camera switch, stick table and per-target addresses (camera_360.cpp; the guest hook itself is
 # camera_360_hook.cpp in gt4vulkan).
 add_library(gt4_quickfix STATIC frame_skip.cpp window_mode.cpp race_display.cpp race_widescreen.cpp cursor_autohide.cpp display_aspect.cpp
-    flare_limits.cpp camera_360.cpp fov_adjust.cpp trigger_range.cpp)
+    flare_limits.cpp camera_360.cpp fov_adjust.cpp trigger_range.cpp hshifter_mod.cpp hshifter_guest.cpp)
 target_compile_options(gt4_quickfix PRIVATE /W4)
 # TASK-100 S7b: the v2.00 hook fixtures assert the v2.00 guest chains, but gt4_quickfix carries the active target's table
 # (Spec II in a Spec II build). A Spec II build therefore compiles a second copy of the three hook modules pinned to
 # v2.00 for the fixtures only; the game keeps the target table.
 if(GT4_TARGET STREQUAL "spec2")
     add_library(gt4_quickfix_v200_fixture STATIC race_display.cpp race_widescreen.cpp display_aspect.cpp flare_limits.cpp camera_360.cpp
-        fov_adjust.cpp trigger_range.cpp)
+        fov_adjust.cpp trigger_range.cpp hshifter_mod.cpp hshifter_guest.cpp)
     target_compile_definitions(gt4_quickfix_v200_fixture PUBLIC GT4_TARGET_FIXTURE_V200)
     target_compile_options(gt4_quickfix_v200_fixture PRIVATE /W4)
     set(GT4_HOOK_FIXTURE_LIB gt4_quickfix_v200_fixture)
@@ -904,7 +904,7 @@ target_include_directories(gt4_sdl3 INTERFACE "${GT4_SDL3_ROOT}/devel/SDL3-3.4.1
 target_link_libraries(gt4_sdl3 INTERFACE "${GT4_SDL3_ROOT}/${GT4_SDL3_IMPORT_LIB}")
 add_library(gt4_pad_mapping STATIC pad_mapping.cpp pad_choice.cpp input_recording.cpp)
 target_compile_options(gt4_pad_mapping PRIVATE /W4)
-add_library(native_host_io STATIC host_io.cpp frame_clock.cpp controls.cpp wheel.cpp)
+add_library(native_host_io STATIC host_io.cpp frame_clock.cpp controls.cpp wheel.cpp hshifter_mod.cpp)
 target_link_libraries(native_host_io PUBLIC gt4_pad_mapping gt4_usb)
 if(GT4_PERF_RUNTIME_SOURCE)
     target_compile_definitions(native_host_io PRIVATE GT4_PERF_PROBE)
@@ -1083,6 +1083,11 @@ add_executable(trigger_range_fixture trigger_range_fixture.cpp)
 target_link_libraries(trigger_range_fixture PRIVATE ${GT4_HOOK_FIXTURE_LIB})
 target_compile_options(trigger_range_fixture PRIVATE /W4)
 add_test(NAME native_trigger_range COMMAND $<TARGET_FILE:trigger_range_fixture>)
+# TASK-215: the H-shifter and clutch gameplay mod logic (native/hshifter_mod.hpp).
+add_executable(hshifter_mod_fixture hshifter_mod_fixture.cpp)
+target_link_libraries(hshifter_mod_fixture PRIVATE ${GT4_HOOK_FIXTURE_LIB})
+target_compile_options(hshifter_mod_fixture PRIVATE /W4)
+add_test(NAME native_hshifter_mod COMMAND $<TARGET_FILE:hshifter_mod_fixture>)
 # TASK-117: the flare-limits parameter block (native/flare_limits.hpp); no game addresses, so no v2.00 pin needed.
 add_executable(flare_limits_fixture flare_limits_fixture.cpp)
 target_link_libraries(flare_limits_fixture PRIVATE ${GT4_HOOK_FIXTURE_LIB})

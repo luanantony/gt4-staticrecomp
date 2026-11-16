@@ -7,6 +7,8 @@
 #include "gs/gs.hpp"
 #include "host_io.hpp"
 #include "wheel.hpp"
+#include "hshifter_mod.hpp"
+#include "hshifter_guest.hpp" 
 #include "native_vulkan.hpp"
 #include "ps2/system.hpp"
 #include "perf_probe.hpp"
@@ -224,6 +226,10 @@ ControllerInput *controller = nullptr;
 gt4::wheel::WheelInput *wheel_controller = nullptr;
 gt4::wheel::WheelConfig active_wheel;
 bool has_explicit_wheel_file = false;
+// TASK-215: H-shifter and clutch mod (decision 0073).
+bool hshifter_mod_enabled = false;
+gt4::hshifter::HShifterStateMachine hshifter_machine;
+gt4::hshifter::GuestPlayerCar live_player_car{};
 gt4::window_mode::ToggleState fullscreen_state;
 #ifdef GT4_SHAPE_CAPTURE
 std::unique_ptr<gt4::observation::CaptureControl> capture;
@@ -713,6 +719,52 @@ void on_vblank() {
     if (audio_output->mode() == gt4::pacing::Mode::paced)
       pacing_diagnostics.record_ratio(audio_output->resampler_ratio());
   }
+  if (hshifter_mod_enabled) {
+    gt4::hshifter::Gate current_gate = gt4::hshifter::Gate::neutral;
+    float current_clutch = 0.0f;
+
+    if (wheel_controller) {
+      current_clutch = wheel_controller->clutch_pedal();
+      current_gate = wheel_controller->shifter_gate();
+    }
+
+    if (focused) {
+      if ((GetAsyncKeyState('C') & 0x8000) != 0) {
+        current_clutch = 1.0f;
+      }
+      if (current_gate == gt4::hshifter::Gate::neutral) {
+        if ((GetAsyncKeyState('R') & 0x8000) != 0) {
+          current_gate = gt4::hshifter::Gate::reverse;
+        } else if ((GetAsyncKeyState('1') & 0x8000) != 0) {
+          current_gate = gt4::hshifter::Gate::gear_1;
+        } else if ((GetAsyncKeyState('2') & 0x8000) != 0) {
+          current_gate = gt4::hshifter::Gate::gear_2;
+        } else if ((GetAsyncKeyState('3') & 0x8000) != 0) {
+          current_gate = gt4::hshifter::Gate::gear_3;
+        } else if ((GetAsyncKeyState('4') & 0x8000) != 0) {
+          current_gate = gt4::hshifter::Gate::gear_4;
+        } else if ((GetAsyncKeyState('5') & 0x8000) != 0) {
+          current_gate = gt4::hshifter::Gate::gear_5;
+        } else if ((GetAsyncKeyState('6') & 0x8000) != 0) {
+          current_gate = gt4::hshifter::Gate::gear_6;
+        }
+      }
+    }
+
+    if (gt4::hshifter::read_guest_player_car(ps2::g_ram, ps2::kRamSize, live_player_car)) {
+      gt4::hshifter::DrivetrainInput input{};
+      input.gate = current_gate;
+      input.pedal_position = current_clutch;
+      input.speed_mps = live_player_car.speed_mps;
+      input.engine_rpm = live_player_car.engine_rpm;
+      input.max_rpm = live_player_car.max_rpm;
+      input.forward_gears = live_player_car.forward_gears;
+      input.is_manual_transmission = live_player_car.is_manual_transmission;
+
+      const gt4::hshifter::ModOutput output = hshifter_machine.update(input, 16);
+      gt4::hshifter::apply_hshifter_to_guest(ps2::g_ram, ps2::kRamSize, live_player_car, output);
+    }
+  }
   gt4::achievements::on_vblank(game_window, ps2::g_ram, ps2::kRamSize, ps2::g_spr, ps2::kScratchpadSize);
   ps2::gs::present();
 }
@@ -794,6 +846,15 @@ bool open_window(bool fullscreen) {
   std::fprintf(stderr, "[wheel] %s (enabled=%s, preset=%s)\n",
                has_explicit_wheel_file ? "wheel.toml found" : "no wheel.toml", active_wheel.enabled ? "true" : "false",
                active_wheel.preset.c_str());
+  try {
+    hshifter_mod_enabled = gt4::hshifter::parse_switch(std::getenv("GT4_MOD_HSHIFTER"));
+    if (hshifter_mod_enabled) {
+      std::fprintf(stderr, "[mod] GT4_MOD_HSHIFTER=1: H-shifter & clutch gameplay mod active (TASK-215, decision 0073)\n");
+    }
+  } catch (const std::exception &error) {
+    std::fprintf(stderr, "[mod] invalid GT4_MOD_HSHIFTER, game not started: %s\n", error.what());
+    return false;
+  }
   // TASK-080: an invalid GT4_DISPLAY_ASPECT, GT4_OUTPUT_SIZE or GT4_ASPECT_FOV_EXTRA stops the start here (prints and
   // exits).
   gt4::display_aspect::configured_setting();

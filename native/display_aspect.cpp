@@ -1,4 +1,5 @@
 #include "display_aspect.hpp"
+#include "hshifter_guest.hpp"
 
 #include <atomic>
 #include <cerrno>
@@ -560,6 +561,7 @@ void on_race_display_render() {
 }
 
 void on_race_display_render(std::uint8_t *ram, std::uint32_t ram_size, std::uint32_t self) {
+  gt4::hshifter::note_race_display(self);
   Runtime &r = runtime();
   const double ratio = r.projection_ratio;
   const std::uint64_t foreign_before = r.hud.foreign();

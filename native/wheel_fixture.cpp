@@ -470,7 +470,50 @@ void test_live_sdl_virtual_wheel() {
   SDL_QuitSubSystem(SDL_INIT_JOYSTICK);
 }
 
+void test_shifter_config() {
+  using namespace gt4::wheel;
+  const std::string toml =
+      "[wheel]\n"
+      "version = 1\n"
+      "enabled = true\n"
+      "preset = \"custom\"\n\n"
+      "[shifter]\n"
+      "enabled = true\n"
+      "reverse = \"btn:6\"\n"
+      "gear_1 = \"btn:0\"\n"
+      "gear_2 = \"btn:1\"\n"
+      "gear_3 = \"btn:2\"\n"
+      "gear_4 = \"btn:3\"\n"
+      "gear_5 = \"btn:4\"\n"
+      "gear_6 = \"btn:5\"\n";
+
+  const WheelConfig parsed = parse_wheel_config(toml, "shifter_test.toml");
+  require(parsed.shifter.enabled, "shifter enabled parsed");
+  require(parsed.shifter.reverse.kind == SourceKind::button && parsed.shifter.reverse.index == 6, "reverse button");
+  require(parsed.shifter.gear_1.kind == SourceKind::button && parsed.shifter.gear_1.index == 0, "gear_1 button");
+  require(parsed.shifter.gear_2.kind == SourceKind::button && parsed.shifter.gear_2.index == 1, "gear_2 button");
+  require(parsed.shifter.gear_6.kind == SourceKind::button && parsed.shifter.gear_6.index == 5, "gear_6 button");
+
+  // Roundtrip
+  const std::string serialized = serialize_wheel_config(parsed);
+  const WheelConfig roundtrip = parse_wheel_config(serialized, "roundtrip.toml");
+  require(roundtrip.shifter == parsed.shifter, "shifter config roundtrip matches");
+
+  // Test evaluate_shifter_gate
+  DeviceReading dev{};
+  dev.buttons.resize(8, false);
+  require(evaluate_shifter_gate(parsed.shifter, {dev}, 0) == gt4::hshifter::Gate::neutral, "no button -> neutral");
+
+  dev.buttons[0] = true;
+  require(evaluate_shifter_gate(parsed.shifter, {dev}, 0) == gt4::hshifter::Gate::gear_1, "btn 0 -> gear_1");
+
+  dev.buttons[0] = false;
+  dev.buttons[6] = true;
+  require(evaluate_shifter_gate(parsed.shifter, {dev}, 0) == gt4::hshifter::Gate::reverse, "btn 6 -> reverse");
+}
+
 } // namespace
+
 
 int main() {
   try {
@@ -482,6 +525,7 @@ int main() {
     test_multi_device_and_pedal_map_modes();
     test_gamepad_exclusion_and_validation();
     test_live_sdl_virtual_wheel();
+    test_shifter_config();
     std::fprintf(stderr, "PASS: wheel presets, steering lock/linearity, 5 pedal modes, multi-device mapping, "
                          "SDL3 virtual wheel\n");
     return 0;

@@ -667,7 +667,7 @@ WheelConfig parse_wheel_config(std::string_view text, const std::string &source_
         current_section = std::string(trim(line.substr(1, line.size() - 2)));
         if (current_section != "wheel" && current_section != "steering" && current_section != "throttle" &&
             current_section != "brake" && current_section != "handbrake" && current_section != "clutch" &&
-            current_section != "ffb" && current_section != "buttons") {
+            current_section != "ffb" && current_section != "buttons" && current_section != "shifter") {
           fail(source_name, line_no, "unknown section '[" + current_section + "]'");
         }
       } else {
@@ -779,6 +779,34 @@ WheelConfig parse_wheel_config(std::string_view text, const std::string &source_
           } else {
             fail(source_name, line_no, "unknown [ffb] key '" + std::string(key) + "'");
           }
+        } else if (current_section == "shifter") {
+          if (key == "enabled") {
+            config.shifter.enabled = parse_bool_token(value, source_name, line_no);
+          } else if (key == "reverse") {
+            config.shifter.reverse = parse_source_ref(unquote(value, source_name, line_no), source_name, line_no);
+          } else if (key == "gear_1") {
+            config.shifter.gear_1 = parse_source_ref(unquote(value, source_name, line_no), source_name, line_no);
+          } else if (key == "gear_2") {
+            config.shifter.gear_2 = parse_source_ref(unquote(value, source_name, line_no), source_name, line_no);
+          } else if (key == "gear_3") {
+            config.shifter.gear_3 = parse_source_ref(unquote(value, source_name, line_no), source_name, line_no);
+          } else if (key == "gear_4") {
+            config.shifter.gear_4 = parse_source_ref(unquote(value, source_name, line_no), source_name, line_no);
+          } else if (key == "gear_5") {
+            config.shifter.gear_5 = parse_source_ref(unquote(value, source_name, line_no), source_name, line_no);
+          } else if (key == "gear_6") {
+            config.shifter.gear_6 = parse_source_ref(unquote(value, source_name, line_no), source_name, line_no);
+          } else if (key == "gear_7") {
+            config.shifter.gear_7 = parse_source_ref(unquote(value, source_name, line_no), source_name, line_no);
+          } else if (key == "gear_8") {
+            config.shifter.gear_8 = parse_source_ref(unquote(value, source_name, line_no), source_name, line_no);
+          } else if (key == "mode") {
+            const std::string_view m = unquote(value, source_name, line_no);
+            if (m != "h_pattern" && m != "sequential")
+              fail(source_name, line_no, "shifter mode must be \"h_pattern\" or \"sequential\"");
+          } else {
+            fail(source_name, line_no, "unknown [shifter] key '" + std::string(key) + "'");
+          }
         } else if (current_section == "buttons") {
           const auto slot = find_button_slot(key);
           if (!slot)
@@ -853,6 +881,30 @@ std::string serialize_wheel_config(const WheelConfig &config) {
   out << "damper = " << config.ffb.damper << "\n";
   out << "curb_rumble = " << config.ffb.curb_rumble << "\n";
   out << "invert = " << (config.ffb.invert ? "true" : "false") << "\n\n";
+
+  if (!config.shifter.empty()) {
+    out << "[shifter]\n";
+    out << "enabled = " << (config.shifter.enabled ? "true" : "false") << "\n";
+    if (!config.shifter.reverse.empty())
+      out << "reverse = \"" << format_source_ref(config.shifter.reverse) << "\"\n";
+    if (!config.shifter.gear_1.empty())
+      out << "gear_1 = \"" << format_source_ref(config.shifter.gear_1) << "\"\n";
+    if (!config.shifter.gear_2.empty())
+      out << "gear_2 = \"" << format_source_ref(config.shifter.gear_2) << "\"\n";
+    if (!config.shifter.gear_3.empty())
+      out << "gear_3 = \"" << format_source_ref(config.shifter.gear_3) << "\"\n";
+    if (!config.shifter.gear_4.empty())
+      out << "gear_4 = \"" << format_source_ref(config.shifter.gear_4) << "\"\n";
+    if (!config.shifter.gear_5.empty())
+      out << "gear_5 = \"" << format_source_ref(config.shifter.gear_5) << "\"\n";
+    if (!config.shifter.gear_6.empty())
+      out << "gear_6 = \"" << format_source_ref(config.shifter.gear_6) << "\"\n";
+    if (!config.shifter.gear_7.empty())
+      out << "gear_7 = \"" << format_source_ref(config.shifter.gear_7) << "\"\n";
+    if (!config.shifter.gear_8.empty())
+      out << "gear_8 = \"" << format_source_ref(config.shifter.gear_8) << "\"\n";
+    out << "\n";
+  }
 
   out << "[buttons]\n";
   for (std::size_t i = 0; i < button_slots.size(); ++i) {
@@ -1060,6 +1112,32 @@ int select_primary_device(const WheelConfig &config, const std::vector<DeviceRea
     }
   }
   return selected;
+}
+
+gt4::hshifter::Gate evaluate_shifter_gate(const ShifterConfig &shifter,
+                                          const std::vector<DeviceReading> &devices,
+                                          int primary_idx) {
+  if (!shifter.enabled)
+    return gt4::hshifter::Gate::neutral;
+  if (!shifter.reverse.empty() && evaluate_digital_source(shifter.reverse, devices, primary_idx))
+    return gt4::hshifter::Gate::reverse;
+  if (!shifter.gear_1.empty() && evaluate_digital_source(shifter.gear_1, devices, primary_idx))
+    return gt4::hshifter::Gate::gear_1;
+  if (!shifter.gear_2.empty() && evaluate_digital_source(shifter.gear_2, devices, primary_idx))
+    return gt4::hshifter::Gate::gear_2;
+  if (!shifter.gear_3.empty() && evaluate_digital_source(shifter.gear_3, devices, primary_idx))
+    return gt4::hshifter::Gate::gear_3;
+  if (!shifter.gear_4.empty() && evaluate_digital_source(shifter.gear_4, devices, primary_idx))
+    return gt4::hshifter::Gate::gear_4;
+  if (!shifter.gear_5.empty() && evaluate_digital_source(shifter.gear_5, devices, primary_idx))
+    return gt4::hshifter::Gate::gear_5;
+  if (!shifter.gear_6.empty() && evaluate_digital_source(shifter.gear_6, devices, primary_idx))
+    return gt4::hshifter::Gate::gear_6;
+  if (!shifter.gear_7.empty() && evaluate_digital_source(shifter.gear_7, devices, primary_idx))
+    return gt4::hshifter::Gate::gear_7;
+  if (!shifter.gear_8.empty() && evaluate_digital_source(shifter.gear_8, devices, primary_idx))
+    return gt4::hshifter::Gate::gear_8;
+  return gt4::hshifter::Gate::neutral;
 }
 
 PadState map_wheel_devices(const WheelConfig &config,
@@ -1465,7 +1543,10 @@ void WheelInput::prepare(bool focused) {
       return !source.device_guid.empty() && to_lower_ascii(source.device_guid) == to_lower_ascii(device.guid);
     };
     if (match(config_.steering.source) || match(config_.throttle.source) || match(config_.brake.source) ||
-        match(config_.handbrake.source)) return true;
+        match(config_.handbrake.source) || match(config_.clutch.source) ||
+        match(config_.shifter.reverse) || match(config_.shifter.gear_1) || match(config_.shifter.gear_2) ||
+        match(config_.shifter.gear_3) || match(config_.shifter.gear_4) || match(config_.shifter.gear_5) ||
+        match(config_.shifter.gear_6) || match(config_.shifter.gear_7) || match(config_.shifter.gear_8)) return true;
     for (const auto &slot : config_.buttons)
       for (const auto &source : slot)
         if (match(source)) return true;
@@ -1486,6 +1567,8 @@ void WheelInput::prepare(bool focused) {
     stop();
     return;
   }
+  prepared_clutch_ = static_cast<float>(evaluate_pedal_channel(config_.clutch, readings, selected)) / 255.0f;
+  prepared_gate_ = evaluate_shifter_gate(config_.shifter, readings, selected);
   prepared_pad_ = map_wheel_devices(config_, readings, &prepared_active_);
 }
 

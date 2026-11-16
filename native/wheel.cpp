@@ -530,6 +530,36 @@ WheelConfig preset_wheel_config(std::string_view preset_name) {
     return cfg;
   }
 
+  if (preset_name == "logitech_g920") {
+    // Logitech G920 (Xbox layout, 900 deg):
+    // DirectInput / XInput pedal axes report -32768 at rest to +32767 at full press (normal mode).
+    cfg.throttle.source = {SourceKind::axis, {}, 1, HatDirection::up};
+    cfg.throttle.mode = PedalAxisMode::normal;
+    cfg.brake.source = {SourceKind::axis, {}, 2, HatDirection::up};
+    cfg.brake.mode = PedalAxisMode::normal;
+    cfg.clutch.source = {SourceKind::axis, {}, 3, HatDirection::up};
+    cfg.clutch.mode = PedalAxisMode::normal;
+    cfg.handbrake.source = {};
+
+    cfg.buttons[0] = {{SourceKind::hat, {}, 0, HatDirection::up}};    // dpad_up
+    cfg.buttons[1] = {{SourceKind::hat, {}, 0, HatDirection::right}}; // dpad_right
+    cfg.buttons[2] = {{SourceKind::hat, {}, 0, HatDirection::down}};  // dpad_down
+    cfg.buttons[3] = {{SourceKind::hat, {}, 0, HatDirection::left}};  // dpad_left
+    cfg.buttons[4] = {{SourceKind::button, {}, 0, HatDirection::up}};  // cross (A)
+    cfg.buttons[5] = {{SourceKind::button, {}, 1, HatDirection::up}};  // circle (B)
+    cfg.buttons[6] = {{SourceKind::button, {}, 2, HatDirection::up}};  // square (X)
+    cfg.buttons[7] = {{SourceKind::button, {}, 3, HatDirection::up}};  // triangle (Y)
+    cfg.buttons[8] = {{SourceKind::button, {}, 8, HatDirection::up}};  // l1 (LSB / Look Back)
+    cfg.buttons[9] = {{SourceKind::button, {}, 9, HatDirection::up}};  // r1 (RSB / Nitro)
+    cfg.buttons[10] = {{SourceKind::button, {}, 4, HatDirection::up}}; // l2 (LB / paddle down)
+    cfg.buttons[11] = {{SourceKind::button, {}, 5, HatDirection::up}}; // r2 (RB / paddle up)
+    cfg.buttons[12] = {{SourceKind::button, {}, 8, HatDirection::up}}; // l3
+    cfg.buttons[13] = {{SourceKind::button, {}, 9, HatDirection::up}}; // r3
+    cfg.buttons[14] = {{SourceKind::button, {}, 6, HatDirection::up}}; // select (View / Back)
+    cfg.buttons[15] = {{SourceKind::button, {}, 7, HatDirection::up}}; // start (Menu / Start)
+    return cfg;
+  }
+
   if (preset_name == "hori") {
     // HORI Racing Wheel Apex / Overdrive / XInput (270 deg):
     // Throttle is RT (axis 5, normal mode: -32768 rest to +32767 full)
@@ -618,6 +648,30 @@ const WheelConfig &default_wheel_config() {
     return config;
   }();
   return kDefault;
+}
+
+std::string_view detect_preset_for_device(std::string_view device_name) {
+  const std::string lower = to_lower_ascii(device_name);
+  if (lower.find("g920") != std::string::npos)
+    return "logitech_g920";
+  if (lower.find("g29") != std::string::npos || lower.find("g923") != std::string::npos ||
+      lower.find("g27") != std::string::npos || lower.find("g25") != std::string::npos)
+    return "logitech_g29";
+  if (lower.find("driving force") != std::string::npos || lower.find("dfgt") != std::string::npos)
+    return "logitech_dfgt";
+  if (lower.find("thrustmaster") != std::string::npos || lower.find("t150") != std::string::npos ||
+      lower.find("t248") != std::string::npos || lower.find("t300") != std::string::npos ||
+      lower.find("t500") != std::string::npos || lower.find("t-gt") != std::string::npos ||
+      lower.find("tmx") != std::string::npos || lower.find("tx") != std::string::npos)
+    return "thrustmaster";
+  if (lower.find("fanatec") != std::string::npos || lower.find("moza") != std::string::npos ||
+      lower.find("cammus") != std::string::npos || lower.find("simucube") != std::string::npos ||
+      lower.find("direct drive") != std::string::npos || lower.find("wheelbase") != std::string::npos)
+    return "fanatec_moza";
+  if (lower.find("hori") != std::string::npos || lower.find("apex") != std::string::npos ||
+      lower.find("overdrive") != std::string::npos)
+    return "hori";
+  return "generic";
 }
 
 WheelConfig parse_wheel_config(std::string_view text, const std::string &source_name) {
@@ -1439,8 +1493,33 @@ void WheelInput::prepare(bool focused) {
     reading.name = device.name;
     reading.is_wheel = device.is_wheel;
     reading.is_gamepad = device.is_gamepad;
-    for (int i = 0; i < SDL_GetNumJoystickAxes(device.joystick); ++i)
-      reading.axes.push_back(SDL_GetJoystickAxis(device.joystick, i));
+    for (int i = 0; i < SDL_GetNumJoystickAxes(device.joystick); ++i) {
+      const std::int16_t raw = SDL_GetJoystickAxis(device.joystick, i);
+      if (raw != 0) {
+        if (static_cast<std::size_t>(i) >= const_cast<OpenDevice &>(device).axis_active.size())
+          const_cast<OpenDevice &>(device).axis_active.resize(static_cast<std::size_t>(i + 1), false);
+        const_cast<OpenDevice &>(device).axis_active[static_cast<std::size_t>(i)] = true;
+      }
+      if (static_cast<std::size_t>(i) < device.axis_active.size() && !device.axis_active[static_cast<std::size_t>(i)]) {
+        // Axis has never moved from 0 since joystick opened. Provide rest value.
+        std::int16_t rest_val = 0;
+        const auto check_pedal = [&](const PedalConfig &p) {
+          if (p.source.kind == SourceKind::axis && p.source.index == i) {
+            if (p.mode == PedalAxisMode::inverted)
+              rest_val = 32767;
+            else if (p.mode == PedalAxisMode::normal)
+              rest_val = -32768;
+          }
+        };
+        check_pedal(config_.throttle);
+        check_pedal(config_.brake);
+        check_pedal(config_.clutch);
+        check_pedal(config_.handbrake);
+        reading.axes.push_back(rest_val);
+      } else {
+        reading.axes.push_back(raw);
+      }
+    }
     for (int i = 0; i < SDL_GetNumJoystickButtons(device.joystick); ++i)
       reading.buttons.push_back(SDL_GetJoystickButton(device.joystick, i));
     for (int i = 0; i < SDL_GetNumJoystickHats(device.joystick); ++i)
@@ -1448,6 +1527,17 @@ void WheelInput::prepare(bool focused) {
     readings.push_back(std::move(reading));
   }
   const int selected = select_primary_device(config_, readings);
+  if (selected >= 0 && (!explicit_config_ || config_.preset == "auto") &&
+      (config_.preset == "generic" || config_.preset.empty() || config_.preset == "auto")) {
+    const std::string_view detected = detect_preset_for_device(readings[static_cast<std::size_t>(selected)].name);
+    if (detected != "generic") {
+      const bool prev_enabled = config_.enabled;
+      const bool prev_dfp = config_.dfp;
+      config_ = preset_wheel_config(detected);
+      config_.enabled = prev_enabled;
+      config_.dfp = prev_dfp;
+    }
+  }
   const std::uint32_t selected_id = selected < 0 ? 0 : readings[static_cast<std::size_t>(selected)].instance_id;
   SDL_Joystick *resolved = nullptr;
   for (const auto &device : devices_)
@@ -1478,8 +1568,21 @@ void WheelInput::prepare(bool focused) {
         }) == 1)) owned_device_ids_.push_back(device.instance_id);
   if (config_.dfp) {
     prepare_dfp(focused, readings, selected);
-    if (!focused)
+    if (!focused) {
       stop();
+      return;
+    }
+    // Populate digital buttons and D-pad on prepared_pad_ so GT4 menus can be navigated via DualShock 2
+    // without pedals interfering (DFP drives pedals and steering natively via USB).
+    for (std::size_t slot_idx = 0; slot_idx < button_slots.size(); ++slot_idx) {
+      const std::uint8_t ps2_bit = button_slots[slot_idx].ps2_bit;
+      for (const SourceRef &ref : config_.buttons[slot_idx]) {
+        if (evaluate_digital_source(ref, readings, selected)) {
+          press_pad_button(prepared_pad_, ps2_bit, 255);
+        }
+      }
+    }
+    prepared_active_ = (prepared_pad_.buttons != 0);
     return;
   }
   if (!focused) {

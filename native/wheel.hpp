@@ -159,10 +159,13 @@ struct DeviceReading {
   std::uint32_t instance_id = 0; // stable identity through filtered connected-device snapshots
 };
 
-// Built-in presets: "generic", "hori", "logitech_g29", "logitech_dfgt", "thrustmaster",
+// Built-in presets: "generic", "hori", "logitech_g29", "logitech_g920", "logitech_dfgt", "thrustmaster",
 // "fanatec_moza", "combined_pedals".
 WheelConfig preset_wheel_config(std::string_view preset_name);
 const WheelConfig &default_wheel_config();
+
+// Detects the appropriate preset name from device name (or GUID/vendor) string.
+std::string_view detect_preset_for_device(std::string_view device_name);
 
 // Parses and formats source strings ("axis:0", "btn:4", "hat:0:up", "dev:<guid>:axis:1").
 SourceRef parse_source_ref(std::string_view text, const std::string &source_name, std::size_t line_no);
@@ -268,6 +271,7 @@ private:
     std::string name;
     bool is_wheel = false;
     bool is_gamepad = false;
+    std::vector<bool> axis_active;
   };
 
   void scan_devices();

@@ -1,5 +1,14 @@
 # Current Status
 
+## TASK-174: Wheel face button conflict and pedal lockup resolution (issue #242; done)
+
+Fixes face buttons (Cross, Circle, Square, Triangle) failing to respond on wheel or controller when a wheel is connected (issue #242).
+- Added dedicated `logitech_g920` preset with normal pedal polarity and Xbox button layout.
+- Added `detect_preset_for_device` for automatic preset selection on known racing wheels.
+- Guarded uninitialized pedal axes at rest (`raw == 0`) from asserting 50% pedal depression.
+- Populated digital buttons on DualShock 2 `prepared_pad_` in DFP mode for seamless menu navigation.
+- Passes all `native_wheel` / `wheel_fixture` unit tests.
+
 ## 1.3.0-rc14: closing as a pre-release (2026-11-04, afternoon)
 
 On top of the slice407 test build: the full trigger range on by default with a fixed-width meter (TASK-161), the shader

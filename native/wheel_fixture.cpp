@@ -30,7 +30,7 @@ void require_rejects(std::string_view toml, const char *label) {
 void test_presets_and_roundtrip() {
   using namespace gt4::wheel;
   for (const char *preset :
-       {"generic", "hori", "logitech_g29", "logitech_dfgt", "thrustmaster", "fanatec_moza", "combined_pedals"}) {
+       {"generic", "hori", "logitech_g29", "logitech_g920", "logitech_dfgt", "thrustmaster", "fanatec_moza", "combined_pedals"}) {
     const WheelConfig cfg = preset_wheel_config(preset);
     const std::string text = serialize_wheel_config(cfg);
     const WheelConfig parsed = parse_wheel_config(text, std::string(preset) + ".toml");
@@ -470,7 +470,95 @@ void test_live_sdl_virtual_wheel() {
   SDL_QuitSubSystem(SDL_INIT_JOYSTICK);
 }
 
+void test_wheel_button_conflict_and_detection() {
+  using namespace gt4::wheel;
+
+  // 1. Preset auto-detection by device name
+  require(detect_preset_for_device("Logitech G920 Driving Force Racing Wheel USB") == "logitech_g920",
+          "detects G920 preset");
+  require(detect_preset_for_device("G920") == "logitech_g920", "detects short G920");
+  require(detect_preset_for_device("Logitech G29 Driving Force Racing Wheel") == "logitech_g29", "detects G29");
+  require(detect_preset_for_device("Logitech G923 Racing Wheel for PlayStation 5") == "logitech_g29",
+          "detects G923 as G29 family");
+  require(detect_preset_for_device("Logitech Driving Force GT USB") == "logitech_dfgt", "detects DFGT");
+  require(detect_preset_for_device("Thrustmaster T300RS Racing Wheel") == "thrustmaster", "detects T300RS");
+  require(detect_preset_for_device("Thrustmaster TMX Racing Wheel") == "thrustmaster", "detects TMX");
+  require(detect_preset_for_device("Moza R5 Racing Wheelbase") == "fanatec_moza", "detects Moza DD");
+  require(detect_preset_for_device("Fanatec ClubSport DD") == "fanatec_moza", "detects Fanatec DD");
+  require(detect_preset_for_device("HORI Racing Wheel APEX") == "hori", "detects HORI APEX");
+  require(detect_preset_for_device("Unknown Custom Device") == "generic", "generic fallback for unknown device");
+
+  // 2. G920 preset configuration details
+  const WheelConfig g920_cfg = preset_wheel_config("logitech_g920");
+  require(g920_cfg.throttle.mode == PedalAxisMode::normal, "G920 throttle is normal polarity");
+  require(g920_cfg.brake.mode == PedalAxisMode::normal, "G920 brake is normal polarity");
+  require(g920_cfg.clutch.mode == PedalAxisMode::normal, "G920 clutch is normal polarity");
+  // Face button indices: A=0 (Cross), B=1 (Circle), X=2 (Square), Y=3 (Triangle)
+  require(!g920_cfg.buttons[4].empty() && g920_cfg.buttons[4][0].index == 0, "G920 A button -> Cross");
+  require(!g920_cfg.buttons[5].empty() && g920_cfg.buttons[5][0].index == 1, "G920 B button -> Circle");
+  require(!g920_cfg.buttons[6].empty() && g920_cfg.buttons[6][0].index == 2, "G920 X button -> Square");
+  require(!g920_cfg.buttons[7].empty() && g920_cfg.buttons[7][0].index == 3, "G920 Y button -> Triangle");
+  require(!g920_cfg.buttons[10].empty() && g920_cfg.buttons[10][0].index == 4, "G920 LB paddle -> L2 Shift Down");
+  require(!g920_cfg.buttons[11].empty() && g920_cfg.buttons[11][0].index == 5, "G920 RB paddle -> R2 Shift Up");
+
+  // 3. Resting pedals on normal-polarity wheel must NOT assert Cross or Square
+  DeviceReading wheel_reading{};
+  wheel_reading.name = "Logitech G920 Driving Force Racing Wheel USB";
+  wheel_reading.is_wheel = true;
+  wheel_reading.axes = {0, -32768, -32768, -32768}; // steering center, pedals fully released at -32768
+  wheel_reading.buttons.resize(16, false);
+  wheel_reading.hats = {0};
+
+  bool active = false;
+  PadState pad = map_wheel_devices(g920_cfg, {wheel_reading}, &active);
+  require(active, "G920 reading is active");
+  require(pad.pressures[14] == 0, "G920 released throttle must have 0 Cross pressure");
+  require(pad.pressures[15] == 0, "G920 released brake must have 0 Square pressure");
+  require((pad.buttons & (1u << 14)) == 0, "G920 released pedals do NOT assert Cross button bit");
+  require((pad.buttons & (1u << 15)) == 0, "G920 released pedals do NOT assert Square button bit");
+  require(pad.buttons == 0, "G920 at rest produces 0 digital button mask");
+
+  // 4. Pressing face buttons on wheel asserts correct bits
+  wheel_reading.buttons[0] = true; // Press A (Cross)
+  pad = map_wheel_devices(g920_cfg, {wheel_reading}, &active);
+  require((pad.buttons & (1u << 14)) != 0 && pad.pressures[14] == 255, "G920 A button asserts Cross");
+
+  wheel_reading.buttons[0] = false;
+  wheel_reading.buttons[1] = true; // Press B (Circle)
+  pad = map_wheel_devices(g920_cfg, {wheel_reading}, &active);
+  require((pad.buttons & (1u << 13)) != 0 && pad.pressures[13] == 255, "G920 B button asserts Circle");
+
+  wheel_reading.buttons[1] = false;
+  wheel_reading.buttons[2] = true; // Press X (Square)
+  pad = map_wheel_devices(g920_cfg, {wheel_reading}, &active);
+  require((pad.buttons & (1u << 15)) != 0 && pad.pressures[15] == 255, "G920 X button asserts Square");
+
+  wheel_reading.buttons[2] = false;
+  wheel_reading.buttons[3] = true; // Press Y (Triangle)
+  pad = map_wheel_devices(g920_cfg, {wheel_reading}, &active);
+  require((pad.buttons & (1u << 12)) != 0 && pad.pressures[12] == 255, "G920 Y button asserts Triangle");
+
+  // 5. Merging wheel at rest does NOT corrupt controller face buttons
+  wheel_reading.buttons[3] = false; // All wheel buttons released
+  PadState resting_wheel = map_wheel_devices(g920_cfg, {wheel_reading}, &active);
+  PadState controller_pad{};
+  controller_pad.buttons = (1u << 14) | (1u << 13) | (1u << 15) | (1u << 12); // All face buttons pressed on pad
+  controller_pad.pressures[14] = 255;
+  controller_pad.pressures[13] = 255;
+  controller_pad.pressures[15] = 255;
+  controller_pad.pressures[12] = 255;
+
+  merge_wheel_state(controller_pad, resting_wheel);
+  require(controller_pad.pressures[14] == 255, "Cross pressure preserved after merging resting wheel");
+  require(controller_pad.pressures[13] == 255, "Circle pressure preserved after merging resting wheel");
+  require(controller_pad.pressures[15] == 255, "Square pressure preserved after merging resting wheel");
+  require(controller_pad.pressures[12] == 255, "Triangle pressure preserved after merging resting wheel");
+  require(controller_pad.buttons == ((1u << 14) | (1u << 13) | (1u << 15) | (1u << 12)),
+          "All 4 face buttons remain cleanly asserted on gamepad when wheel is resting");
+}
+
 } // namespace
+
 
 int main() {
   try {
@@ -482,6 +570,7 @@ int main() {
     test_multi_device_and_pedal_map_modes();
     test_gamepad_exclusion_and_validation();
     test_live_sdl_virtual_wheel();
+    test_wheel_button_conflict_and_detection();
     std::fprintf(stderr, "PASS: wheel presets, steering lock/linearity, 5 pedal modes, multi-device mapping, "
                          "SDL3 virtual wheel\n");
     return 0;

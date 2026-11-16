@@ -3430,3 +3430,25 @@ compatibility pin (executable, target, disc, renderer, settings); a disposable d
 an uninterrupted run at the same guest boundary; a coordinated capture boundary (EE, VU and GS workers fenced, GPU work finished,
 in-flight card and disc I/O settled); a CoreGS 2.0 logical state independent of Vulkan handles (the external GS process separate
 or excluded); then the launcher's save and resume flow. Effort is not measured. Starts only on the owner's word after 1.3.0.
+
+### TASK-174 — Wheel face button conflict and pedal lockup resolution (issue #242; done)
+
+Player report (issue #242): on 1.3.0 rc 16, XO^D face buttons stop working on wheel or gamepad when a wheel is connected.
+Root cause:
+1. Pedal axes starting at 0 before first motion (SDL default) evaluated to 50% travel (128) in inverted and normal modes,
+   and normal-polarity pedals (G920, Direct Drive, load-cells) resting at -32768 evaluated to 100% (255) under the generic
+   preset's inverted mode.
+2. In `cross_square` pedal map mode, throttle and brake mapped to Cross (bit 14) and Square (bit 15), continuously asserting
+   them on the merged DualShock 2 PadState. This locked face buttons and prevented edge detection in menus on both wheel and
+   gamepad.
+3. In DFP mode, `prepared_pad_` was never populated, starving DualShock 2 of wheel button input in menus.
+4. Logitech G920 had no dedicated preset and defaulted to generic (swapped button indices and inverted pedal polarity).
+
+Fix:
+- Added dedicated `logitech_g920` preset with normal-polarity pedals and correct Xbox button mapping.
+- Added `detect_preset_for_device` to automatically match known racing wheels (G920, G29, Thrustmaster, Moza, Fanatec, HORI)
+  when preset is generic or auto.
+- Protected uninitialized pedal axes at rest (`raw == 0` before hardware motion) so rest values (+32767 for inverted, -32768
+  for normal) are used until first physical depression.
+- Forwarded digital buttons to `prepared_pad_` in DFP mode without pedal/steering conflict.
+- Test: CTest `native_wheel` / `wheel_fixture` (`test_wheel_button_conflict_and_detection`) passes all assertions.

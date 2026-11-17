@@ -130,6 +130,12 @@ struct HookAddresses {
   std::uint32_t overlay_draw_end_return = 0;      // strobe overlay renderer: return label of the call after the draw
   std::uint32_t overlay_caller_slot = 0;          // the renderer's frame: sp + this = its caller's return address
   std::uint32_t monitor_overlay_call_return = 0;  // the race monitor's call of the renderer (left as the game draws it)
+
+  // TASK-163 bonnet camera wind volume (native/bonnet_wind.hpp).
+  std::uint32_t bonnet_wind_visual = 0;
+  std::uint32_t bonnet_wind_visual_volume = 0;
+  std::uint32_t bonnet_wind_external_volume = 0;
+  std::uint32_t bonnet_wind_dive = 0;
 };
 
 struct Profile {
@@ -206,6 +212,10 @@ inline constexpr HookAddresses kV200Hooks = {
     /* overlay_draw_end_return */ 0x003EC248u,      // func_003EC0B0: jal 0x004A5400 at 0x003EC240, after the draw 0x00475CA0
     /* overlay_caller_slot */ 0x60u,                // func_003EC0B0: sd ra,0x60(sp)
     /* monitor_overlay_call_return */ 0x003DA294u,  // RaceMonitor render func_003DA150: jal 0x003EC0B0 at 0x003DA28C
+    /* bonnet_wind_visual */ 0x006213E8u,
+    /* bonnet_wind_visual_volume */ 0x006213DCu,
+    /* bonnet_wind_external_volume */ 0x006213E0u,
+    /* bonnet_wind_dive */ 0x006213ECu,
 };
 
 // Spec II (SCUS-97436, GT4 Online Public Beta lineage), filled by S8 (2026-10-23). The image is a different build of
@@ -306,6 +316,10 @@ inline constexpr HookAddresses kSpec2Hooks = {
     /* overlay_draw_end_return */ 0x001FDE60u,      // 0x001FDCC8: jal 0x005A1E08 at 0x001FDE58, after the draw 0x00341918
     /* overlay_caller_slot */ 0x60u,                // 0x001FDCC8: sd ra,0x60(sp)
     /* monitor_overlay_call_return */ 0x001F2FD4u,  // race monitor render 0x001F2E98: jal 0x001FDCC8 at 0x001F2FCC
+    /* bonnet_wind_visual */ 0u,
+    /* bonnet_wind_visual_volume */ 0u,
+    /* bonnet_wind_external_volume */ 0u,
+    /* bonnet_wind_dive */ 0u,
 };
 
 inline constexpr Profile kV200{Id::v200, "v2.00", 32u << 20, kV200Hooks};

@@ -301,6 +301,11 @@ fn add_common(variables: &mut BTreeMap<&'static str, String>, settings: &Setting
     }
     // TASK-161: the game's full trigger range and the controls' trigger ranges follow this one switch (game_main.cpp).
     variables.insert("GT4_TRIGGER_FULL_RANGE", flag(settings.is_on("trigger_full_range")));
+    // TASK-163: bonnet camera wind volume (issue #135, study #171).
+    let bonnet_wind = settings.get("bonnet_wind_volume");
+    if !bonnet_wind.is_empty() && bonnet_wind != "100" {
+        variables.insert("GT4_BONNET_WIND_VOLUME", bonnet_wind.to_string());
+    }
     match settings.get("check_vu_code") {
         "100" => {
             variables.insert("GT4_VU1_VERIFY", "100".to_string());
@@ -434,6 +439,11 @@ pub fn standalone_config_text(settings: &Settings, display: Option<&DisplayTarge
     text.push_str(&format!("performance_report={}\n", flag(settings.is_on("performance_report"))));
     text.push_str(&format!("check_vu_code={check_vu_code}\n"));
     text.push_str(&format!("trigger_full_range={}\n", flag(settings.is_on("trigger_full_range"))));
+    // TASK-163: bonnet camera wind volume (only when non-default, keeping stock game.ini exact).
+    let bonnet_wind = settings.get("bonnet_wind_volume");
+    if !bonnet_wind.is_empty() && bonnet_wind != "100" {
+        text.push_str(&format!("bonnet_wind_volume={bonnet_wind}\n"));
+    }
     // TASK-148: the chosen controller, as GT4_PAD.
     if let Some(choice) = controller_environment(settings) {
         text.push_str(&format!("pad={choice}\n"));

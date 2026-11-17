@@ -3060,12 +3060,21 @@ needs the owner's word (decision 0073 keeps it to Performance Mode). Measure on 
 
 ### TASK-163 — Bonnet camera wind volume, and 480p colour (issue #135; study #171)
 
+State (2026-11-16): done on branch `task/163-bonnet-wind-volume`.
 Owner (2026-11-04): taken in as a planned task, after 1.3.0. Issue #135 (shadowcla02-cloud) asks for an option to lower the wind
 sound in the bonnet camera and for the full colour range in 480p. Luan Antony's study (`docs/studies/BONNET-WIND-480P-COLOR.md`,
 PR #171) finds the wind in the race car sound (a looped voice scaled by speed and a camera factor) and proposes a volume
 setting that leaves the engine and every other sound alone; it reads the 480p colour difference as the game's own 16-bit frame
 buffers in progressive mode. A sound option changes no gameplay; a colour change would alter the original picture, so it needs
 the owner's word first. Check both in the game before building.
+Done (2026-11-16):
+- Phase 1 implemented: Bonnet camera aerodynamic wind noise attenuation (`GT4_BONNET_WIND_VOLUME` / `bonnet_wind_volume` in `game.ini`).
+- Launcher setting `bonnet_wind_volume` added in `gt4l-core` with choices: `100` (Default, 100%), `50` (50%), and `0` (Muted, 0%).
+- Launch plan exports `GT4_BONNET_WIND_VOLUME` when non-default, and parses in standalone direct start (`native/standalone.cpp`).
+- Native guest RAM hook at guest VBlank (`native/bonnet_wind.hpp` and `native/bonnet_wind.cpp`) reading `RaceCarSound::visual_` (`0x006213E8` on v2.00) and attenuating `RaceCarSound::visual_volume_` (`0x006213DC` on v2.00) while in bonnet view (camera index 1), preserving all mechanical car audio at 100% fidelity, with automatic volume restoration on camera perspective exit.
+- Target hook mapping in `native/game_target.hpp` (v200 mapped, spec2 cleanly disabled).
+- Localized in `en-US.json` and `pt-BR.json` (100% key parity).
+- Automated tests: `native/bonnet_wind_fixture` (PASS), `native/game_target_fixture` (PASS), `native/standalone_fixture` (PASS), `gt4l-core` launch_contract (29/29 PASS) and unit tests (PASS).
 
 ### TASK-164 — First save creation: tell keyboard players which key confirms (issue #160; study #167; done in rc14)
 

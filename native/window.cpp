@@ -1,5 +1,6 @@
 #include "window.hpp"
 #include "race_display.hpp"
+#include "bonnet_wind.hpp"
 #include "race_widescreen.hpp"
 #include "display_aspect.hpp"
 #include "ps2/memory.hpp"
@@ -671,6 +672,7 @@ void on_vblank() {
   update_cursor();
   if (force_480p_enabled)
     gt4::display::force_race_480p_at_vblank(ps2::g_ram, ps2::kRamSize, force_480p_state);
+  gt4::bonnet_wind::at_guest_vblank(ps2::g_ram, ps2::kRamSize);
 #ifdef GT4_SHAPE_CAPTURE
   if (capture)
     capture->service();

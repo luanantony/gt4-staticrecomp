@@ -581,6 +581,11 @@ fn variables_of_game_ini(text: &str) -> std::collections::BTreeMap<String, Strin
             "trigger_full_range" => {
                 variables.insert("GT4_TRIGGER_FULL_RANGE".to_string(), value.to_string());
             }
+            "bonnet_wind_volume" => {
+                if value != "100" {
+                    variables.insert("GT4_BONNET_WIND_VOLUME".to_string(), value.to_string());
+                }
+            }
             other => panic!("unknown game.ini key {other}"),
         }
     }
@@ -597,6 +602,7 @@ fn every_game_ini_key_stands_for_the_variable_the_launcher_sets_at_play() {
         vec![("performance_report", "on"), ("check_vu_code", "100")],
         vec![("check_vu_code", "1000"), ("fullscreen", "off"), ("vsync", "on")],
         vec![("trigger_full_range", "on")],
+        vec![("bonnet_wind_volume", "0")],
     ];
     let display = display_target(r"\\.\DISPLAY1", 2560, 1440);
     for changes in variants {

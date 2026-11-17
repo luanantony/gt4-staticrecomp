@@ -86,6 +86,11 @@ void check_v200_values() {
   check(h.overlay_draw_end_return == 0x3EC248u, "strobe overlay renderer end-of-draw return label");
   check(h.overlay_caller_slot == 0x60u, "strobe overlay renderer saved ra slot");
   check(h.monitor_overlay_call_return == 0x3DA294u, "race monitor's call of the strobe renderer");
+  // TASK-163 bonnet camera wind volume.
+  check(h.bonnet_wind_visual == 0x006213E8u, "bonnet wind visual camera index");
+  check(h.bonnet_wind_visual_volume == 0x006213DCu, "bonnet wind visual volume");
+  check(h.bonnet_wind_external_volume == 0x006213E0u, "bonnet wind external volume");
+  check(h.bonnet_wind_dive == 0x006213ECu, "bonnet wind dive mode");
   // Both v2.00 tables (the release one and the one the modules compile against) agree.
   check(kV200Hooks.widescreen_owner_pointer == h.widescreen_owner_pointer, "kV200Hooks is the active table");
 }

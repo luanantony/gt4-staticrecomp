@@ -11,6 +11,7 @@
 #include "camera_360.hpp"
 #include "controls.hpp"
 #include "fov_adjust.hpp"
+#include "bonnet_wind.hpp"
 #include "trigger_range.hpp"
 #include "frame_skip.hpp"
 #include "standalone.hpp"
@@ -283,6 +284,7 @@ int run_standalone(int argc, char **argv) {
   gt4::camera360::configure_from_environment();  // TASK-159: game.ini camera_360 arrives here as GT4_CAMERA_360
   gt4::fov_adjust::configure_from_environment();  // TASK-160: game.ini fov_adjust arrives here as GT4_FOV_ADJUST
   configure_trigger_range();                       // TASK-161: game.ini trigger_full_range as GT4_TRIGGER_FULL_RANGE
+  gt4::bonnet_wind::configure_from_environment(); // TASK-163: game.ini bonnet_wind_volume as GT4_BONNET_WIND_VOLUME
   return gt4_donor_main(static_cast<int>(storage.size()), pointers.data());
 }
 
@@ -307,6 +309,7 @@ int main(int argc, char **argv) {
     gt4::camera360::configure_from_environment();  // TASK-159: an invalid GT4_CAMERA_360 stops the start here
     gt4::fov_adjust::configure_from_environment();  // TASK-160: an invalid GT4_FOV_ADJUST stops the start here
     configure_trigger_range();                       // TASK-161: an invalid GT4_TRIGGER_FULL_RANGE stops the start here
+    gt4::bonnet_wind::configure_from_environment(); // TASK-163: an invalid GT4_BONNET_WIND_VOLUME stops the start here
     if (!window && !install_input_replay_without_window()) return 1;
     return gt4_donor_main(argc, argv);
   }

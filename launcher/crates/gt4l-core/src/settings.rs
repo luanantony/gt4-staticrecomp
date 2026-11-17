@@ -116,6 +116,12 @@ const VERIFY_CHOICES: &[Choice] = &[
     Choice { value: "1000", label: "Every 1000th call", selectable: true },
 ];
 
+pub const BONNET_WIND_CHOICES: &[Choice] = &[
+    Choice { value: "100", label: "100% (Default)", selectable: true },
+    Choice { value: "50", label: "50%", selectable: true },
+    Choice { value: "0", label: "Muted (0%)", selectable: true },
+];
+
 const TOGGLE: Kind = Kind::Toggle;
 
 /// Every user setting, in display order. Ids are the TOML keys.
@@ -141,6 +147,16 @@ pub const SETTINGS: &[SettingDef] = &[
         kind: TOGGLE,
         // On by default since the owner's rc14 test (2026-11-04).
         default: "on",
+        connected: true,
+    },
+    SettingDef {
+        id: "bonnet_wind_volume",
+        page: Page::General,
+        group: "Audio",
+        title: "Bonnet camera wind volume",
+        info: "Volume of aerodynamic wind rushing noise when driving in bonnet/roof camera view. Default (100%) is the original game sound; 0% silences the wind noise while keeping engine and tire sounds intact.",
+        kind: Kind::Choice(BONNET_WIND_CHOICES),
+        default: "100",
         connected: true,
     },
     SettingDef {

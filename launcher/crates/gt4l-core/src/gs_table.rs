@@ -417,9 +417,9 @@ pub fn render_ini(settings: &BTreeMap<String, String>, launcher: &BTreeMap<Strin
 /// write does it (CRLF on Windows), so the launcher and scripts/gs_settings.py produce the same bytes.
 pub fn ini_file_bytes(text: &str) -> Vec<u8> {
     if cfg!(windows) {
-        text.replace('\n', "\r\n").into_bytes()
+        text.replace("\r\n", "\n").replace('\n', "\r\n").into_bytes()
     } else {
-        text.as_bytes().to_vec()
+        text.replace("\r\n", "\n").into_bytes()
     }
 }
 

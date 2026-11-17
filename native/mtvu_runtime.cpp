@@ -11,6 +11,7 @@
 #include "display_aspect.hpp"
 #include "flare_limits.hpp"
 #include "fov_adjust.hpp"
+#include "bonnet_wind.hpp"
 #include "perf_clock.hpp"
 #include "perf_probe.hpp"
 
@@ -882,6 +883,8 @@ void vblank_sync() {
   gt4::flare_limits::at_guest_vblank(ps2::g_ram, 32u << 20);
   // TASK-160: the field of view zoom follows the pad buttons the game keeps (native/fov_adjust.hpp; GT4_FOV_ADJUST).
   gt4::fov_adjust::at_guest_vblank(ps2::g_ram, 32u << 20);
+  // TASK-163: bonnet camera wind volume attenuation (GT4_BONNET_WIND_VOLUME).
+  gt4::bonnet_wind::at_guest_vblank(ps2::g_ram, 32u << 20);
   Runtime &r = rt();
   if (!r.started) return;
   // TASK-084 step 3: in pcsx2 mode the VSYNC is a journal entry after the frame's VU1 output, so the EE does not

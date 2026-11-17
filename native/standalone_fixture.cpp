@@ -463,6 +463,13 @@ void check_resolve() {
     check(has(sa::resolve(triggers, chosen.access()).set, "GT4_TRIGGER_FULL_RANGE", "1"),
           "game.ini's trigger_full_range becomes GT4_TRIGGER_FULL_RANGE");
     check(!sa::parse_config("trigger_full_range=on\n").warnings.empty(), "trigger_full_range takes only 0 or 1");
+    // TASK-163: bonnet camera wind volume.
+    sa::Inputs wind = inputs_for(*layout, nullptr);
+    wind.config = sa::parse_config("version=1\nbonnet_wind_volume=0\n");
+    check(wind.config->warnings.empty(), "the bonnet wind volume key is accepted");
+    check(has(sa::resolve(wind, chosen.access()).set, "GT4_BONNET_WIND_VOLUME", "0"),
+          "game.ini's bonnet_wind_volume becomes GT4_BONNET_WIND_VOLUME");
+    check(!sa::parse_config("bonnet_wind_volume=\n").warnings.empty(), "empty bonnet_wind_volume is refused");
     sa::Inputs fast = inputs_for(*layout, nullptr);
     fast.config = sa::parse_config(std::string("present_mode=mailbox") + char(10) + "renderer=coregs20" + char(10) + "hw_present_mode=fifo" + char(10));
     check(has(sa::resolve(fast, chosen.access()).set, "GT4_PRESENT_MODE", "fifo"), "a stored Fast vsync draws as On under CoreGS 2.0");

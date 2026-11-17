@@ -59,7 +59,8 @@ bool spec2_target_has_the_s8_hooks() {
       h.monitor_overlay_call_return != 0x001F2FD4u)
     return false;
   // Not mapped yet: the request struct and the shape observer stay disabled.
-  return h.display_request_state == 0 && h.shape_call_pc == 0 && h.shape_target_pc == 0 && h.shape_return_pc == 0;
+  return h.display_request_state == 0 && h.shape_call_pc == 0 && h.shape_target_pc == 0 && h.shape_return_pc == 0 &&
+         h.bonnet_wind_visual == 0 && h.bonnet_wind_visual_volume == 0 && h.bonnet_wind_external_volume == 0 && h.bonnet_wind_dive == 0;
 }
 
 bool spec2_match_addresses_never_match() {
